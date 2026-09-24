@@ -24,8 +24,14 @@ import { SiteSettings } from './globals/SiteSettings'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
+const serverURL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
 export default buildConfig({
-  serverURL: process.env.NEXT_PUBLIC_APP_URL || '',
+  serverURL,
+  // Cookie auth is rejected when a request's Origin isn't in this list.
+  // Include localhost so local dev works even when NEXT_PUBLIC_APP_URL
+  // points at the production domain.
+  csrf: [serverURL, 'http://localhost:3000', 'http://127.0.0.1:3000'],
   admin: {
     user: Users.slug,
     importMap: {
