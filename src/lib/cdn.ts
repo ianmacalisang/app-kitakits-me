@@ -8,5 +8,7 @@ export function toCdnUrl(url?: string | null): string | undefined {
   // route those through the CDN. Absolute/external URLs are left untouched.
   if (url.startsWith('/')) return `${cdn}${url}`
 
-  return url
+  // UploadThing media URLs are absolute (https://<appId>.ufs.sh/f/<key>,
+  // legacy https://utfs.io/f/<key>); rewrite the host to our CDN domain.
+  return url.replace(/^https:\/\/([\w-]+\.ufs\.sh|utfs\.io)/, cdn)
 }

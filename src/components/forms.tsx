@@ -4,7 +4,14 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useActionState, useEffect, useRef, useState } from 'react'
 
-import { changePassword, checkUsername, login, register } from '@/actions/auth'
+import {
+  changePassword,
+  checkUsername,
+  login,
+  register,
+  requestPasswordReset,
+  resetPassword,
+} from '@/actions/auth'
 import { updateProfile } from '@/actions/users'
 import { compressImage } from '@/lib/image'
 
@@ -21,6 +28,9 @@ const submitClass =
 
 const errorClass =
   'rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-2.5 text-sm text-red-600'
+
+const successClass =
+  'rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-2.5 text-sm text-emerald-700'
 
 const hintClass = 'mt-1.5 text-xs'
 
@@ -109,6 +119,14 @@ export function LoginForm() {
         autoComplete="current-password"
         defaultValue={state.values?.password}
       />
+      <div className="-mt-2 text-right">
+        <Link
+          href="/forgot-password"
+          className="text-xs font-medium text-emerald-700 hover:underline"
+        >
+          Forgot password?
+        </Link>
+      </div>
       {state.error && (
         <p role="alert" className={errorClass}>
           {state.error}
@@ -122,6 +140,120 @@ export function LoginForm() {
         No account?{' '}
         <Link href="/register" className="font-medium text-emerald-700 hover:underline">
           Register
+        </Link>
+      </p>
+    </form>
+  )
+}
+
+export function ForgotPasswordForm() {
+  const [state, formAction, pending] = useActionState(requestPasswordReset, {})
+
+  if (state.success) {
+    return (
+      <div className="flex flex-col gap-4">
+        <p role="status" className={successClass}>
+          If an account exists for that email, a reset link is on its way. Check your inbox — and
+          the spam folder.
+        </p>
+        <p className="text-center text-sm text-neutral-500">
+          <Link href="/login" className="font-medium text-emerald-700 hover:underline">
+            Back to log in
+          </Link>
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <form action={formAction} className="flex flex-col gap-4">
+      <div>
+        <label htmlFor="email" className={labelClass}>
+          Email
+        </label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          required
+          autoFocus
+          autoComplete="email"
+          inputMode="email"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder="you@example.com"
+          className={inputClass}
+        />
+      </div>
+      {state.error && (
+        <p role="alert" className={errorClass}>
+          {state.error}
+        </p>
+      )}
+      <button type="submit" disabled={pending} className={submitClass}>
+        {pending && <Spinner className="h-4 w-4 text-white" />}
+        {pending ? 'Sending…' : 'Send reset link'}
+      </button>
+      <p className="text-center text-sm text-neutral-500">
+        Remembered it?{' '}
+        <Link href="/login" className="font-medium text-emerald-700 hover:underline">
+          Log in
+        </Link>
+      </p>
+    </form>
+  )
+}
+
+export function ResetPasswordForm({ token }: { token: string }) {
+  const [state, formAction, pending] = useActionState(resetPassword, {})
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const confirmMismatch = confirm.length > 0 && confirm !== password
+
+  return (
+    <form
+      action={formAction}
+      className="flex flex-col gap-4"
+      onSubmit={(e) => {
+        if (password !== confirm) e.preventDefault()
+      }}
+    >
+      <input type="hidden" name="token" value={token} />
+      <PasswordField
+        id="password"
+        autoComplete="new-password"
+        minLength={8}
+        onChange={(e) => setPassword(e.target.value)}
+        hint={<p className={`${hintClass} text-neutral-400`}>At least 8 characters.</p>}
+      />
+      <PasswordField
+        id="confirmPassword"
+        name="confirmPassword"
+        label="Confirm password"
+        autoComplete="new-password"
+        onChange={(e) => setConfirm(e.target.value)}
+        invalid={confirmMismatch}
+        hint={
+          confirm.length > 0 ? (
+            <p className={`${hintClass} ${confirmMismatch ? 'text-red-600' : 'text-emerald-600'}`}>
+              {confirmMismatch ? 'Passwords do not match.' : 'Passwords match.'}
+            </p>
+          ) : undefined
+        }
+      />
+      {state.error && (
+        <p role="alert" className={errorClass}>
+          {state.error}
+        </p>
+      )}
+      <button type="submit" disabled={pending} className={submitClass}>
+        {pending && <Spinner className="h-4 w-4 text-white" />}
+        {pending ? 'Resetting…' : 'Reset password'}
+      </button>
+      <p className="text-center text-sm text-neutral-500">
+        Remembered it?{' '}
+        <Link href="/login" className="font-medium text-emerald-700 hover:underline">
+          Log in
         </Link>
       </p>
     </form>

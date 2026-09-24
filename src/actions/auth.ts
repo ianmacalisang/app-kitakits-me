@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, getRequestOrigin } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
 
 export type FormState = {
@@ -83,6 +83,7 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
     await payload.create({
       collection: 'users',
       data: { name, username, email, password, role: 'user' },
+      context: { baseUrl: await getRequestOrigin() },
     })
   } catch (err) {
     return { error: errorMessage(err, 'Could not create your account.'), values }
@@ -99,6 +100,61 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
   }
 
   redirect('/onboarding')
+}
+
+export async function requestPasswordReset(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const email = String(formData.get('email') ?? '').trim()
+  if (!email) return { error: 'Email is required.' }
+
+  const payload = await getPayloadClient()
+
+  try {
+    await payload.forgotPassword({
+      collection: 'users',
+      data: { email },
+      context: { baseUrl: await getRequestOrigin() },
+    })
+  } catch (err) {
+    payload.logger.error({ err, msg: 'Failed to send password reset email' })
+  }
+
+  // Always report success so the response doesn't reveal whether the email
+  // is registered (payload.forgotPassword itself fails silently for unknown
+  // emails).
+  return { success: true }
+}
+
+export async function resetPassword(_prev: FormState, formData: FormData): Promise<FormState> {
+  const token = String(formData.get('token') ?? '')
+  const password = String(formData.get('password') ?? '')
+  const confirmPassword = String(formData.get('confirmPassword') ?? '')
+  const values = { token }
+
+  if (!token) return { error: 'That reset link is invalid. Request a new one.' }
+  if (password.length < 8) {
+    return { error: 'Password must be at least 8 characters.', values }
+  }
+  if (password !== confirmPassword) {
+    return { error: 'Passwords do not match.', values }
+  }
+
+  const payload = await getPayloadClient()
+
+  try {
+    const result = await payload.resetPassword({
+      collection: 'users',
+      data: { password, token },
+      overrideAccess: true,
+    })
+    if (result.token) await setAuthCookie(result.token)
+  } catch {
+    return { error: 'That reset link is invalid or has expired. Request a new one.', values }
+  }
+
+  redirect('/home')
 }
 
 export async function checkUsername(username: string): Promise<boolean> {

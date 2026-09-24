@@ -1,19 +1,57 @@
 import type { CollectionConfig } from 'payload'
 
 import { isAdmin, isAdminField, isAdminUser, isAuthenticated, isSelfOrAdmin } from '../access'
+import { sendWelcomeEmail } from '../hooks/sendWelcomeEmail'
+import { escapeHtml, resolveEmailBaseUrl } from '../lib/email'
 
 export const Users: CollectionConfig = {
   slug: 'users',
   admin: {
     useAsTitle: 'username',
   },
-  auth: true,
+  auth: {
+    forgotPassword: {
+      generateEmailHTML: ({ req, token, user } = {}) => {
+        const brand = req?.payload.email?.defaultFromName || 'Kitakits'
+        const resetURL = `${resolveEmailBaseUrl(req)}/reset-password?token=${token}`
+        const name = typeof user?.name === 'string' ? escapeHtml(user.name) : ''
+
+        return `
+          <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#262626">
+            <h2 style="margin:0 0 16px;font-size:20px">Reset your ${escapeHtml(brand)} password</h2>
+            <p style="margin:0 0 16px;line-height:1.5">
+              Hi${name ? ` ${name}` : ''}, we received a request to reset the password for your
+              ${escapeHtml(brand)} account. Click the button below to choose a new password.
+            </p>
+            <p style="margin:0 0 16px">
+              <a href="${resetURL}" style="display:inline-block;background:#047857;color:#ffffff;padding:12px 24px;border-radius:12px;text-decoration:none;font-weight:600">
+                Reset password
+              </a>
+            </p>
+            <p style="margin:0 0 16px;font-size:14px;line-height:1.5;color:#525252">
+              This link expires in 1 hour. If the button doesn't work, paste this URL into your
+              browser:<br /><a href="${resetURL}" style="color:#047857;word-break:break-all">${resetURL}</a>
+            </p>
+            <p style="margin:0;font-size:14px;line-height:1.5;color:#525252">
+              If you didn't request a password reset, you can ignore this email — your password
+              stays the same.
+            </p>
+          </div>
+        `
+      },
+      generateEmailSubject: ({ req } = {}) =>
+        `Reset your ${req?.payload.email?.defaultFromName || 'Kitakits'} password`,
+    },
+  },
   access: {
     admin: isAdminUser,
     create: () => true,
     read: isAuthenticated,
     update: isSelfOrAdmin,
     delete: isAdmin,
+  },
+  hooks: {
+    afterChange: [sendWelcomeEmail],
   },
   fields: [
     {
