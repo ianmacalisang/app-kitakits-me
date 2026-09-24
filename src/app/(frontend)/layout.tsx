@@ -1,18 +1,55 @@
+import type { Metadata } from 'next'
+import { Poppins } from 'next/font/google'
 import React from 'react'
-import './styles.css'
 
-export const metadata = {
-  description: 'A blank template using Payload in a Next.js app.',
-  title: 'Payload Blank Template',
+import { BrandingProvider } from '@/components/Branding'
+import { getCurrentUser } from '@/lib/auth'
+import { getSiteSettings } from '@/lib/settings'
+
+import './globals.css'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-poppins',
+  display: 'swap',
+})
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings()
+  return {
+    title: {
+      default: settings.metaTitle,
+      template: `%s — ${settings.appName}`,
+    },
+    description: settings.metaDescription,
+    openGraph: settings.ogImageUrl ? { images: [{ url: settings.ogImageUrl }] } : undefined,
+  }
 }
 
 export default async function RootLayout(props: { children: React.ReactNode }) {
   const { children } = props
+  const [settings, user] = await Promise.all([getSiteSettings(), getCurrentUser()])
+  const theme = user?.theme ?? 'light'
 
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={`${poppins.variable}${theme === 'dark' ? ' dark' : ''}`}
+      data-theme={theme}
+    >
+      <head>
+        {theme === 'system' && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html:
+                "try{if(window.matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.classList.add('dark')}catch(e){}",
+            }}
+          />
+        )}
+      </head>
       <body>
-        <main>{children}</main>
+        <BrandingProvider branding={settings}>{children}</BrandingProvider>
       </body>
     </html>
   )

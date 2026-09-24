@@ -1,0 +1,600 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans:
+    var(--font-poppins), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  background-color: #edf5ef;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  @apply font-sans text-neutral-900;
+  min-height: 100vh;
+}
+
+/* Ambient aurora — layered green light blobs that slowly drift behind the app */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -15%;
+  z-index: -2;
+  background:
+    radial-gradient(38% 42% at 12% 8%, rgba(110, 231, 183, 0.5), transparent 70%),
+    radial-gradient(34% 40% at 88% 10%, rgba(94, 234, 212, 0.45), transparent 70%),
+    radial-gradient(42% 46% at 85% 90%, rgba(163, 230, 53, 0.32), transparent 70%),
+    radial-gradient(40% 44% at 8% 88%, rgba(52, 211, 153, 0.38), transparent 70%),
+    radial-gradient(55% 55% at 50% 40%, rgba(220, 252, 231, 0.55), transparent 75%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body::before {
+    animation: aurora-drift 36s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes aurora-drift {
+  from {
+    transform: translate3d(-2.5%, -1.5%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(2.5%, 2%, 0) scale(1.06);
+  }
+}
+
+/* Fine grain — keeps the gradients from looking flat or banded */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+}
+
+::selection {
+  @apply bg-emerald-200;
+}
+
+/* Rich text — mail composer + rendered mail bodies (Tailwind preflight strips
+   list/emphasis styling, so the semantic HTML needs its own rules) */
+.mail-richtext {
+  outline: none;
+}
+.mail-richtext :where(strong, b) {
+  font-weight: 600;
+}
+.mail-richtext :where(em, i) {
+  font-style: italic;
+}
+.mail-richtext :where(u) {
+  text-decoration: underline;
+}
+.mail-richtext :where(s, strike, del) {
+  text-decoration: line-through;
+}
+.mail-richtext :where(a) {
+  color: var(--color-emerald-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.mail-richtext :where(p + p) {
+  margin-top: 0.5em;
+}
+.mail-richtext :where(ul) {
+  list-style: disc;
+  padding-left: 1.4rem;
+  margin: 0.5em 0;
+}
+.mail-richtext :where(ol) {
+  list-style: decimal;
+  padding-left: 1.4rem;
+  margin: 0.5em 0;
+}
+.mail-richtext :where(li > p) {
+  margin: 0;
+}
+.mail-richtext :where(li + li) {
+  margin-top: 0.25em;
+}
+.mail-richtext :where(blockquote) {
+  border-left: 3px solid var(--color-emerald-300);
+  padding-left: 0.75rem;
+  margin: 0.5em 0;
+  color: var(--color-neutral-600);
+}
+.mail-richtext :where(h1, h2, h3) {
+  font-weight: 700;
+  margin: 0.75em 0 0.35em;
+}
+.mail-richtext :where(h1) {
+  font-size: 1.3em;
+}
+.mail-richtext :where(h2) {
+  font-size: 1.15em;
+}
+.mail-richtext :where(code) {
+  background: rgb(0 0 0 / 0.06);
+  border-radius: 4px;
+  padding: 0.1em 0.3em;
+  font-size: 0.9em;
+  font-family: ui-monospace, monospace;
+}
+.mail-richtext :where(pre) {
+  background: rgb(0 0 0 / 0.06);
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+  margin: 0.5em 0;
+  overflow-x: auto;
+}
+.mail-richtext :where(pre code) {
+  background: none;
+  padding: 0;
+}
+.mail-richtext :where(hr) {
+  border: none;
+  border-top: 1px solid rgb(0 0 0 / 0.12);
+  margin: 0.75em 0;
+}
+
+/* Thin, subtle scrollbars inside sheets and feed */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(6, 95, 70, 0.25) transparent;
+}
+
+/* Fully hidden scrollbar for horizontal rails/carousels */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Frosted-glass surface: cards, nav bars, sheets */
+@utility glass {
+  @apply border border-white/60 bg-white/75 backdrop-blur-xl backdrop-saturate-150;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.8),
+    0 12px 32px -12px rgb(6 78 59 / 0.18),
+    0 2px 8px -4px rgb(6 78 59 / 0.08);
+
+  /* No backdrop-filter support — fall back to a solid surface for readability */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    background-color: var(--color-white);
+  }
+}
+
+/* Popover glass — lighter and more translucent than cards, for dropdowns/menus */
+@utility glass-pop {
+  @apply border border-white/50 bg-white backdrop-blur-2xl backdrop-saturate-150;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.7),
+    0 12px 32px -12px rgb(6 78 59 / 0.2),
+    0 2px 8px -4px rgb(6 78 59 / 0.1);
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    background-color: var(--color-white);
+  }
+}
+
+/* iOS-style filled input on glass surfaces */
+@utility glass-input {
+  @apply w-full rounded-xl border border-neutral-200/60 bg-white/70 px-4 py-2.5 text-[15px] outline-none backdrop-blur-sm transition-all placeholder:text-neutral-400 focus:border-emerald-400 focus:bg-white/90 focus:ring-4 focus:ring-emerald-500/10;
+}
+
+/* Primary action — emerald-to-teal gradient pill */
+@utility btn-primary {
+  @apply bg-gradient-to-br from-emerald-500 to-teal-600 font-semibold text-white shadow-md shadow-emerald-600/30 transition-all hover:shadow-lg hover:shadow-emerald-600/35 hover:brightness-105 active:scale-[0.98] disabled:opacity-50;
+}
+
+/* Soft accent chip — circular icon button */
+@utility btn-accent-soft {
+  @apply bg-emerald-500/10 text-emerald-600 transition-colors hover:bg-emerald-500/20;
+}
+
+/* iOS-style sheet/dialog + backdrop animations */
+@utility animate-sheet-up {
+  animation: sheet-up 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@utility animate-sheet-down {
+  animation: sheet-down 0.25s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@utility animate-dialog-in {
+  animation: dialog-in 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@utility animate-dialog-out {
+  animation: dialog-out 0.22s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@utility animate-fade-in {
+  animation: fade-in 0.2s ease-out both;
+}
+
+@utility animate-fade-out {
+  animation: fade-out 0.2s ease-in both;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheet-down {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    transform: translateY(20px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-out {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(20px) scale(0.96);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Dropdown pop — subtle scale + fade anchored to the trigger */
+@utility animate-menu-pop {
+  animation: menu-pop 0.16s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes menu-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Page transition — subtle slide-up + fade on every navigation */
+@utility animate-page-in {
+  animation: page-in 0.3s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* iOS activity indicator — blades fade in sequence around the circle */
+@utility animate-spinner-blade {
+  animation: spinner-blade 1s linear infinite;
+}
+
+@keyframes spinner-blade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.15;
+  }
+}
+
+/* Slow sonar ripple — hero mail button ring */
+@utility animate-mail-ring {
+  animation: mail-ring 3.4s cubic-bezier(0.25, 0.6, 0.35, 1) infinite;
+}
+
+@keyframes mail-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.7;
+  }
+  55% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+/* Gentle bobbing for floating decorations — keeps a base tilt via --float-rotate */
+@utility animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--float-rotate, 0deg));
+  }
+  50% {
+    transform: translateY(-9px) rotate(var(--float-rotate, 0deg));
+  }
+}
+
+/* ------------------------------------------------------------------
+   Dark theme — activated by the `dark` class on <html> (user's theme
+   preference on their account). Mostly a palette remap so the shared
+   light-styled components stay legible without per-component changes.
+------------------------------------------------------------------- */
+html.dark {
+  background-color: #0a120d;
+}
+
+.dark body {
+  color: var(--color-neutral-100);
+}
+
+/* Aurora dimmed to deep emerald glows — slightly boosted so the atmosphere
+   stays perceptible against the very dark background */
+.dark body::before {
+  background:
+    radial-gradient(38% 42% at 12% 8%, rgba(16, 185, 129, 0.22), transparent 70%),
+    radial-gradient(34% 40% at 88% 10%, rgba(45, 212, 191, 0.17), transparent 70%),
+    radial-gradient(42% 46% at 85% 90%, rgba(101, 163, 13, 0.13), transparent 70%),
+    radial-gradient(40% 44% at 8% 88%, rgba(5, 150, 105, 0.19), transparent 70%),
+    radial-gradient(55% 55% at 50% 40%, rgba(6, 95, 70, 0.38), transparent 75%);
+}
+
+/* Frosted surfaces go dark */
+.dark .glass {
+  border-color: rgb(255 255 255 / 0.1);
+  background-color: rgb(10 16 12 / 0.72);
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.06),
+    0 12px 32px -12px rgb(0 0 0 / 0.65),
+    0 2px 8px -4px rgb(0 0 0 / 0.45);
+}
+
+.dark .glass-pop {
+  border-color: rgb(255 255 255 / 0.1);
+  background-color: #0a120d;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.05),
+    0 12px 32px -12px rgb(0 0 0 / 0.7),
+    0 2px 8px -4px rgb(0 0 0 / 0.5);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .dark .glass-pop {
+    background-color: #0a120d;
+  }
+}
+
+.dark .glass-input {
+  border-color: rgb(255 255 255 / 0.12);
+  background-color: rgb(255 255 255 / 0.06);
+  color: var(--color-neutral-100);
+}
+
+.dark .glass-input::placeholder {
+  color: var(--color-neutral-500);
+}
+
+.dark .glass-input:focus {
+  border-color: var(--color-emerald-500);
+  background-color: rgb(255 255 255 / 0.1);
+  box-shadow: 0 0 0 4px rgb(16 185 129 / 0.15);
+}
+
+.dark .btn-accent-soft {
+  background-color: rgb(16 185 129 / 0.15);
+  color: var(--color-emerald-300);
+}
+
+.dark .btn-accent-soft:hover {
+  background-color: rgb(16 185 129 / 0.25);
+}
+
+.dark ::selection {
+  background-color: var(--color-emerald-800);
+}
+
+/* Palette remap — text shades brighten, translucent white surfaces dim */
+.dark .text-neutral-900 {
+  color: var(--color-neutral-100);
+}
+.dark .text-neutral-800 {
+  color: var(--color-neutral-100);
+}
+.dark .text-neutral-700 {
+  color: var(--color-neutral-200);
+}
+.dark .text-neutral-600 {
+  color: var(--color-neutral-300);
+}
+.dark .text-emerald-700 {
+  color: var(--color-emerald-300);
+}
+.dark .text-emerald-600 {
+  color: var(--color-emerald-400);
+}
+/* Muted / secondary text — brightened so it stays legible on the dark bg */
+.dark .text-neutral-500 {
+  color: var(--color-neutral-400);
+}
+
+.dark .bg-white\/40 {
+  background-color: rgb(255 255 255 / 0.06);
+}
+.dark .bg-white\/50 {
+  background-color: rgb(255 255 255 / 0.07);
+}
+.dark .bg-white\/60 {
+  background-color: rgb(255 255 255 / 0.09);
+}
+.dark .bg-white\/70 {
+  background-color: rgb(255 255 255 / 0.1);
+}
+.dark .bg-white\/80 {
+  background-color: rgb(255 255 255 / 0.12);
+}
+.dark .bg-white\/90 {
+  background-color: rgb(255 255 255 / 0.14);
+}
+.dark .bg-black\/5 {
+  background-color: rgb(255 255 255 / 0.08);
+}
+.dark .bg-black\/10 {
+  background-color: rgb(255 255 255 / 0.14);
+}
+.dark .bg-black\/\[0\.04\] {
+  background-color: rgb(255 255 255 / 0.06);
+}
+
+.dark .border-black\/5 {
+  border-color: rgb(255 255 255 / 0.08);
+}
+.dark .divide-black\/5 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(255 255 255 / 0.08);
+}
+.dark .border-neutral-200\/60 {
+  border-color: rgb(255 255 255 / 0.12);
+}
+.dark .border-neutral-300 {
+  border-color: rgb(255 255 255 / 0.2);
+}
+.dark .border-neutral-300\/70 {
+  border-color: rgb(255 255 255 / 0.2);
+}
+
+/* Hover-state surfaces (menus, list rows, buttons) */
+.dark .hover\:bg-white\/70:hover {
+  background-color: rgb(255 255 255 / 0.1);
+}
+.dark .hover\:bg-white\/60:hover {
+  background-color: rgb(255 255 255 / 0.09);
+}
+.dark .hover\:bg-white\/80:hover {
+  background-color: rgb(255 255 255 / 0.12);
+}
+.dark .hover\:bg-black\/5:hover {
+  background-color: rgb(255 255 255 / 0.08);
+}
+.dark .hover\:bg-black\/10:hover {
+  background-color: rgb(255 255 255 / 0.14);
+}
+.dark .hover\:bg-emerald-50\/40:hover {
+  background-color: rgb(16 185 129 / 0.12);
+}
+.dark .hover\:bg-emerald-500\/15:hover {
+  background-color: rgb(16 185 129 / 0.15);
+}
+.dark .hover\:bg-emerald-500\/20:hover {
+  background-color: rgb(16 185 129 / 0.2);
+}
+
+/* Hover text — keep interactive elements legible when the pointer lands on them */
+.dark .hover\:text-neutral-900:hover {
+  color: var(--color-neutral-100);
+}
+.dark .hover\:text-neutral-700:hover {
+  color: var(--color-neutral-200);
+}
+.dark .hover\:text-emerald-600:hover {
+  color: var(--color-emerald-400);
+}
+
+/* Embedded share card — light emerald tint is too bright on dark surfaces */
+.dark .bg-emerald-50\/50 {
+  background-color: rgb(16 185 129 / 0.08);
+}
+.dark .border-emerald-900\/10 {
+  border-color: rgb(16 185 129 / 0.18);
+}
+
+/* Wireframe/neutral fills used in template previews and empty states */
+.dark .bg-neutral-200,
+.dark .bg-neutral-200\/80,
+.dark .bg-neutral-200\/70 {
+  background-color: rgb(255 255 255 / 0.1);
+}
+.dark .bg-neutral-300\/80 {
+  background-color: rgb(255 255 255 / 0.25);
+}
+.dark .bg-neutral-300 {
+  background-color: rgb(255 255 255 / 0.25);
+}
+.dark .bg-neutral-300\/70 {
+  background-color: rgb(255 255 255 / 0.18);
+}
+
+/* Scrollbar — slightly brighter emerald so it's visible on the dark bg */
+.dark * {
+  scrollbar-color: rgba(16, 185, 129, 0.35) transparent;
+}
+
+/* Mail rich text — code, blockquote, hr, and links need dark-aware colours */
+.dark .mail-richtext :where(a) {
+  color: var(--color-emerald-400);
+}
+.dark .mail-richtext :where(blockquote) {
+  border-left-color: var(--color-emerald-700);
+  color: var(--color-neutral-400);
+}
+.dark .mail-richtext :where(code),
+.dark .mail-richtext :where(pre) {
+  background: rgb(255 255 255 / 0.07);
+}
+.dark .mail-richtext :where(hr) {
+  border-top-color: rgb(255 255 255 / 0.12);
+}

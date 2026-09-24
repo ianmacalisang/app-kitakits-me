@@ -1,59 +1,673 @@
-import { headers as getHeaders } from 'next/headers.js'
-import Image from 'next/image'
-import { getPayload } from 'payload'
-import React from 'react'
-import { fileURLToPath } from 'url'
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
-import config from '@/payload.config'
-import './styles.css'
+import { Avatar } from '@/components/Avatar'
+import { BrandMark } from '@/components/Branding'
+import {
+  BookmarkIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  CommentIcon,
+  CompassIcon,
+  HeartIcon,
+  HomeIcon,
+  ImageIcon,
+  LockIcon,
+  MailboxIcon,
+  MailIcon,
+  MonitorIcon,
+  MoonIcon,
+  SearchIcon,
+  SparklesIcon,
+  SunIcon,
+  UserIcon,
+  UsersIcon,
+  XIcon,
+} from '@/components/icons'
+import { getCurrentUser } from '@/lib/auth'
+import { getPayloadClient } from '@/lib/payload'
+import { avatarUrl } from '@/lib/serialize'
+import { getSiteSettings } from '@/lib/settings'
 
-export default async function HomePage() {
-  const headers = await getHeaders()
-  const payloadConfig = await config
-  const payload = await getPayload({ config: payloadConfig })
-  const { user } = await payload.auth({ headers })
+type Feature = {
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
+  title: string
+  description: string
+  // Tiny wireframe mock of the feature's UI — decorative, rendered aria-hidden.
+  preview: React.ReactNode
+}
 
-  const fileURL = `vscode://file/${fileURLToPath(import.meta.url)}`
+// Shared building blocks for the previews: soft neutral bars read as text,
+// gradient discs read as avatars — the same wireframe shorthand the app's
+// empty states and template previews use.
+const Bar = ({ className }: { className: string }) => (
+  <span className={`block h-1.5 rounded-full ${className}`} />
+)
+const Disc = ({ className }: { className: string }) => (
+  <span className={`block shrink-0 rounded-full ${className}`} />
+)
+const MiniRow = ({ children }: { children: React.ReactNode }) => (
+  <div className="flex items-center gap-1.5 rounded-lg border border-neutral-200/60 bg-white/70 px-2 py-1.5">
+    {children}
+  </div>
+)
 
-  return (
-    <div className="home">
-      <div className="content">
-        <picture>
-          <source srcSet="https://raw.githubusercontent.com/payloadcms/payload/3.x/packages/ui/src/assets/payload-favicon.svg" />
-          <Image
-            alt="Payload Logo"
-            height={65}
-            src="https://raw.githubusercontent.com/payloadcms/payload/3.x/packages/ui/src/assets/payload-favicon.svg"
-            width={65}
-          />
-        </picture>
-        {!user && <h1>Welcome to your new project.</h1>}
-        {user && <h1>Welcome back, {user.email}</h1>}
-        <div className="links">
-          <a
-            className="admin"
-            href={payloadConfig.routes.admin}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Go to admin panel
-          </a>
-          <a
-            className="docs"
-            href="https://payloadcms.com/docs"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Documentation
-          </a>
+const FEATURES: Feature[] = [
+  {
+    icon: HomeIcon,
+    title: 'A feed that respects you',
+    description:
+      'Chronological posts from people you actually follow. Nothing decides what deserves your attention — you do.',
+    preview: (
+      <div className="flex flex-col gap-1.5">
+        <div className="rounded-lg border border-neutral-200/60 bg-white/70 p-2">
+          <div className="flex items-center gap-1.5">
+            <Disc className="h-4 w-4 bg-gradient-to-br from-emerald-400 to-teal-500" />
+            <Bar className="w-12 bg-neutral-300" />
+            <Bar className="ml-auto w-5 bg-neutral-200" />
+          </div>
+          <div className="mt-1.5 flex flex-col gap-1">
+            <Bar className="w-full bg-neutral-200" />
+            <Bar className="w-2/3 bg-neutral-200" />
+          </div>
+          <div className="mt-1.5 flex items-center gap-2 text-neutral-300">
+            <HeartIcon filled className="h-2.5 w-2.5 text-emerald-500" />
+            <CommentIcon className="h-2.5 w-2.5" />
+            <BookmarkIcon className="h-2.5 w-2.5" />
+          </div>
+        </div>
+        <div className="rounded-lg border border-neutral-200/60 bg-white/70 p-2 opacity-60">
+          <div className="flex items-center gap-1.5">
+            <Disc className="h-4 w-4 bg-gradient-to-br from-lime-400 to-emerald-500" />
+            <Bar className="w-10 bg-neutral-300" />
+          </div>
+          <Bar className="mt-1.5 w-3/4 bg-neutral-200" />
         </div>
       </div>
-      <div className="footer">
-        <p>Update this page by editing</p>
-        <a className="codeLink" href={fileURL}>
-          <code>app/(frontend)/page.tsx</code>
-        </a>
+    ),
+  },
+  {
+    icon: MailboxIcon,
+    title: 'Mail, not DMs',
+    description:
+      'Rich, thoughtful messages with attachments — closer to a letter than a chat bubble.',
+    preview: (
+      <div className="flex flex-col gap-1.5">
+        <MiniRow>
+          <Disc className="h-4 w-4 bg-gradient-to-br from-teal-400 to-emerald-500" />
+          <span className="min-w-0 flex-1">
+            <Bar className="w-12 bg-neutral-300" />
+            <Bar className="mt-1 w-20 bg-neutral-200" />
+          </span>
+          <Disc className="h-1.5 w-1.5 bg-emerald-500" />
+        </MiniRow>
+        <MiniRow>
+          <Disc className="h-4 w-4 bg-gradient-to-br from-emerald-400 to-lime-500" />
+          <span className="min-w-0 flex-1">
+            <Bar className="w-14 bg-neutral-300" />
+            <Bar className="mt-1 w-16 bg-neutral-200" />
+          </span>
+          <Disc className="h-1.5 w-1.5 bg-emerald-500" />
+        </MiniRow>
+        <MiniRow>
+          <Disc className="h-4 w-4 bg-neutral-300" />
+          <span className="min-w-0 flex-1">
+            <Bar className="w-10 bg-neutral-300" />
+            <Bar className="mt-1 w-24 bg-neutral-200" />
+          </span>
+        </MiniRow>
+      </div>
+    ),
+  },
+  {
+    icon: CompassIcon,
+    title: 'Find your people',
+    description:
+      'Search and explore real posts and profiles across the community — nothing promoted, nothing boosted.',
+    preview: (
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-1.5 rounded-full border border-neutral-200/60 bg-white/70 px-2.5 py-1.5">
+          <SearchIcon className="h-2.5 w-2.5 shrink-0 text-neutral-400" />
+          <Bar className="w-16 bg-neutral-200" />
+        </div>
+        <MiniRow>
+          <Disc className="h-4 w-4 bg-gradient-to-br from-emerald-400 to-teal-500" />
+          <Bar className="w-16 bg-neutral-300" />
+          <span className="ml-auto h-3 w-8 rounded-full bg-emerald-500/15" />
+        </MiniRow>
+        <MiniRow>
+          <Disc className="h-4 w-4 bg-gradient-to-br from-teal-400 to-lime-500" />
+          <Bar className="w-12 bg-neutral-300" />
+          <span className="ml-auto h-3 w-8 rounded-full bg-emerald-500/15" />
+        </MiniRow>
+      </div>
+    ),
+  },
+  {
+    icon: UserIcon,
+    title: 'A profile that is yours',
+    description:
+      'Avatar, cover, bio, links, and a shareable @handle page you can open to the public.',
+    preview: (
+      <div className="overflow-hidden rounded-lg border border-neutral-200/60 bg-white/70">
+        <div className="h-9 bg-gradient-to-r from-emerald-400/70 via-teal-400/60 to-lime-400/60" />
+        <div className="px-2.5 pb-2.5">
+          <Disc className="-mt-2.5 h-6 w-6 border-2 border-white bg-gradient-to-br from-emerald-400 to-teal-600" />
+          <Bar className="mt-1.5 w-16 bg-neutral-300" />
+          <Bar className="mt-1 w-10 bg-neutral-200" />
+          <div className="mt-2 flex gap-1">
+            <span className="h-2.5 w-9 rounded-full bg-emerald-500/15" />
+            <span className="h-2.5 w-12 rounded-full bg-neutral-200" />
+            <span className="h-2.5 w-8 rounded-full bg-neutral-200" />
+          </div>
+        </div>
+      </div>
+    ),
+  },
+  {
+    icon: LockIcon,
+    title: 'Privacy on your terms',
+    description: 'Go private, post to followers only, and choose who can land in your mailbox.',
+    preview: (
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between rounded-lg border border-neutral-200/60 bg-white/70 px-2.5 py-2">
+          <span>
+            <Bar className="w-16 bg-neutral-300" />
+            <Bar className="mt-1 w-20 bg-neutral-200" />
+          </span>
+          {/* Toggle on */}
+          <span className="flex h-3.5 w-6 items-center rounded-full bg-emerald-500 px-0.5">
+            <Disc className="ml-auto h-2.5 w-2.5 bg-white" />
+          </span>
+        </div>
+        <div className="flex items-center justify-between rounded-lg border border-neutral-200/60 bg-white/70 px-2.5 py-2">
+          <span>
+            <Bar className="w-14 bg-neutral-300" />
+            <Bar className="mt-1 w-16 bg-neutral-200" />
+          </span>
+          {/* Toggle off */}
+          <span className="flex h-3.5 w-6 items-center rounded-full bg-neutral-300 px-0.5">
+            <Disc className="h-2.5 w-2.5 bg-white" />
+          </span>
+        </div>
+      </div>
+    ),
+  },
+  {
+    icon: MoonIcon,
+    title: 'Easy on the eyes',
+    description: 'Light, dark, or system — the whole app follows your theme.',
+    preview: (
+      <div className="flex flex-col gap-1.5">
+        {/* Segmented theme switcher, mirroring the in-app control */}
+        <div className="flex rounded-full bg-black/5 p-0.5">
+          <span className="flex flex-1 items-center justify-center rounded-full bg-white py-1 shadow-sm">
+            <SunIcon className="h-2.5 w-2.5 text-emerald-600" />
+          </span>
+          <span className="flex flex-1 items-center justify-center py-1">
+            <MoonIcon className="h-2.5 w-2.5 text-neutral-400" />
+          </span>
+          <span className="flex flex-1 items-center justify-center py-1">
+            <MonitorIcon className="h-2.5 w-2.5 text-neutral-400" />
+          </span>
+        </div>
+        {/* Same surface, light and dark halves */}
+        <div className="flex overflow-hidden rounded-lg border border-neutral-200/60">
+          <div className="flex-1 bg-white/90 p-1.5">
+            <Bar className="w-5 bg-neutral-300" />
+            <Bar className="mt-1 w-8 bg-neutral-200" />
+          </div>
+          <div className="flex-1 bg-neutral-800 p-1.5">
+            <Bar className="w-5 bg-neutral-500" />
+            <Bar className="mt-1 w-8 bg-neutral-600" />
+          </div>
+        </div>
+      </div>
+    ),
+  },
+]
+
+// The manifesto, split into the "before" and "after" columns.
+const LEFT_BEHIND = [
+  'Algorithmic feeds that decide what you see',
+  'Metrics that turn friends into an audience',
+  'A persona you have to build and perform',
+  'Ads and trackers between every post',
+]
+
+const YOU_GET = [
+  'A chronological feed of people you actually follow',
+  'Real mail and real conversations, not engagement bait',
+  'A profile that is yours — public only if you want it',
+  'Privacy controls on every post and message',
+]
+
+const STEPS: { title: string; description: string }[] = [
+  {
+    title: 'Create your account',
+    description: "Pick a name and a handle — you're in within a minute.",
+  },
+  {
+    title: 'Make it yours',
+    description: 'Add an avatar, a cover photo, and a bio. Set a theme while you are at it.',
+  },
+  {
+    title: 'Tambay na',
+    description: 'Post, follow your friends, and let the kwento roll in.',
+  },
+]
+
+// Fetch a sample of publicly discoverable profiles to show on the landing page.
+// Only users who explicitly opted in (publicProfile + discoverable) are returned.
+// overrideAccess defaults to true in the Local API — safe here because we run
+// server-side and only surface name/username/bio/avatar to anonymous visitors.
+const getPublicUsers = async () => {
+  try {
+    const payload = await getPayloadClient()
+    const result = await payload.find({
+      collection: 'users',
+      where: {
+        and: [{ publicProfile: { equals: true } }, { discoverable: { equals: true } }],
+      },
+      limit: 8,
+      sort: '-createdAt',
+      depth: 1, // populate avatar media
+    })
+    return result.docs
+  } catch {
+    return []
+  }
+}
+
+function FeatureCard({ icon: Icon, title, description, preview }: Feature) {
+  return (
+    <div className="glass group relative overflow-hidden rounded-3xl p-6 transition-all duration-200 hover:-translate-y-1 hover:border-emerald-300/60 hover:shadow-xl hover:shadow-emerald-600/10">
+      {/* Soft glow that fades in behind the tile on hover */}
+      <span
+        className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-emerald-400/0 blur-2xl transition-colors duration-300 group-hover:bg-emerald-400/20"
+        aria-hidden="true"
+      />
+      <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 ring-1 ring-inset ring-emerald-500/15 transition-all duration-200 group-hover:bg-gradient-to-br group-hover:from-emerald-500 group-hover:to-teal-600 group-hover:text-white group-hover:shadow-md group-hover:shadow-emerald-600/30 group-hover:ring-emerald-500">
+        <Icon className="h-5 w-5" />
+      </span>
+      <h3 className="relative mt-4 text-[15px] font-semibold text-neutral-800">{title}</h3>
+      <p className="relative mt-1.5 text-sm leading-relaxed text-neutral-500">{description}</p>
+      <div
+        className="relative mt-4 h-28 overflow-hidden rounded-xl border border-neutral-200/60 bg-white/50 p-2.5"
+        aria-hidden="true"
+      >
+        {preview}
       </div>
     </div>
+  )
+}
+
+// Floating notification-style chip for the hero preview. --float-rotate keeps a
+// slight tilt while the float keyframes move it up and down.
+function FloatChip({
+  className,
+  rotate,
+  delay,
+  children,
+}: {
+  className: string
+  rotate: string
+  delay: string
+  children: React.ReactNode
+}) {
+  return (
+    <span
+      className={`glass-pop absolute items-center gap-2 rounded-2xl px-3 py-2 text-xs font-medium text-neutral-600 shadow-lg motion-safe:animate-float ${className}`}
+      style={{ '--float-rotate': rotate, animationDelay: delay } as React.CSSProperties}
+    >
+      {children}
+    </span>
+  )
+}
+
+export default async function LandingPage() {
+  const user = await getCurrentUser()
+  if (user) redirect('/home')
+
+  const [settings, publicUsers] = await Promise.all([getSiteSettings(), getPublicUsers()])
+
+  return (
+    <main className="animate-page-in">
+      {/* Hero */}
+      <section className="mx-auto flex max-w-3xl flex-col items-center px-4 pb-20 pt-16 text-center sm:pt-24">
+        <BrandMark size="lg" />
+        <p className="mt-6 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-500/20">
+          <SparklesIcon className="h-3.5 w-3.5" />
+          {settings.appName} — {settings.heroTagline}
+        </p>
+        <h1 className="mt-5 max-w-2xl text-balance bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-6xl">
+          Bringing back what social media{' '}
+          <span className="relative whitespace-nowrap">
+            should be
+            <svg
+              className="absolute -bottom-1 left-0 w-full text-emerald-500/70"
+              viewBox="0 0 120 8"
+              fill="none"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M2 6C30 2 60 2 118 5"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+              />
+            </svg>
+          </span>
+          !
+        </h1>
+        <p className="mt-4 max-w-xl text-balance text-lg leading-relaxed text-neutral-600">
+          No algorithms. No character building. Just you and your{' '}
+          <span className="font-semibold text-emerald-700">kwento</span>.
+        </p>
+        <p className="mt-2 text-xs italic text-neutral-400">
+          kwento — Tagalog for &ldquo;story&rdquo;
+        </p>
+
+        {publicUsers.length > 0 && (
+          <div className="mt-8 w-full">
+            <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-emerald-600">
+              Already tambaying
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {publicUsers.slice(0, 4).map((u) => (
+                <Link
+                  key={u.id}
+                  href={`/@${u.username}`}
+                  className="glass group relative flex flex-col items-center overflow-hidden rounded-2xl px-3 py-5 transition-all duration-200 hover:-translate-y-1 hover:border-emerald-300/60 hover:shadow-xl hover:shadow-emerald-600/10"
+                >
+                  {/* Hover glow — same pattern as FeatureCard */}
+                  <span
+                    className="absolute inset-0 bg-gradient-to-b from-emerald-400/0 to-emerald-400/0 transition-all duration-300 group-hover:from-emerald-400/5 group-hover:to-transparent"
+                    aria-hidden="true"
+                  />
+                  <span className="relative inline-flex rounded-full ring-2 ring-emerald-500/20 ring-offset-2 ring-offset-white/80 transition-all duration-300 group-hover:ring-emerald-500/60 group-hover:ring-offset-white">
+                    <Avatar src={avatarUrl(u)} name={u.name} size="md" />
+                  </span>
+                  <p className="relative mt-3 w-full truncate text-center text-[13px] font-semibold leading-tight text-neutral-800 transition-colors group-hover:text-emerald-700">
+                    {u.name}
+                  </p>
+                  <p className="relative w-full truncate text-center text-[11px] leading-snug text-neutral-400">
+                    @{u.username}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/register"
+            className="btn-primary group flex items-center gap-1.5 rounded-full px-7 py-3.5 text-sm"
+          >
+            Create your account
+            <ChevronRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+          <Link
+            href="/login"
+            className="glass rounded-full px-7 py-3.5 text-sm font-semibold text-neutral-700 transition-transform hover:scale-[1.03] active:scale-[0.98]"
+          >
+            I already have an account
+          </Link>
+        </div>
+        <p className="mt-3 text-xs text-neutral-400">Takes less than a minute.</p>
+
+        {/* Decorative feed preview — suggests the timeline without a screenshot,
+            with floating notification chips for a sense of life */}
+        <div className="relative mt-20 w-full max-w-md" aria-hidden="true">
+          <div className="glass absolute inset-x-8 -bottom-2.5 top-8 rotate-2 rounded-3xl opacity-60" />
+          <div className="glass absolute inset-x-4 -bottom-1 top-4 -rotate-1 rounded-3xl opacity-80" />
+
+          <FloatChip className="-top-6 right-3 flex" rotate="2deg" delay="0.4s">
+            <HeartIcon filled className="h-3.5 w-3.5 text-emerald-500" />
+            Maria liked your kwento
+          </FloatChip>
+          <FloatChip className="-left-7 top-1/3 hidden sm:flex" rotate="-2deg" delay="1.4s">
+            <UsersIcon className="h-3.5 w-3.5 text-emerald-600" />
+            @jose followed you
+          </FloatChip>
+          <FloatChip className="-bottom-8 right-5 hidden sm:flex" rotate="1.5deg" delay="2.3s">
+            <MailIcon className="h-3.5 w-3.5 text-emerald-600" />
+            New mail from Ate Kim
+          </FloatChip>
+
+          <article className="glass relative rounded-3xl p-5 text-left">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 text-sm font-bold text-white">
+                J
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold leading-tight text-neutral-800">
+                  Juan Dela Cruz
+                </span>
+                <span className="block truncate text-xs leading-tight text-neutral-500">
+                  @juandelacruz · 2h
+                </span>
+              </span>
+            </div>
+            <p className="mt-3 text-[15px] leading-relaxed text-neutral-700">
+              Walang algorithm dito, walang arte — kwento lang. Parang internet dati. Tambay tayo!
+            </p>
+            <div className="mt-3 flex h-36 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400/50 via-teal-300/40 to-lime-300/40 text-emerald-700/50">
+              <ImageIcon className="h-6 w-6" />
+            </div>
+            <div className="mt-4 flex items-center gap-5 text-xs font-medium text-neutral-500">
+              <span className="flex items-center gap-1.5 text-emerald-600">
+                <HeartIcon filled className="h-4 w-4" /> 24
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CommentIcon className="h-4 w-4" /> 6
+              </span>
+              <span className="flex items-center gap-1.5">
+                <BookmarkIcon className="h-4 w-4" /> 3
+              </span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      {/* The promise — what we left behind vs. what you get */}
+      <section className="mx-auto max-w-5xl px-4 pb-20 sm:pb-24">
+        <div className="mx-auto max-w-xl text-center">
+          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
+            The promise
+          </p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
+            Out with the feed fatigue. In with the kwento.
+          </h2>
+          <p className="mt-3 text-[15px] leading-relaxed text-neutral-500">
+            We kept what made social media good and cut what made it exhausting.
+          </p>
+        </div>
+
+        <div className="relative mt-10 grid gap-4 md:grid-cols-2">
+          <div className="glass rounded-3xl p-6 sm:p-7">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-500/10 text-neutral-400">
+                <XIcon className="h-4 w-4" />
+              </span>
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                What we left behind
+              </h3>
+            </div>
+            <ul className="mt-3 divide-y divide-black/5">
+              {LEFT_BEHIND.map((item) => (
+                <li key={item} className="flex items-start gap-3 py-3 text-sm text-neutral-500">
+                  <XIcon className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="glass rounded-3xl p-6 ring-2 ring-emerald-500/25 sm:p-7">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600">
+                <SparklesIcon className="h-4 w-4" />
+              </span>
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
+                What you get on {settings.appName}
+              </h3>
+            </div>
+            <ul className="mt-3 divide-y divide-black/5">
+              {YOU_GET.map((item) => (
+                <li key={item} className="flex items-start gap-3 py-3 text-sm text-neutral-700">
+                  <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* "VS" badge straddling the two columns on desktop */}
+          <span
+            className="absolute left-1/2 top-1/2 z-10 hidden h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-neutral-800 text-[11px] font-bold text-white shadow-lg md:flex dark:bg-white dark:text-neutral-900"
+            aria-hidden="true"
+          >
+            VS
+          </span>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="mx-auto max-w-5xl px-4 pb-20 sm:pb-24">
+        <div className="mx-auto max-w-xl text-center">
+          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
+            Everything in one place
+          </p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
+            Your own corner of the internet
+          </h2>
+          <p className="mt-3 text-[15px] leading-relaxed text-neutral-500">
+            {settings.appName} keeps the good parts of social media — posting, following, messaging
+            — and drops the rest.
+          </p>
+        </div>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((feature) => (
+            <FeatureCard key={feature.title} {...feature} />
+          ))}
+        </div>
+        <p className="mt-8 text-center text-sm">
+          <Link
+            href="/register"
+            className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:underline"
+          >
+            Create your account and see it all
+            <ChevronRightIcon className="h-3.5 w-3.5" />
+          </Link>
+        </p>
+      </section>
+
+      {/* Handle claim — the @handle is the visitor's stake in the community */}
+      <section className="mx-auto max-w-3xl px-4 pb-20 sm:pb-24">
+        <div className="glass rounded-[2rem] px-6 py-12 text-center sm:px-12">
+          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
+            Claim your handle
+          </p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
+            Your corner of the internet starts with an @
+          </h2>
+
+          {/* Decorative handle pill — looks like the visitor is mid-signup */}
+          <div
+            className="mx-auto mt-7 flex w-fit items-center gap-1.5 rounded-full border border-neutral-200/60 bg-white/70 py-2.5 pl-5 pr-2.5 text-sm shadow-sm backdrop-blur-sm"
+            aria-hidden="true"
+          >
+            <span className="font-semibold text-neutral-400">@</span>
+            <span className="font-semibold text-neutral-800">yourname</span>
+            <span className="h-5 w-0.5 animate-pulse bg-emerald-500" />
+            <span className="ml-1.5 flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-600">
+              <CheckIcon className="h-3 w-3" />
+              Available
+            </span>
+          </div>
+
+          <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-neutral-500">
+            Your @handle doubles as a shareable profile page — public if you want it. Grab the good
+            one before it goes.
+          </p>
+          <Link
+            href="/register"
+            className="btn-primary mt-7 inline-block rounded-full px-7 py-3 text-sm"
+          >
+            Claim yours
+          </Link>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="mx-auto max-w-4xl px-4 pb-20 sm:pb-24">
+        <div className="mx-auto max-w-xl text-center">
+          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
+            Get started in seconds
+          </p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
+            Three steps and you&apos;re in
+          </h2>
+        </div>
+        <ol className="mt-10 grid gap-4 sm:grid-cols-3">
+          {STEPS.map((step, i) => (
+            <li key={step.title} className="glass overflow-hidden rounded-3xl">
+              {/* Progress strip — fills a third further on each step */}
+              <div className="h-1 bg-emerald-500/10" aria-hidden="true">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-400 to-teal-500"
+                  style={{ width: `${((i + 1) / STEPS.length) * 100}%` }}
+                />
+              </div>
+              <div className="p-6">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-500/15">
+                  {i + 1}
+                </span>
+                <h3 className="mt-4 text-[15px] font-semibold text-neutral-800">{step.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-neutral-500">
+                  {step.description}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* Closing CTA — solid gradient card so the ask stands out from the glass */}
+      <section className="mx-auto max-w-3xl px-4 pb-24">
+        <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-600 px-6 py-14 text-center shadow-xl shadow-emerald-600/30 sm:px-12">
+          <div
+            className="absolute -top-28 left-1/2 h-64 w-[36rem] -translate-x-1/2 rounded-full bg-white/20 blur-3xl"
+            aria-hidden="true"
+          />
+          <h2 className="relative text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Tara, tambay na.
+          </h2>
+          <p className="relative mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-emerald-50/90">
+            No algorithms. No character building. Just you and your kwento — claim your handle on{' '}
+            {settings.appName} today.
+          </p>
+          <Link
+            href="/register"
+            className="relative mt-8 inline-flex items-center gap-1.5 rounded-full bg-white px-8 py-3.5 text-sm font-bold text-emerald-700 shadow-lg transition-all hover:scale-[1.03] hover:shadow-xl active:scale-[0.98]"
+          >
+            Create your account — it&apos;s free
+            <ChevronRightIcon className="h-4 w-4" />
+          </Link>
+          <p className="relative mt-5 text-xs text-emerald-100/80">
+            Already have an account?{' '}
+            <Link
+              href="/login"
+              className="font-semibold text-white underline-offset-2 hover:underline"
+            >
+              Log in
+            </Link>
+          </p>
+        </div>
+      </section>
+    </main>
   )
 }

@@ -1,0 +1,151 @@
+'use server'
+
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+
+import { getCurrentUser } from '@/lib/auth'
+import { getPayloadClient } from '@/lib/payload'
+
+export type FormState = {
+  error?: string
+  success?: boolean
+  values?: Record<string, string>
+}
+
+const errorMessage = (err: unknown, fallback: string) => {
+  const errors = (err as { data?: { errors?: { field?: string; message?: string }[] } })?.data
+    ?.errors
+  if (Array.isArray(errors) && errors.length > 0) {
+    const first = errors[0]
+    if (first.field === 'username') {
+      return first.message?.startsWith('Username must')
+        ? first.message
+        : 'That username is unavailable.'
+    }
+    if (first.field === 'email') return 'An account with that email already exists.'
+    return first.message || fallback
+  }
+  return fallback
+}
+
+const setAuthCookie = async (token: string, exp?: number) => {
+  const store = await cookies()
+  store.set('payload-token', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    expires: exp ? new Date(exp * 1000) : undefined,
+  })
+}
+
+export async function login(_prev: FormState, formData: FormData): Promise<FormState> {
+  const payload = await getPayloadClient()
+  const email = String(formData.get('email') ?? '')
+  const password = String(formData.get('password') ?? '')
+  const values = { email, password }
+
+  if (!email || !password) return { error: 'Email and password are required.', values }
+
+  try {
+    const result = await payload.login({
+      collection: 'users',
+      data: { email, password },
+    })
+    if (result.token) await setAuthCookie(result.token, result.exp)
+  } catch {
+    return { error: 'Invalid email or password.', values }
+  }
+
+  redirect('/home')
+}
+
+export async function register(_prev: FormState, formData: FormData): Promise<FormState> {
+  const payload = await getPayloadClient()
+  const name = String(formData.get('name') ?? '').trim()
+  const username = String(formData.get('username') ?? '').trim()
+  const email = String(formData.get('email') ?? '').trim()
+  const password = String(formData.get('password') ?? '')
+  const confirmPassword = String(formData.get('confirmPassword') ?? '')
+  const values = { name, username, email, password, confirmPassword }
+
+  if (!name || !username || !email || !password) {
+    return { error: 'All fields are required.', values }
+  }
+  if (password !== confirmPassword) {
+    return { error: 'Passwords do not match.', values }
+  }
+  if (password.length < 8) {
+    return { error: 'Password must be at least 8 characters.', values }
+  }
+
+  try {
+    await payload.create({
+      collection: 'users',
+      data: { name, username, email, password, role: 'user' },
+    })
+  } catch (err) {
+    return { error: errorMessage(err, 'Could not create your account.'), values }
+  }
+
+  try {
+    const result = await payload.login({
+      collection: 'users',
+      data: { email, password },
+    })
+    if (result.token) await setAuthCookie(result.token, result.exp)
+  } catch {
+    redirect('/login')
+  }
+
+  redirect('/onboarding')
+}
+
+export async function checkUsername(username: string): Promise<boolean> {
+  if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) return false
+  const payload = await getPayloadClient()
+  const { totalDocs } = await payload.count({
+    collection: 'users',
+    where: { username: { equals: username } },
+  })
+  return totalDocs === 0
+}
+
+export async function logout() {
+  const store = await cookies()
+  store.delete('payload-token')
+  redirect('/login')
+}
+
+export async function changePassword(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const currentPassword = String(formData.get('currentPassword') ?? '')
+  const newPassword = String(formData.get('newPassword') ?? '')
+
+  if (newPassword.length < 8) {
+    return { error: 'New password must be at least 8 characters.' }
+  }
+
+  const payload = await getPayloadClient()
+
+  try {
+    await payload.login({
+      collection: 'users',
+      data: { email: user.email, password: currentPassword },
+    })
+  } catch {
+    return { error: 'Current password is incorrect.' }
+  }
+
+  await payload.update({
+    collection: 'users',
+    id: user.id,
+    data: { password: newPassword },
+    user,
+    overrideAccess: false,
+  })
+
+  return { success: true }
+}

@@ -1,0 +1,460 @@
+'use server'
+
+import { redirect } from 'next/navigation'
+
+import { getCurrentUser } from '@/lib/auth'
+import { getPayloadClient } from '@/lib/payload'
+import { type Paged, toUserCardData, type UserCardData } from '@/lib/serialize'
+import type { User } from '@/payload-types'
+
+import type { FormState } from './auth'
+
+const errorMessage = (err: unknown, fallback: string) => {
+  const errors = (err as { data?: { errors?: { field?: string; message?: string }[] } })?.data
+    ?.errors
+  if (Array.isArray(errors) && errors.length > 0) {
+    const first = errors[0]
+    if (first.field === 'username') return 'That username is unavailable.'
+    return first.message || fallback
+  }
+  return err instanceof Error ? err.message : fallback
+}
+
+export async function updateProfile(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+
+  const name = String(formData.get('name') ?? '').trim()
+  const username = String(formData.get('username') ?? '').trim()
+  const bio = String(formData.get('bio') ?? '').trim()
+  const website = String(formData.get('website') ?? '').trim()
+  const file = formData.get('avatar')
+  const coverFile = formData.get('cover')
+
+  let avatarId: number | undefined
+  if (file instanceof File && file.size > 0) {
+    const media = await payload.create({
+      collection: 'media',
+      data: { alt: `${username || user.username} avatar` },
+      file: {
+        data: Buffer.from(await file.arrayBuffer()),
+        mimetype: file.type,
+        name: file.name,
+        size: file.size,
+      },
+      user,
+      overrideAccess: false,
+    })
+    avatarId = media.id
+  }
+
+  let coverId: number | undefined
+  if (coverFile instanceof File && coverFile.size > 0) {
+    const media = await payload.create({
+      collection: 'media',
+      data: { alt: `${username || user.username} cover` },
+      file: {
+        data: Buffer.from(await coverFile.arrayBuffer()),
+        mimetype: coverFile.type,
+        name: coverFile.name,
+        size: coverFile.size,
+      },
+      user,
+      overrideAccess: false,
+    })
+    coverId = media.id
+  }
+
+  try {
+    await payload.update({
+      collection: 'users',
+      id: user.id,
+      data: {
+        name: name || undefined,
+        username: username || undefined,
+        bio,
+        website,
+        ...(avatarId ? { avatar: avatarId } : {}),
+        ...(coverId ? { cover: coverId } : {}),
+      },
+      user,
+      overrideAccess: false,
+    })
+  } catch (err) {
+    return { error: errorMessage(err, 'Could not update your profile.') }
+  }
+
+  return { success: true }
+}
+
+export async function updateProfileMedia(formData: FormData): Promise<FormState> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+  const data: { avatar?: number; cover?: number } = {}
+
+  for (const kind of ['avatar', 'cover'] as const) {
+    const file = formData.get(kind)
+    if (file instanceof File && file.size > 0) {
+      const media = await payload.create({
+        collection: 'media',
+        data: { alt: `${user.username} ${kind}` },
+        file: {
+          data: Buffer.from(await file.arrayBuffer()),
+          mimetype: file.type,
+          name: file.name,
+          size: file.size,
+        },
+        user,
+        overrideAccess: false,
+      })
+      data[kind] = media.id
+    }
+  }
+
+  if (Object.keys(data).length === 0) return { error: 'No image provided.' }
+
+  try {
+    await payload.update({
+      collection: 'users',
+      id: user.id,
+      data,
+      user,
+      overrideAccess: false,
+    })
+  } catch (err) {
+    return { error: errorMessage(err, 'Could not update your photo.') }
+  }
+
+  return { success: true }
+}
+
+export async function updatePrivacy(data: {
+  isPrivate?: boolean
+  discoverable?: boolean
+  publicProfile?: boolean
+  commentPermission?: 'everyone' | 'followers' | 'off'
+}): Promise<FormState> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+
+  try {
+    await payload.update({
+      collection: 'users',
+      id: user.id,
+      data,
+      user,
+      overrideAccess: false,
+    })
+  } catch (err) {
+    return { error: errorMessage(err, 'Could not update privacy settings.') }
+  }
+
+  return { success: true }
+}
+
+export async function updateTheme(theme: 'light' | 'dark' | 'system'): Promise<FormState> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+
+  try {
+    await payload.update({
+      collection: 'users',
+      id: user.id,
+      data: { theme },
+      user,
+      overrideAccess: false,
+    })
+  } catch (err) {
+    return { error: errorMessage(err, 'Could not update theme.') }
+  }
+
+  return { success: true }
+}
+
+export async function completeOnboarding(): Promise<FormState> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+
+  try {
+    await payload.update({
+      collection: 'users',
+      id: user.id,
+      data: { onboardedAt: new Date().toISOString() },
+      user,
+      overrideAccess: false,
+    })
+  } catch (err) {
+    return { error: errorMessage(err, 'Could not finish onboarding.') }
+  }
+
+  redirect('/home')
+}
+
+const MAX_ABOUT_BLOCKS = 25
+
+// Rebuilds the user's `about` blocks from editor data. The editor submits a
+// JSON payload plus one file field per newly added image block; blocks without
+// meaningful content are dropped. Block ids are intentionally not echoed back —
+// Payload rewrites the whole blocks array on update.
+export async function updateAbout(formData: FormData): Promise<FormState> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+
+  let raw: unknown
+  try {
+    raw = JSON.parse(String(formData.get('about') ?? '[]'))
+  } catch {
+    return { error: 'Invalid about content.' }
+  }
+  if (!Array.isArray(raw)) return { error: 'Invalid about content.' }
+
+  const clean = (value: unknown, max: number) =>
+    typeof value === 'string' ? value.trim().slice(0, max) : ''
+
+  const about: Record<string, unknown>[] = []
+
+  for (const entry of raw.slice(0, MAX_ABOUT_BLOCKS)) {
+    if (!entry || typeof entry !== 'object') continue
+    const e = entry as Record<string, unknown>
+
+    switch (e.type) {
+      case 'section': {
+        const heading = clean(e.heading, 120)
+        const body = clean(e.body, 5000)
+        if (!heading && !body) continue
+        about.push({ blockType: 'section', heading, body })
+        break
+      }
+      case 'list': {
+        const heading = clean(e.heading, 120)
+        // Items arrive as { title, description } objects; bare strings from
+        // older editor payloads are treated as title-only.
+        const items = (Array.isArray(e.items) ? e.items : [])
+          .map((item) =>
+            item && typeof item === 'object'
+              ? {
+                  value: clean(
+                    (item as Record<string, unknown>).title ??
+                      (item as Record<string, unknown>).value,
+                    200,
+                  ),
+                  description: clean((item as Record<string, unknown>).description, 300),
+                }
+              : { value: clean(item, 200), description: '' },
+          )
+          .filter((item) => item.value)
+          .slice(0, 30)
+        if (!heading && items.length === 0) continue
+        about.push({ blockType: 'list', heading, items })
+        break
+      }
+      case 'links': {
+        const heading = clean(e.heading, 120)
+        const items = (Array.isArray(e.items) ? e.items : [])
+          .map((item) =>
+            item && typeof item === 'object'
+              ? {
+                  label: clean((item as Record<string, unknown>).label, 80),
+                  url: clean((item as Record<string, unknown>).url, 500),
+                }
+              : { label: '', url: '' },
+          )
+          .filter((item) => item.label && item.url)
+          .slice(0, 20)
+        if (!heading && items.length === 0) continue
+        about.push({ blockType: 'links', heading, items })
+        break
+      }
+      case 'image': {
+        let mediaId =
+          typeof e.mediaId === 'number' && Number.isInteger(e.mediaId) ? e.mediaId : null
+        const file =
+          typeof e.fileField === 'string' && e.fileField ? formData.get(e.fileField) : null
+        if (file instanceof File && file.size > 0 && file.type.startsWith('image/')) {
+          const media = await payload.create({
+            collection: 'media',
+            data: { alt: `${user.username} about photo` },
+            file: {
+              data: Buffer.from(await file.arrayBuffer()),
+              mimetype: file.type,
+              name: file.name,
+              size: file.size,
+            },
+            user,
+            overrideAccess: false,
+          })
+          mediaId = media.id
+        }
+        if (!mediaId) continue
+        about.push({ blockType: 'image', image: mediaId, caption: clean(e.caption, 300) })
+        break
+      }
+      case 'embed': {
+        const url = clean(e.url, 500)
+        if (!url) continue
+        about.push({ blockType: 'embed', url, caption: clean(e.caption, 300) })
+        break
+      }
+    }
+  }
+
+  try {
+    await payload.update({
+      collection: 'users',
+      id: user.id,
+      data: { about },
+      user,
+      overrideAccess: false,
+    })
+  } catch (err) {
+    return { error: errorMessage(err, 'Could not update your about page.') }
+  }
+
+  return { success: true }
+}
+
+// "Suggested for you" pool size — the ranked list is paginated out of this
+// pool so ordering stays stable while scrolling.
+const SUGGESTED_POOL = 60
+const SUGGESTED_PAGE_SIZE = 20
+
+// Discoverable members the viewer doesn't follow yet, ranked by follower
+// count — powers the Explore people tab when there's no query.
+export async function getSuggestedPeople(page = 1): Promise<Paged<UserCardData>> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+
+  const myFollows = await payload.find({
+    collection: 'follows',
+    where: { follower: { equals: user.id } },
+    limit: 0,
+    depth: 0,
+    user,
+    overrideAccess: false,
+  })
+  const exclude = [
+    user.id,
+    ...myFollows.docs.map((follow) =>
+      typeof follow.following === 'object' ? follow.following.id : follow.following,
+    ),
+  ]
+
+  const result = await payload.find({
+    collection: 'users',
+    where: {
+      and: [{ discoverable: { not_equals: false } }, { id: { not_in: exclude } }],
+    },
+    sort: '-createdAt',
+    limit: SUGGESTED_POOL,
+    depth: 1,
+    user,
+    overrideAccess: false,
+  })
+
+  const ids = result.docs.map((doc) => doc.id)
+  const incoming = await payload.find({
+    collection: 'follows',
+    where: { following: { in: ids } },
+    limit: 0,
+    depth: 0,
+    user,
+    overrideAccess: false,
+  })
+  const followerCounts = new Map<number, number>()
+  for (const follow of incoming.docs) {
+    const id = typeof follow.following === 'object' ? follow.following.id : follow.following
+    followerCounts.set(id, (followerCounts.get(id) ?? 0) + 1)
+  }
+
+  const ranked = [...result.docs].sort(
+    (a, b) => (followerCounts.get(b.id) ?? 0) - (followerCounts.get(a.id) ?? 0),
+  )
+  const start = (page - 1) * SUGGESTED_PAGE_SIZE
+  const items = ranked.slice(start, start + SUGGESTED_PAGE_SIZE)
+
+  return {
+    items: items.map((doc: User) =>
+      toUserCardData(doc, user, false, followerCounts.get(doc.id) ?? 0),
+    ),
+    hasMore: ranked.length > start + items.length,
+  }
+}
+
+export async function searchUsers(query: string, page = 1): Promise<Paged<UserCardData>> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const trimmed = query.trim()
+  if (!trimmed) return getSuggestedPeople(page)
+
+  const payload = await getPayloadClient()
+  const result = await payload.find({
+    collection: 'users',
+    where: {
+      and: [
+        { discoverable: { not_equals: false } },
+        {
+          or: [{ name: { contains: trimmed } }, { username: { contains: trimmed } }],
+        },
+      ],
+    },
+    sort: '-createdAt',
+    page,
+    limit: 20,
+    depth: 1,
+    user,
+    overrideAccess: false,
+  })
+
+  const ids = result.docs.map((doc) => doc.id)
+  const myFollows = await payload.find({
+    collection: 'follows',
+    where: {
+      and: [{ follower: { equals: user.id } }, { following: { in: ids } }],
+    },
+    limit: 0,
+    depth: 0,
+    user,
+    overrideAccess: false,
+  })
+  const followingIds = new Set(
+    myFollows.docs.map((follow) =>
+      typeof follow.following === 'object' ? follow.following.id : follow.following,
+    ),
+  )
+
+  const incoming = await payload.find({
+    collection: 'follows',
+    where: { following: { in: ids } },
+    limit: 0,
+    depth: 0,
+    user,
+    overrideAccess: false,
+  })
+  const followerCounts = new Map<number, number>()
+  for (const follow of incoming.docs) {
+    const id = typeof follow.following === 'object' ? follow.following.id : follow.following
+    followerCounts.set(id, (followerCounts.get(id) ?? 0) + 1)
+  }
+
+  return {
+    items: result.docs.map((doc: User) =>
+      toUserCardData(doc, user, followingIds.has(doc.id), followerCounts.get(doc.id) ?? 0),
+    ),
+    hasMore: result.hasNextPage,
+  }
+}

@@ -1,0 +1,502 @@
+import type {
+  Comment,
+  MailAttachment,
+  MailDraft,
+  Media,
+  Message,
+  Notification,
+  Post,
+  Thread,
+  User,
+} from '@/payload-types'
+
+import { toCdnUrl } from './cdn'
+
+const isObj = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+export const relId = (value: unknown): number | null => {
+  if (isObj(value)) return (value as { id: number }).id
+  return typeof value === 'number' ? value : null
+}
+
+export function avatarUrl(user: User): string | undefined {
+  if (!isObj(user.avatar)) return undefined
+  return toCdnUrl((user.avatar as Media).url)
+}
+
+export function coverUrl(user: User): string | undefined {
+  if (!isObj(user.cover)) return undefined
+  return toCdnUrl((user.cover as Media).url)
+}
+
+export function mediaUrl(media: Media | number | null | undefined) {
+  if (!isObj(media)) return undefined
+  return toCdnUrl((media as Media).url)
+}
+
+export interface Paged<T> {
+  items: T[]
+  hasMore: boolean
+}
+
+// The original post embedded inside a share — read-only display data.
+export interface EmbeddedPostData {
+  id: number
+  authorId: number
+  content: string | null
+  imageUrls: string[]
+  createdAt: string
+  authorName: string
+  authorUsername: string
+  authorAvatarUrl?: string
+}
+
+export interface PostCardData {
+  id: number
+  content: string | null
+  images: { id: number; url: string }[]
+  createdAt: string
+  authorName: string
+  authorUsername: string
+  authorAvatarUrl?: string
+  likeCount: number
+  commentCount: number
+  likedByMe: boolean
+  likers: { name: string; username: string; avatarUrl?: string }[]
+  latestComments: {
+    authorName: string
+    authorUsername: string
+    authorAvatarUrl?: string
+    content: string
+  }[]
+  shareCount: number
+  sharedByMe: boolean
+  sharedPost?: EmbeddedPostData
+  savedByMe: boolean
+  pinned: boolean
+  canEdit: boolean
+  canShare: boolean
+  commentsDisabled: boolean
+  viewerAuthenticated: boolean
+  visibility: 'public' | 'followers'
+}
+
+export interface PostCardExtras {
+  likeCount: number
+  commentCount: number
+  likedByMe: boolean
+  likers?: PostCardData['likers']
+  latestComments?: PostCardData['latestComments']
+  shareCount?: number
+  sharedByMe?: boolean
+  sharedPost?: EmbeddedPostData
+  savedByMe?: boolean
+}
+
+export function toPostCardData(
+  post: Post,
+  viewer: User | null,
+  {
+    likeCount,
+    commentCount,
+    likedByMe,
+    likers = [],
+    latestComments = [],
+    shareCount = 0,
+    sharedByMe = false,
+    sharedPost,
+    savedByMe = false,
+  }: PostCardExtras,
+): PostCardData {
+  const author = post.author as User
+  const images = (Array.isArray(post.image) ? post.image : [])
+    .filter((m): m is Media => isObj(m))
+    .map((m) => ({ id: m.id, url: mediaUrl(m) }))
+    .filter((i): i is { id: number; url: string } => Boolean(i.url))
+
+  return {
+    id: post.id,
+    content: post.content ?? null,
+    images,
+    createdAt: post.createdAt,
+    authorName: author.name,
+    authorUsername: author.username,
+    authorAvatarUrl: avatarUrl(author),
+    likeCount,
+    commentCount,
+    likedByMe,
+    likers,
+    latestComments,
+    shareCount,
+    sharedByMe,
+    sharedPost,
+    savedByMe,
+    pinned: Boolean(post.pinned),
+    canEdit: viewer !== null && author.id === viewer.id,
+    viewerAuthenticated: viewer !== null,
+    // Reposts target the embedded original when present; your own posts and
+    // your own share cards can't be reposted.
+    canShare:
+      viewer !== null &&
+      post.visibility === 'public' &&
+      author.id !== viewer.id &&
+      (sharedPost?.authorId ?? author.id) !== viewer.id,
+    visibility: post.visibility === 'followers' ? 'followers' : 'public',
+    // The author can still comment on their own post when comments are off.
+    commentsDisabled: author.commentPermission === 'off' && author.id !== viewer?.id,
+  }
+}
+
+// Serialized form of a user's `about` blocks — safe to pass to client
+// components and back to the updateAbout action.
+export type AboutBlockData =
+  | { key: string; id?: string; type: 'section'; heading: string; body: string }
+  | {
+      key: string
+      id?: string
+      type: 'list'
+      heading: string
+      items: { title: string; description: string }[]
+    }
+  | {
+      key: string
+      id?: string
+      type: 'links'
+      heading: string
+      items: { label: string; url: string }[]
+    }
+  | {
+      key: string
+      id?: string
+      type: 'image'
+      mediaId: number | null
+      url?: string
+      caption: string
+    }
+  | { key: string; id?: string; type: 'embed'; url: string; caption: string }
+
+export function toAboutBlocks(user: User): AboutBlockData[] {
+  if (!Array.isArray(user.about)) return []
+
+  return user.about.flatMap((block, index): AboutBlockData[] => {
+    const key = block.id ?? `block-${index}`
+    switch (block.blockType) {
+      case 'section': {
+        const heading = (block.heading ?? '').trim()
+        const body = (block.body ?? '').trim()
+        if (!heading && !body) return []
+        return [
+          {
+            key,
+            id: block.id ?? undefined,
+            type: 'section',
+            heading,
+            body,
+          },
+        ]
+      }
+      case 'list': {
+        const items = (block.items ?? [])
+          .map((item) => ({
+            title: (item.value ?? '').trim(),
+            description: (item.description ?? '').trim(),
+          }))
+          .filter((item) => item.title)
+        const heading = (block.heading ?? '').trim()
+        if (!heading && items.length === 0) return []
+        return [{ key, id: block.id ?? undefined, type: 'list', heading, items }]
+      }
+      case 'links': {
+        const items = (block.items ?? [])
+          .map((item) => ({
+            label: (item.label ?? '').trim(),
+            url: (item.url ?? '').trim(),
+          }))
+          .filter((item) => item.label && item.url)
+        const heading = (block.heading ?? '').trim()
+        if (!heading && items.length === 0) return []
+        return [{ key, id: block.id ?? undefined, type: 'links', heading, items }]
+      }
+      case 'image': {
+        const url = mediaUrl(block.image)
+        if (!url) return []
+        const mediaId = relId(block.image)
+        return [
+          {
+            key,
+            id: block.id ?? undefined,
+            type: 'image',
+            mediaId,
+            url,
+            caption: (block.caption ?? '').trim(),
+          },
+        ]
+      }
+      case 'embed': {
+        const url = (block.url ?? '').trim()
+        if (!url) return []
+        return [
+          {
+            key,
+            id: block.id ?? undefined,
+            type: 'embed',
+            url,
+            caption: (block.caption ?? '').trim(),
+          },
+        ]
+      }
+      default:
+        return []
+    }
+  })
+}
+
+export interface UserCardData {
+  id: number
+  name: string
+  username: string
+  bio: string | null
+  avatarUrl?: string
+  coverUrl?: string
+  isFollowing: boolean
+  isSelf: boolean
+  followerCount?: number
+}
+
+export function toUserCardData(
+  user: User,
+  viewer: User | null,
+  isFollowing: boolean,
+  followerCount?: number,
+): UserCardData {
+  return {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    bio: user.bio ?? null,
+    avatarUrl: avatarUrl(user),
+    coverUrl: coverUrl(user),
+    isFollowing,
+    isSelf: user.id === viewer?.id,
+    followerCount,
+  }
+}
+
+export interface CommentData {
+  id: number
+  content: string
+  createdAt: string
+  authorName: string
+  authorUsername: string
+  authorAvatarUrl?: string
+  canEdit: boolean
+}
+
+export function toCommentData(comment: Comment, viewer: User | null): CommentData {
+  const author = comment.author as User
+  return {
+    id: comment.id,
+    content: comment.content,
+    createdAt: comment.createdAt,
+    authorName: author.name,
+    authorUsername: author.username,
+    authorAvatarUrl: avatarUrl(author),
+    canEdit: viewer !== null && author.id === viewer.id,
+  }
+}
+
+export interface NotificationData {
+  id: number
+  type: 'like' | 'comment' | 'follow'
+  read: boolean
+  createdAt: string
+  actorName: string
+  actorUsername: string
+  actorAvatarUrl?: string
+  postId?: number
+  postSnippet?: string
+  commentSnippet?: string
+}
+
+const snippet = (value: unknown): string | undefined => {
+  if (!isObj(value)) return undefined
+  const content = (value as { content?: string | null }).content
+  if (!content) return undefined
+  const text = content.replace(/\s+/g, ' ').trim()
+  return text.length > 80 ? `${text.slice(0, 80)}…` : text
+}
+
+export function toNotificationData(notification: Notification): NotificationData | null {
+  const actor = notification.actor
+  if (!isObj(actor)) return null
+
+  return {
+    id: notification.id,
+    type: notification.type,
+    read: Boolean(notification.read),
+    createdAt: notification.createdAt,
+    actorName: (actor as User).name,
+    actorUsername: (actor as User).username,
+    actorAvatarUrl: avatarUrl(actor as User),
+    postId: relId(notification.post) ?? undefined,
+    postSnippet: snippet(notification.post),
+    commentSnippet: snippet(notification.comment),
+  }
+}
+
+export interface ThreadData {
+  id: number
+  subject: string
+  snippet: string | null
+  lastMessageAt: string | null
+  createdAt: string
+  unread: boolean
+  sentByMe: boolean
+  messageCount: number
+  otherName: string
+  otherUsername: string
+  otherAvatarUrl?: string
+  isGuest: boolean
+  guestContact: string | null
+}
+
+export function toThreadData(thread: Thread, viewer: User): ThreadData | null {
+  const participants = Array.isArray(thread.participants) ? thread.participants : []
+  const other = participants.filter((p): p is User => isObj(p)).find((p) => p.id !== viewer.id)
+  // Guest threads hold a single participant (the recipient) — the sender's
+  // identity lives on guestName/guestContact instead.
+  const guestName = typeof thread.guestName === 'string' ? thread.guestName.trim() : ''
+  if (!other && !guestName) return null
+
+  const unreadFor = Array.isArray(thread.unreadFor) ? thread.unreadFor : []
+
+  return {
+    id: thread.id,
+    subject: thread.subject,
+    snippet: thread.lastSnippet ?? null,
+    lastMessageAt: thread.lastMessageAt ?? null,
+    createdAt: thread.createdAt,
+    unread: unreadFor.some((p) => relId(p) === viewer.id),
+    sentByMe: relId(thread.lastSender) === viewer.id,
+    messageCount: thread.messageCount ?? 0,
+    otherName: other?.name ?? guestName,
+    otherUsername: other?.username ?? '',
+    otherAvatarUrl: other ? avatarUrl(other) : undefined,
+    isGuest: !other,
+    guestContact: !other ? (thread.guestContact ?? null) : null,
+  }
+}
+
+export interface DraftData {
+  id: number
+  to: string
+  recipient: {
+    id: number
+    name: string
+    username: string
+    avatarUrl?: string
+  } | null
+  subject: string
+  body: string
+  snippet: string | null
+  updatedAt: string
+}
+
+export function toDraftData(draft: MailDraft): DraftData {
+  const recipient = isObj(draft.recipient) ? (draft.recipient as User) : null
+  const text = (draft.body ?? '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return {
+    id: draft.id,
+    to: draft.to ?? '',
+    recipient: recipient
+      ? {
+          id: recipient.id,
+          name: recipient.name,
+          username: recipient.username,
+          avatarUrl: avatarUrl(recipient),
+        }
+      : null,
+    subject: draft.subject ?? '',
+    body: draft.body ?? '',
+    snippet: text ? (text.length > 80 ? `${text.slice(0, 80)}…` : text) : null,
+    updatedAt: draft.updatedAt,
+  }
+}
+
+export interface MailAttachmentData {
+  id: number
+  url: string
+  filename: string
+  mimeType: string | null
+  filesize: number | null
+}
+
+const toMailAttachmentData = (attachment: MailAttachment): MailAttachmentData | null => {
+  // Deliberately NOT wrapped in toCdnUrl: this is an access-controlled app
+  // route (/api/mail-attachments/file/...) that checks the viewer's session.
+  // A CDN fetch would arrive without cookies, fail auth, and could cache it.
+  const url = attachment.url
+  if (!url) return null
+  return {
+    id: attachment.id,
+    url,
+    filename: attachment.filename ?? 'file',
+    mimeType: attachment.mimeType ?? null,
+    filesize: attachment.filesize ?? null,
+  }
+}
+
+const mailAttachments = (message: Message): MailAttachmentData[] =>
+  (Array.isArray(message.attachments) ? message.attachments : [])
+    .filter((a): a is MailAttachment => isObj(a))
+    .map(toMailAttachmentData)
+    .filter((a): a is MailAttachmentData => a !== null)
+
+export interface MailMessageData {
+  id: number
+  body: string
+  createdAt: string
+  isMine: boolean
+  senderName: string
+  senderUsername: string
+  senderContact?: string | null
+  senderAvatarUrl?: string
+  attachments: MailAttachmentData[]
+}
+
+export function toMailMessageData(message: Message, viewer: User): MailMessageData | null {
+  const attachments = mailAttachments(message)
+  const sender = message.sender
+  if (isObj(sender)) {
+    return {
+      id: message.id,
+      body: message.body,
+      createdAt: message.createdAt,
+      isMine: (sender as User).id === viewer.id,
+      senderName: (sender as User).name,
+      senderUsername: (sender as User).username,
+      senderAvatarUrl: avatarUrl(sender as User),
+      attachments,
+    }
+  }
+
+  // Guest senders carry a display name + contact instead of a user row.
+  const guestName = typeof message.senderName === 'string' ? message.senderName.trim() : ''
+  if (!guestName) return null
+
+  return {
+    id: message.id,
+    body: message.body,
+    createdAt: message.createdAt,
+    isMine: false,
+    senderName: guestName,
+    senderUsername: '',
+    senderContact: message.senderContact ?? null,
+    attachments,
+  }
+}
