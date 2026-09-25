@@ -79,6 +79,7 @@ export interface Config {
     messages: Message;
     'mail-drafts': MailDraft;
     'mail-attachments': MailAttachment;
+    videos: Video;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -98,6 +99,7 @@ export interface Config {
     messages: MessagesSelect<false> | MessagesSelect<true>;
     'mail-drafts': MailDraftsSelect<false> | MailDraftsSelect<true>;
     'mail-attachments': MailAttachmentsSelect<false> | MailAttachmentsSelect<true>;
+    videos: VideosSelect<false> | VideosSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -266,8 +268,27 @@ export interface Post {
   visibility?: ('public' | 'followers') | null;
   content?: string | null;
   image?: (number | Media)[] | null;
+  video?: (number | null) | Video;
   sharedPost?: (number | null) | Post;
   pinned?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "videos".
+ */
+export interface Video {
+  id: number;
+  bunnyVideoId: string;
+  status: 'uploading' | 'processing' | 'ready' | 'failed';
+  owner: number | User;
+  /**
+   * Seconds
+   */
+  duration?: number | null;
+  width?: number | null;
+  height?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -487,6 +508,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'mail-attachments';
         value: number | MailAttachment;
+      } | null)
+    | ({
+        relationTo: 'videos';
+        value: number | Video;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -652,6 +677,7 @@ export interface PostsSelect<T extends boolean = true> {
   visibility?: T;
   content?: T;
   image?: T;
+  video?: T;
   sharedPost?: T;
   pinned?: T;
   updatedAt?: T;
@@ -780,6 +806,20 @@ export interface MailAttachmentsSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "videos_select".
+ */
+export interface VideosSelect<T extends boolean = true> {
+  bunnyVideoId?: T;
+  status?: T;
+  owner?: T;
+  duration?: T;
+  width?: T;
+  height?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

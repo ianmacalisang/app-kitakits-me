@@ -3,18 +3,28 @@
 import { useRouter } from 'next/navigation'
 import { memo, useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
+import { Upload } from 'tus-js-client'
 
 import { createPost } from '@/actions/posts'
+import { createVideoUpload, discardVideo, markVideoUploaded } from '@/actions/videos'
 import { compressImage } from '@/lib/image'
 
 import { Avatar } from './Avatar'
 import { BlurImage } from './BlurImage'
-import { ChevronDownIcon, EyeIcon, ImageIcon, PlusIcon, UserIcon, XIcon } from './icons'
+import { ChevronDownIcon, EyeIcon, ImageIcon, PlusIcon, UserIcon, VideoIcon, XIcon } from './icons'
 import { Spinner } from './Spinner'
 
 const CLOSE_MS = 300
 const MAX_IMAGES = 4
 const MAX_CHARS = 2000
+const MAX_VIDEO_BYTES = 512 * 1024 * 1024
+
+interface PickedVideo {
+  previewUrl: string
+  progress: number
+  videoId: number | null
+  uploading: boolean
+}
 
 const AUDIENCE = [
   { value: 'public', label: 'Everyone', Icon: EyeIcon },
@@ -34,11 +44,14 @@ export const CreatePost = memo(function CreatePost({
   const [error, setError] = useState<string | null>(null)
   const [content, setContent] = useState('')
   const [images, setImages] = useState<{ file: File; url: string }[]>([])
+  const [video, setVideo] = useState<PickedVideo | null>(null)
   const [visibility, setVisibility] = useState<'public' | 'followers'>('public')
   const [audienceOpen, setAudienceOpen] = useState(false)
   const [pending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const videoRef = useRef<HTMLInputElement>(null)
+  const uploadRef = useRef<Upload | null>(null)
   const audienceRef = useRef<HTMLDivElement>(null)
 
   const addFiles = (files: FileList | null) => {
@@ -48,6 +61,7 @@ export const CreatePost = memo(function CreatePost({
       .filter((f) => !f.type || f.type.startsWith('image/'))
       .slice(0, Math.max(0, slots))
     if (picked.length === 0) return
+    removeVideo()
     void Promise.all(picked.map((file) => compressImage(file))).then((compressed) =>
       setImages((prev) => [
         ...prev,
@@ -66,6 +80,81 @@ export const CreatePost = memo(function CreatePost({
   const clearImages = () => {
     for (const item of images) URL.revokeObjectURL(item.url)
     setImages([])
+  }
+
+  // Videos upload straight to Bunny via TUS — the file never passes through
+  // the app server, so large videos aren't limited by the request body cap.
+  const startVideoUpload = async (file: File) => {
+    const creds = await createVideoUpload({ filename: file.name, size: file.size })
+    if ('error' in creds || !creds.videoId) {
+      setVideo(null)
+      setError('error' in creds ? creds.error : 'Video upload failed.')
+      return
+    }
+    setVideo({
+      previewUrl: URL.createObjectURL(file),
+      progress: 0,
+      videoId: creds.videoId,
+      uploading: true,
+    })
+
+    const upload = new Upload(file, {
+      endpoint: creds.endpoint,
+      retryDelays: [0, 1000, 3000, 5000],
+      headers: {
+        AuthorizationSignature: creds.signature,
+        AuthorizationExpire: String(creds.expires),
+        VideoId: creds.guid,
+        LibraryId: creds.libraryId,
+      },
+      metadata: { filename: file.name, filetype: file.type },
+      onProgress: (uploaded, total) =>
+        setVideo((v) => (v ? { ...v, progress: Math.floor((uploaded / total) * 100) } : v)),
+      onSuccess: () => {
+        setVideo((v) => (v ? { ...v, uploading: false, progress: 100 } : v))
+        void markVideoUploaded(creds.videoId)
+        uploadRef.current = null
+      },
+      onError: () => {
+        uploadRef.current = null
+        setVideo((v) => {
+          if (v) URL.revokeObjectURL(v.previewUrl)
+          return null
+        })
+        void discardVideo(creds.videoId)
+        setError('Video upload failed. Try again.')
+      },
+    })
+    uploadRef.current = upload
+    upload.start()
+  }
+
+  const pickVideo = (file: File | undefined) => {
+    if (!file) return
+    setError(null)
+    if (!file.type.startsWith('video/')) {
+      setError('Choose a video file.')
+      return
+    }
+    if (file.size > MAX_VIDEO_BYTES) {
+      setError('Video must be under 512MB.')
+      return
+    }
+    removeVideo()
+    clearImages()
+    void startVideoUpload(file)
+  }
+
+  const removeVideo = () => {
+    const pending = uploadRef.current
+    uploadRef.current = null
+    if (pending) void pending.abort()
+    setVideo((v) => {
+      if (!v) return v
+      URL.revokeObjectURL(v.previewUrl)
+      if (v.videoId) void discardVideo(v.videoId)
+      return null
+    })
   }
 
   const close = useCallback(() => {
@@ -118,6 +207,10 @@ export const CreatePost = memo(function CreatePost({
       } else {
         form.reset()
         clearImages()
+        setVideo((v) => {
+          if (v) URL.revokeObjectURL(v.previewUrl)
+          return null
+        })
         setContent('')
         setError(null)
         setVisibility('public')
@@ -174,7 +267,11 @@ export const CreatePost = memo(function CreatePost({
                   <h2 className="text-[15px] font-semibold">New Post</h2>
                   <button
                     type="submit"
-                    disabled={pending || (!content.trim() && images.length === 0)}
+                    disabled={
+                      pending ||
+                      Boolean(video?.uploading) ||
+                      (!content.trim() && images.length === 0 && !video?.videoId)
+                    }
                     className="btn-primary flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm"
                   >
                     {pending && <Spinner className="h-3.5 w-3.5" />}
@@ -238,6 +335,35 @@ export const CreatePost = memo(function CreatePost({
                   </div>
                 </div>
 
+                {video && (
+                  <div className="ml-[52px] mt-2">
+                    <div className="relative aspect-video overflow-hidden rounded-2xl border border-black/5 bg-neutral-950">
+                      <video
+                        src={video.previewUrl}
+                        muted
+                        playsInline
+                        className="h-full w-full object-contain"
+                      />
+                      {video.uploading && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/50 text-white">
+                          <Spinner className="h-5 w-5" />
+                          <span className="text-xs font-medium">
+                            Uploading video… {video.progress}%
+                          </span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={removeVideo}
+                        className="absolute right-1.5 top-1.5 rounded-full bg-neutral-900/80 p-1 text-white backdrop-blur"
+                        aria-label="Remove video"
+                      >
+                        <XIcon className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {images.length > 0 && (
                   <div className="ml-[52px] mt-2 flex flex-wrap gap-2">
                     {images.map((item, i) => (
@@ -268,29 +394,55 @@ export const CreatePost = memo(function CreatePost({
 
                 {/* Bottom toolbar */}
                 <input type="hidden" name="visibility" value={visibility} />
+                {video && !video.uploading && video.videoId !== null && (
+                  <input type="hidden" name="video" value={video.videoId} />
+                )}
                 <div className="mt-4 flex items-center justify-between gap-3 border-t border-black/5 pt-3">
-                  <label
-                    className={`btn-accent-soft flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                      images.length >= MAX_IMAGES
-                        ? 'cursor-not-allowed opacity-40'
-                        : 'cursor-pointer'
-                    }`}
-                    title={images.length >= MAX_IMAGES ? 'Max 4 images' : 'Add images'}
-                  >
-                    <ImageIcon className="h-5 w-5" />
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      disabled={images.length >= MAX_IMAGES}
-                      className="hidden"
-                      onChange={(e) => {
-                        addFiles(e.target.files)
-                        e.target.value = ''
-                      }}
-                    />
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <label
+                      className={`btn-accent-soft flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                        images.length >= MAX_IMAGES || video !== null
+                          ? 'cursor-not-allowed opacity-40'
+                          : 'cursor-pointer'
+                      }`}
+                      title={images.length >= MAX_IMAGES ? 'Max 4 images' : 'Add images'}
+                    >
+                      <ImageIcon className="h-5 w-5" />
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        disabled={images.length >= MAX_IMAGES || video !== null}
+                        className="hidden"
+                        onChange={(e) => {
+                          addFiles(e.target.files)
+                          e.target.value = ''
+                        }}
+                      />
+                    </label>
+                    <label
+                      className={`btn-accent-soft flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                        images.length > 0 || video !== null
+                          ? 'cursor-not-allowed opacity-40'
+                          : 'cursor-pointer'
+                      }`}
+                      title="Add video"
+                    >
+                      <VideoIcon className="h-5 w-5" />
+                      <input
+                        ref={videoRef}
+                        type="file"
+                        accept="video/*"
+                        disabled={images.length > 0 || video !== null}
+                        className="hidden"
+                        onChange={(e) => {
+                          pickVideo(e.target.files?.[0])
+                          e.target.value = ''
+                        }}
+                      />
+                    </label>
+                  </div>
 
                   <span
                     className={`text-xs tabular-nums ${

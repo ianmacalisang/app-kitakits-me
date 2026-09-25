@@ -19,6 +19,7 @@ import { Threads } from './collections/Threads'
 import { Messages } from './collections/Messages'
 import { MailDrafts } from './collections/MailDrafts'
 import { MailAttachments } from './collections/MailAttachments'
+import { Videos } from './collections/Videos'
 import { SiteSettings } from './globals/SiteSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -51,6 +52,7 @@ export default buildConfig({
     Messages,
     MailDrafts,
     MailAttachments,
+    Videos,
   ],
   globals: [SiteSettings],
   editor: lexicalEditor(),

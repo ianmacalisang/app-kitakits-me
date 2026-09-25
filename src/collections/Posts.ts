@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { canReadPosts, isAdminField, isAuthenticated, isOwner } from '../access'
 import { deletePostDependents } from '../hooks/deletePostDependents'
 import { deletePostMedia, deleteRemovedPostMedia } from '../hooks/deletePostMedia'
+import { deletePostVideo, deleteRemovedPostVideo } from '../hooks/deletePostVideo'
 
 export const Posts: CollectionConfig = {
   slug: 'posts',
@@ -27,9 +28,10 @@ export const Posts: CollectionConfig = {
 
         const content = data?.content ?? originalDoc?.content
         const image = data?.image ?? originalDoc?.image
+        const video = data?.video ?? originalDoc?.video
         const sharedPost = data?.sharedPost ?? originalDoc?.sharedPost
         const imageCount = Array.isArray(image) ? image.length : image ? 1 : 0
-        if ((!content || !content.trim()) && imageCount === 0 && !sharedPost) {
+        if ((!content || !content.trim()) && imageCount === 0 && !video && !sharedPost) {
           throw new Error('A post must have text or an image.')
         }
 
@@ -37,8 +39,8 @@ export const Posts: CollectionConfig = {
       },
     ],
     beforeDelete: [deletePostDependents],
-    afterDelete: [deletePostMedia],
-    afterChange: [deleteRemovedPostMedia],
+    afterDelete: [deletePostMedia, deletePostVideo],
+    afterChange: [deleteRemovedPostMedia, deleteRemovedPostVideo],
   },
   fields: [
     {
@@ -71,6 +73,12 @@ export const Posts: CollectionConfig = {
       type: 'upload',
       relationTo: 'media',
       hasMany: true,
+    },
+    {
+      name: 'video',
+      type: 'relationship',
+      relationTo: 'videos',
+      index: true,
     },
     {
       name: 'sharedPost',

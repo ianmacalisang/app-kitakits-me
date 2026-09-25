@@ -132,6 +132,13 @@ export const CommentIcon = (props: IconProps) => (
   </svg>
 )
 
+export const VideoIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <path d="m22 8-6 4 6 4V8z" />
+    <rect x="2" y="6" width="14" height="12" rx="2" />
+  </svg>
+)
+
 export const ImageIcon = (props: IconProps) => (
   <svg viewBox="0 0 24 24" {...base} {...props}>
     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />

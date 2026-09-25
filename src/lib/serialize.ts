@@ -8,8 +8,10 @@ import type {
   Post,
   Thread,
   User,
+  Video,
 } from '@/payload-types'
 
+import { streamHostname } from './bunny'
 import { toCdnUrl } from './cdn'
 
 const isObj = (value: unknown): value is Record<string, unknown> =>
@@ -40,12 +42,37 @@ export interface Paged<T> {
   hasMore: boolean
 }
 
+// Video on a post card — lives on Bunny Stream; URLs derive from the guid.
+export interface PostVideoData {
+  id: number
+  status: 'processing' | 'ready' | 'failed'
+  hlsUrl: string
+  thumbnailUrl: string
+  duration: number | null
+  aspectRatio: number | null
+}
+
+export function toVideoData(video: Video): PostVideoData {
+  const host = streamHostname()
+  const { bunnyVideoId, width, height } = video
+  return {
+    id: video.id,
+    status:
+      video.status === 'ready' ? 'ready' : video.status === 'failed' ? 'failed' : 'processing',
+    hlsUrl: host ? `${host}/${bunnyVideoId}/playlist.m3u8` : '',
+    thumbnailUrl: host ? `${host}/${bunnyVideoId}/thumbnail.jpg` : '',
+    duration: video.duration ?? null,
+    aspectRatio: width && height ? width / height : null,
+  }
+}
+
 // The original post embedded inside a share — read-only display data.
 export interface EmbeddedPostData {
   id: number
   authorId: number
   content: string | null
   imageUrls: string[]
+  video?: PostVideoData
   createdAt: string
   authorName: string
   authorUsername: string
@@ -56,6 +83,7 @@ export interface PostCardData {
   id: number
   content: string | null
   images: { id: number; url: string }[]
+  video?: PostVideoData
   createdAt: string
   authorName: string
   authorUsername: string
@@ -122,6 +150,7 @@ export function toPostCardData(
     id: post.id,
     content: post.content ?? null,
     images,
+    video: isObj(post.video) ? toVideoData(post.video as Video) : undefined,
     createdAt: post.createdAt,
     authorName: author.name,
     authorUsername: author.username,

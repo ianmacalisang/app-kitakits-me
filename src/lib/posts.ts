@@ -1,4 +1,4 @@
-import type { Media, Post, User } from '@/payload-types'
+import type { Media, Post, User, Video } from '@/payload-types'
 
 import { getPayloadClient } from './payload'
 import {
@@ -8,6 +8,7 @@ import {
   type PostCardData,
   relId,
   toPostCardData,
+  toVideoData,
 } from './serialize'
 
 export const FEED_PAGE_SIZE = 20
@@ -208,6 +209,7 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
           .filter((m): m is Media => isObj(m))
           .map((m) => mediaUrl(m))
           .filter((u): u is string => Boolean(u)),
+        video: isObj(shared.video) ? toVideoData(shared.video as Video) : undefined,
         createdAt: shared.createdAt,
         authorName: shared.author.name,
         authorUsername: shared.author.username,

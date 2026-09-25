@@ -42,6 +42,30 @@ async function uploadImages(
   return ids
 }
 
+// Resolves a videos doc ID from form data and confirms it belongs to the
+// user — the browser uploads to Bunny directly, so the doc already exists
+// by the time the post is created.
+async function ownedVideoId(
+  payload: PayloadClient,
+  user: User,
+  value: FormDataEntryValue | null,
+): Promise<number | null> {
+  const id = Number(value)
+  if (!Number.isFinite(id) || id <= 0) return null
+  try {
+    const video = await payload.findByID({
+      collection: 'videos',
+      id,
+      depth: 0,
+      user,
+      overrideAccess: false,
+    })
+    return relId(video.owner) === user.id ? id : null
+  } catch {
+    return null
+  }
+}
+
 export async function createPost(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
@@ -50,6 +74,7 @@ export async function createPost(_prev: FormState, formData: FormData): Promise<
   const content = String(formData.get('content') ?? '').trim()
   const visibility = formData.get('visibility') === 'followers' ? 'followers' : 'public'
   const imageIds = await uploadImages(payload, user, formData.getAll('image'))
+  const videoId = await ownedVideoId(payload, user, formData.get('video'))
 
   try {
     await payload.create({
@@ -58,6 +83,7 @@ export async function createPost(_prev: FormState, formData: FormData): Promise<
         author: user.id,
         content: content || undefined,
         image: imageIds,
+        video: videoId,
         visibility,
       },
       user,
@@ -82,6 +108,7 @@ export async function updatePost(postId: number, formData: FormData): Promise<Fo
     .map((v) => Number(v))
     .filter((id) => Number.isFinite(id))
   const newIds = await uploadImages(payload, user, formData.getAll('image'))
+  const videoId = await ownedVideoId(payload, user, formData.get('video'))
 
   try {
     await payload.update({
@@ -91,6 +118,7 @@ export async function updatePost(postId: number, formData: FormData): Promise<Fo
         content,
         visibility,
         image: [...keepIds, ...newIds],
+        video: videoId,
       },
       user,
       overrideAccess: false,
@@ -283,7 +311,7 @@ export async function getTrendingPosts(page = 1): Promise<Paged<PostCardData>> {
   const payload = await getPayloadClient()
   const result = await payload.find({
     collection: 'posts',
-    where: { image: { exists: true } },
+    where: { or: [{ image: { exists: true } }, { video: { exists: true } }] },
     sort: '-createdAt',
     limit: TRENDING_POOL,
     depth: 2,

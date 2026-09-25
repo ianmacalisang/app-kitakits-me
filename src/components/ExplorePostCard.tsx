@@ -9,7 +9,7 @@ import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { BlurImage } from './BlurImage'
-import { CommentIcon, LockIcon, ShareIcon } from './icons'
+import { CommentIcon, LockIcon, ShareIcon, VideoIcon } from './icons'
 import { LikeButton } from './LikeButton'
 import { PostSheet } from './PostSheet'
 
@@ -23,7 +23,11 @@ export const ExplorePostCard = memo(function ExplorePostCard({ post }: { post: P
 
   // Shares display the embedded original, matching PostCard.
   const imageUrls = post.sharedPost ? post.sharedPost.imageUrls : post.images.map((i) => i.url)
-  const cover = toCdnUrl(imageUrls[0])
+  const video = post.sharedPost ? post.sharedPost.video : post.video
+  // Bunny's thumbnail doesn't exist until encoding finishes — fall back to
+  // the text preview while a video-only post is still processing.
+  const cover =
+    toCdnUrl(imageUrls[0]) ?? (video?.status === 'ready' ? video.thumbnailUrl : undefined)
   const extraImages = imageUrls.length - 1
   const snippet = post.sharedPost ? post.sharedPost.content : post.content
 
@@ -61,6 +65,14 @@ export const ExplorePostCard = memo(function ExplorePostCard({ post }: { post: P
             title="Shared post"
           >
             <ShareIcon className="h-3.5 w-3.5" />
+          </span>
+        )}
+        {video && imageUrls.length === 0 && (
+          <span
+            className="absolute bottom-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm"
+            title="Video"
+          >
+            <VideoIcon className="h-3.5 w-3.5" />
           </span>
         )}
       </button>

@@ -17,6 +17,7 @@ import { SaveButton } from './SaveButton'
 import { ShareButton } from './ShareButton'
 import { PostEditForm } from './PostEditForm'
 import { PostImages } from './PostImages'
+import { PostVideo } from './PostVideo'
 
 const CLOSE_MS = 300
 const CONTENT_PREVIEW_LEN = 300
@@ -208,12 +209,14 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
             <ExpandableText content={post.sharedPost.content} className="mt-2 text-sm" />
           )}
           {post.sharedPost.imageUrls.length > 0 && <PostImages urls={post.sharedPost.imageUrls} />}
+          {post.sharedPost.video && <PostVideo video={post.sharedPost.video} />}
         </div>
       ) : (
         <>
           {post.content && <ExpandableText content={post.content} className="mt-3 text-sm" />}
 
           {imageUrls.length > 0 && <PostImages urls={imageUrls} />}
+          {post.video && <PostVideo video={post.video} />}
         </>
       )}
 
@@ -341,6 +344,7 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
                   initialContent={post.content ?? ''}
                   initialVisibility={post.visibility}
                   images={post.images}
+                  video={post.video}
                   onDoneAction={closeEdit}
                 />
               </div>

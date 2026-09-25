@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from 'react'
 import { updatePost } from '@/actions/posts'
 import { toCdnUrl } from '@/lib/cdn'
 import { compressImage } from '@/lib/image'
+import type { PostVideoData } from '@/lib/serialize'
 
 import { BlurImage } from './BlurImage'
 import { ImageIcon, XIcon } from './icons'
@@ -15,18 +16,21 @@ export function PostEditForm({
   initialContent,
   initialVisibility = 'public',
   images: initialImages,
+  video: initialVideo,
   onDoneAction,
 }: {
   postId: number
   initialContent: string
   initialVisibility?: 'public' | 'followers'
   images: { id: number; url: string }[]
+  video?: PostVideoData
   onDoneAction: () => void
 }) {
   const router = useRouter()
   const [content, setContent] = useState(initialContent)
   const [visibility, setVisibility] = useState<'public' | 'followers'>(initialVisibility)
   const [keptIds, setKeptIds] = useState<number[]>(initialImages.map((i) => i.id))
+  const [keepVideo, setKeepVideo] = useState(true)
   const [newImages, setNewImages] = useState<{ file: File; url: string }[]>([])
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -62,6 +66,7 @@ export function PostEditForm({
     formData.set('visibility', visibility)
     for (const id of keptIds) formData.append('keepImage', String(id))
     for (const item of newImages) formData.append('image', item.file)
+    if (initialVideo && keepVideo) formData.set('video', String(initialVideo.id))
 
     startTransition(async () => {
       let result
@@ -92,6 +97,36 @@ export function PostEditForm({
         placeholder="What's on your mind?"
         className="w-full resize-none rounded-2xl border border-neutral-200/60 bg-white/60 p-3 text-[15px] leading-relaxed outline-none backdrop-blur-sm transition-all focus:border-emerald-400 focus:bg-white/80 focus:ring-4 focus:ring-emerald-500/10"
       />
+
+      {/* Attached video — kept unless removed */}
+      {initialVideo && keepVideo && (
+        <div className="relative mt-2 aspect-video w-48 overflow-hidden rounded-xl border border-black/5 bg-neutral-950">
+          {initialVideo.thumbnailUrl ? (
+            <BlurImage
+              src={initialVideo.thumbnailUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xs text-neutral-400">
+              Video
+            </div>
+          )}
+          {initialVideo.status === 'processing' && (
+            <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
+              Processing…
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setKeepVideo(false)}
+            className="absolute right-1.5 top-1.5 rounded-full bg-neutral-900/80 p-1 text-white backdrop-blur"
+            aria-label="Remove video"
+          >
+            <XIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Existing + newly picked images */}
       {total > 0 && (
