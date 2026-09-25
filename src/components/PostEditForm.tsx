@@ -1,15 +1,26 @@
 import { useRouter } from 'next/navigation'
-import { useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
+import { Upload } from 'tus-js-client'
 
 import { updatePost } from '@/actions/posts'
+import { createVideoUpload, discardVideo, markVideoUploaded } from '@/actions/videos'
 import { toCdnUrl } from '@/lib/cdn'
 import { compressImage } from '@/lib/image'
 import type { PostVideoData } from '@/lib/serialize'
 
 import { BlurImage } from './BlurImage'
-import { ImageIcon, XIcon } from './icons'
+import { ImageIcon, VideoIcon, XIcon } from './icons'
+import { Spinner } from './Spinner'
 
 const MAX_IMAGES = 4
+const MAX_VIDEO_BYTES = 256 * 1024 * 1024
+
+interface PickedVideo {
+  previewUrl: string
+  progress: number
+  videoId: number | null
+  uploading: boolean
+}
 
 export function PostEditForm({
   postId,
@@ -31,12 +42,39 @@ export function PostEditForm({
   const [visibility, setVisibility] = useState<'public' | 'followers'>(initialVisibility)
   const [keptIds, setKeptIds] = useState<number[]>(initialImages.map((i) => i.id))
   const [keepVideo, setKeepVideo] = useState(true)
+  const [video, setVideo] = useState<PickedVideo | null>(null)
   const [newImages, setNewImages] = useState<{ file: File; url: string }[]>([])
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const fileRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
+  const uploadRef = useRef<Upload | null>(null)
+  // Mirror of `video` for the unmount cleanup + whether a picked video was
+  // actually saved onto the post (otherwise its doc would be orphaned).
+  const pickedRef = useRef<PickedVideo | null>(null)
+  const savedRef = useRef(false)
 
   const total = keptIds.length + newImages.length
+  const hasVideo = video !== null || (initialVideo != null && keepVideo)
+
+  useEffect(() => {
+    pickedRef.current = video
+  }, [video])
+
+  // Leaving the editor mid-upload or with an unsaved pick aborts TUS and
+  // discards the video doc; a saved video must NOT be discarded here.
+  useEffect(
+    () => () => {
+      const upload = uploadRef.current
+      uploadRef.current = null
+      if (upload) void upload.abort()
+      const picked = pickedRef.current
+      if (!picked) return
+      URL.revokeObjectURL(picked.previewUrl)
+      if (picked.videoId && !savedRef.current) void discardVideo(picked.videoId)
+    },
+    [],
+  )
 
   const addFiles = (files: FileList | null) => {
     if (!files) return
@@ -45,6 +83,9 @@ export function PostEditForm({
       .filter((f) => !f.type || f.type.startsWith('image/'))
       .slice(0, Math.max(0, slots))
     if (picked.length === 0) return
+    // Posts hold images OR one video — mirror the composer's exclusivity.
+    removeVideo()
+    setKeepVideo(false)
     void Promise.all(picked.map((file) => compressImage(file))).then((compressed) =>
       setNewImages((prev) => [
         ...prev,
@@ -60,13 +101,99 @@ export function PostEditForm({
     setNewImages(newImages.filter((_, i) => i !== index))
   }
 
+  // Same direct-to-Bunny TUS flow as the composer — the file never passes
+  // through the app server.
+  const startVideoUpload = async (file: File) => {
+    const creds = await createVideoUpload({ filename: file.name, size: file.size })
+    if ('error' in creds || !creds.videoId) {
+      setVideo(null)
+      setError('error' in creds ? creds.error : 'Video upload failed.')
+      return
+    }
+    setVideo({
+      previewUrl: URL.createObjectURL(file),
+      progress: 0,
+      videoId: creds.videoId,
+      uploading: true,
+    })
+
+    const upload = new Upload(file, {
+      endpoint: creds.endpoint,
+      retryDelays: [0, 1000, 3000, 5000],
+      headers: {
+        AuthorizationSignature: creds.signature,
+        AuthorizationExpire: String(creds.expires),
+        VideoId: creds.guid,
+        LibraryId: creds.libraryId,
+      },
+      metadata: { filename: file.name, filetype: file.type },
+      onProgress: (uploaded, total) =>
+        setVideo((v) => (v ? { ...v, progress: Math.floor((uploaded / total) * 100) } : v)),
+      onSuccess: () => {
+        setVideo((v) => (v ? { ...v, uploading: false, progress: 100 } : v))
+        void markVideoUploaded(creds.videoId)
+        uploadRef.current = null
+      },
+      onError: () => {
+        uploadRef.current = null
+        setVideo((v) => {
+          if (v) URL.revokeObjectURL(v.previewUrl)
+          return null
+        })
+        void discardVideo(creds.videoId)
+        setError('Video upload failed. Try again.')
+      },
+    })
+    uploadRef.current = upload
+    upload.start()
+  }
+
+  const pickVideo = (file: File | undefined) => {
+    if (!file) return
+    setError(null)
+    if (!file.type.startsWith('video/')) {
+      setError('Choose a video file.')
+      return
+    }
+    if (file.size > MAX_VIDEO_BYTES) {
+      setError('Video must be under 256MB.')
+      return
+    }
+    removeVideo()
+    setKeepVideo(false)
+    setKeptIds([])
+    setNewImages((prev) => {
+      for (const item of prev) URL.revokeObjectURL(item.url)
+      return []
+    })
+    void startVideoUpload(file)
+  }
+
+  const removeVideo = () => {
+    const pendingUpload = uploadRef.current
+    uploadRef.current = null
+    if (pendingUpload) void pendingUpload.abort()
+    setVideo((v) => {
+      if (!v) return v
+      URL.revokeObjectURL(v.previewUrl)
+      if (v.videoId) void discardVideo(v.videoId)
+      return null
+    })
+  }
+
+  const cancel = () => {
+    removeVideo()
+    onDoneAction()
+  }
+
   const save = () => {
     const formData = new FormData()
     formData.set('content', content)
     formData.set('visibility', visibility)
     for (const id of keptIds) formData.append('keepImage', String(id))
     for (const item of newImages) formData.append('image', item.file)
-    if (initialVideo && keepVideo) formData.set('video', String(initialVideo.id))
+    const videoId = video?.videoId ?? (initialVideo && keepVideo ? initialVideo.id : null)
+    if (videoId !== null) formData.set('video', String(videoId))
 
     startTransition(async () => {
       let result
@@ -78,6 +205,13 @@ export function PostEditForm({
       if (result.error) {
         setError(result.error)
       } else {
+        // The picked video now belongs to the post — the unmount cleanup
+        // must not discard it.
+        if (video?.videoId) savedRef.current = true
+        setVideo((v) => {
+          if (v) URL.revokeObjectURL(v.previewUrl)
+          return null
+        })
         router.refresh()
         onDoneAction()
       }
@@ -128,6 +262,32 @@ export function PostEditForm({
         </div>
       )}
 
+      {/* Newly picked video — live preview + upload progress (same as composer) */}
+      {video && (
+        <div className="relative mt-2 aspect-video overflow-hidden rounded-2xl border border-black/5 bg-neutral-950">
+          <video
+            src={video.previewUrl}
+            muted
+            playsInline
+            className="h-full w-full object-contain"
+          />
+          {video.uploading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/50 text-white">
+              <Spinner className="h-5 w-5" />
+              <span className="text-xs font-medium">Uploading video… {video.progress}%</span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={removeVideo}
+            className="absolute right-1.5 top-1.5 rounded-full bg-neutral-900/80 p-1 text-white backdrop-blur"
+            aria-label="Remove video"
+          >
+            <XIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Existing + newly picked images */}
       {total > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
@@ -168,28 +328,49 @@ export function PostEditForm({
         </div>
       )}
 
-      {/* Toolbar: image picker + audience */}
+      {/* Toolbar: image + video pickers, audience */}
       <div className="mt-3 flex items-center justify-between gap-3">
-        <label
-          className={`btn-accent-soft flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-            total >= MAX_IMAGES ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
-          }`}
-          title={total >= MAX_IMAGES ? 'Max 4 images' : 'Add images'}
-        >
-          <ImageIcon className="h-4.5 w-4.5" />
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            multiple
-            disabled={total >= MAX_IMAGES}
-            className="hidden"
-            onChange={(e) => {
-              addFiles(e.target.files)
-              e.target.value = ''
-            }}
-          />
-        </label>
+        <div className="flex items-center gap-2">
+          <label
+            className={`btn-accent-soft flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+              total >= MAX_IMAGES || hasVideo ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
+            }`}
+            title={total >= MAX_IMAGES ? 'Max 4 images' : 'Add images'}
+          >
+            <ImageIcon className="h-4.5 w-4.5" />
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              disabled={total >= MAX_IMAGES || hasVideo}
+              className="hidden"
+              onChange={(e) => {
+                addFiles(e.target.files)
+                e.target.value = ''
+              }}
+            />
+          </label>
+          <label
+            className={`btn-accent-soft flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+              total > 0 || hasVideo ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
+            }`}
+            title="Add video (max 256MB)"
+          >
+            <VideoIcon className="h-4.5 w-4.5" />
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/*"
+              disabled={total > 0 || hasVideo}
+              className="hidden"
+              onChange={(e) => {
+                pickVideo(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+          </label>
+        </div>
 
         <div className="flex rounded-full bg-black/5 p-0.5 text-xs font-medium">
           {(
@@ -218,13 +399,13 @@ export function PostEditForm({
       <div className="mt-3 flex items-center gap-3">
         <button
           onClick={save}
-          disabled={pending}
+          disabled={pending || Boolean(video?.uploading)}
           className="btn-primary rounded-full px-4 py-1.5 text-sm"
         >
           {pending ? 'Saving…' : 'Save'}
         </button>
         <button
-          onClick={onDoneAction}
+          onClick={cancel}
           className="rounded-full border border-white/60 bg-white/60 px-4 py-1.5 text-sm font-medium text-neutral-700 shadow-sm backdrop-blur transition-colors hover:bg-white/80"
         >
           Cancel

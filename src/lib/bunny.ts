@@ -8,6 +8,11 @@ import { createHash } from 'crypto'
 const API_BASE = 'https://video.bunnycdn.com'
 export const TUS_ENDPOINT = 'https://video.bunnycdn.com/tusupload'
 
+// Bunny API calls have no built-in deadline — a stalled request would hang
+// the server action until the client gives up (and Chrome logs the cut
+// stream as ERR_CONTENT_DECODING_FAILED). Bound them all.
+const API_TIMEOUT_MS = 10_000
+
 const libraryId = () => process.env.BUNNY_STREAM_LIBRARY_ID ?? ''
 const apiKey = () => process.env.BUNNY_STREAM_API_KEY ?? ''
 
@@ -16,8 +21,7 @@ export const streamHostname = () => {
   return host && !host.startsWith('http') ? `https://${host}` : host
 }
 
-export const bunnyStreamConfigured = () =>
-  Boolean(libraryId() && apiKey() && streamHostname())
+export const bunnyStreamConfigured = () => Boolean(libraryId() && apiKey() && streamHostname())
 
 // TUS presigned upload — signature = sha256(libraryId + apiKey + expiry + videoId)
 // per Bunny's direct-upload auth, letting the browser PUT without the API key.
@@ -34,6 +38,7 @@ export async function createStreamVideo(title: string): Promise<string> {
     method: 'POST',
     headers: { AccessKey: apiKey(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ title: title.slice(0, 200) || 'video' }),
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
   })
   if (!res.ok) throw new Error(`Bunny video create failed (${res.status})`)
   const json = (await res.json()) as { guid?: string }
@@ -51,6 +56,7 @@ export interface StreamVideoInfo {
 export async function fetchStreamVideo(guid: string): Promise<StreamVideoInfo | null> {
   const res = await fetch(`${API_BASE}/library/${libraryId()}/videos/${guid}`, {
     headers: { AccessKey: apiKey() },
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
   })
   if (!res.ok) return null
   const json = (await res.json()) as {
@@ -71,6 +77,7 @@ export async function deleteStreamVideo(guid: string): Promise<void> {
   await fetch(`${API_BASE}/library/${libraryId()}/videos/${guid}`, {
     method: 'DELETE',
     headers: { AccessKey: apiKey() },
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
   })
 }
 
