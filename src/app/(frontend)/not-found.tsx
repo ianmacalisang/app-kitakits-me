@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
-import { BrandMark } from '@/components/Branding'
 import { GoBackButton } from '@/components/GoBackButton'
 import { HomeIcon } from '@/components/icons'
 import { getCurrentUser } from '@/lib/auth'
