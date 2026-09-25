@@ -18,20 +18,23 @@ export default async function ResetPasswordPage({
   const { token } = await searchParams
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+    <main className="flex min-h-screen items-center justify-center px-4 py-8">
       <div className="animate-page-in w-full max-w-sm">
-        <div className="mx-auto mb-5 w-fit">
+        <div className="mx-auto mb-2 w-fit">
           <BrandMark size="lg" />
         </div>
-        <div className="glass mt-7 rounded-3xl p-6 sm:p-7">
-          <h2 className="mb-5 text-center text-sm font-semibold text-neutral-700">
+        <div className="glass mt-4 rounded-3xl p-5 sm:p-6">
+          <h2 className="mb-4 text-center text-sm font-semibold text-neutral-700">
             Choose a new password
           </h2>
           {token ? (
             <ResetPasswordForm token={token} />
           ) : (
-            <div className="flex flex-col gap-4">
-              <p role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-2.5 text-sm text-red-600">
+            <div className="flex flex-col gap-3">
+              <p
+                role="alert"
+                className="rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-600"
+              >
                 That reset link is invalid. Request a new one.
               </p>
               <p className="text-center text-sm text-neutral-500">

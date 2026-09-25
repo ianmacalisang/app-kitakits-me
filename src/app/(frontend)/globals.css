@@ -4,7 +4,7 @@
 
 @theme {
   --font-sans:
-    var(--font-poppins), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    var(--font-plus-jakarta-sans), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
 }
 
@@ -146,10 +146,14 @@ body::after {
   margin: 0.75em 0;
 }
 
-/* Thin, subtle scrollbars inside sheets and feed */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(6, 95, 70, 0.25) transparent;
+/* Thin, subtle scrollbars inside sheets and feed. Kept in @layer base so
+   utilities like `no-scrollbar` can still override it — unlayered styles beat
+   layered utilities regardless of specificity. */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(6, 95, 70, 0.25) transparent;
+  }
 }
 
 /* Fully hidden scrollbar for horizontal rails/carousels */
@@ -191,7 +195,7 @@ body::after {
 
 /* iOS-style filled input on glass surfaces */
 @utility glass-input {
-  @apply w-full rounded-xl border border-neutral-200/60 bg-white/70 px-4 py-2.5 text-[15px] outline-none backdrop-blur-sm transition-all placeholder:text-neutral-400 focus:border-emerald-400 focus:bg-white/90 focus:ring-4 focus:ring-emerald-500/10;
+  @apply w-full rounded-xl border border-neutral-200/60 bg-white/70 px-4 py-2 text-sm outline-none backdrop-blur-sm transition-all placeholder:text-neutral-400 focus:border-emerald-400 focus:bg-white/90 focus:ring-4 focus:ring-emerald-500/10;
 }
 
 /* Primary action — emerald-to-teal gradient pill */

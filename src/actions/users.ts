@@ -458,3 +458,30 @@ export async function searchUsers(query: string, page = 1): Promise<Paged<UserCa
     hasMore: result.hasNextPage,
   }
 }
+
+// Public profile search for the landing page. Anonymous visitors only ever see
+// users who explicitly opted in (publicProfile + discoverable), serialized with
+// no viewer so no follow state or private fields leak.
+export async function searchPublicUsers(query: string): Promise<UserCardData[]> {
+  const trimmed = query.trim()
+  if (!trimmed) return []
+
+  const payload = await getPayloadClient()
+  const result = await payload.find({
+    collection: 'users',
+    where: {
+      and: [
+        { publicProfile: { equals: true } },
+        { discoverable: { equals: true } },
+        {
+          or: [{ name: { contains: trimmed } }, { username: { contains: trimmed } }],
+        },
+      ],
+    },
+    sort: '-createdAt',
+    limit: 6,
+    depth: 1,
+  })
+
+  return result.docs.map((doc: User) => toUserCardData(doc, null, false))
+}

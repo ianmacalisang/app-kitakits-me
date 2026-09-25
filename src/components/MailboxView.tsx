@@ -16,6 +16,12 @@ import { Spinner } from './Spinner'
 
 type Box = 'inbox' | 'sent' | 'drafts'
 
+const BOX_THUMB: Record<Box, string> = {
+  inbox: 'translate-x-0',
+  sent: 'translate-x-full',
+  drafts: 'translate-x-[200%]',
+}
+
 export function MailboxView({
   threads,
   initialHasMore,
@@ -252,15 +258,18 @@ export function MailboxView({
       ) : (
         <>
           {/* Inbox / Sent / Drafts filter */}
-          <div className="glass mb-4 flex rounded-full p-1">
+          <div className="glass relative mb-3 flex rounded-full p-1">
+            {/* Sliding gradient thumb — same pattern as HomeTabs */}
+            <span
+              aria-hidden
+              className={`absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md shadow-emerald-600/30 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out ${BOX_THUMB[box]}`}
+            />
             {(['inbox', 'sent', 'drafts'] as const).map((value) => (
               <button
                 key={value}
                 onClick={() => switchBox(value)}
-                className={`flex-1 rounded-full py-1.5 text-sm font-medium capitalize transition-all ${
-                  box === value
-                    ? 'bg-white/90 text-neutral-900 shadow-sm'
-                    : 'text-neutral-500 hover:text-neutral-700'
+                className={`relative z-10 flex-1 rounded-full py-1.5 text-sm font-semibold capitalize transition-colors duration-300 ${
+                  box === value ? 'text-white' : 'text-neutral-500 hover:text-neutral-700'
                 }`}
               >
                 {value === 'drafts' && draftItems.length > 0

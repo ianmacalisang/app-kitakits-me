@@ -31,7 +31,7 @@ export default async function SettingsPage() {
   const avatar = avatarUrl(fullUser)
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <h1 className="text-xl font-bold">Settings</h1>
 
       <SettingsTabs
@@ -48,7 +48,7 @@ export default async function SettingsPage() {
                 </p>
               </div>
             </div>
-            <div className="glass rounded-3xl p-6">
+            <div className="glass rounded-3xl p-5">
               <EditProfileForm
                 avatarUrl={avatar}
                 coverUrl={coverUrl(fullUser)}
@@ -64,7 +64,7 @@ export default async function SettingsPage() {
         }
         account={
           <>
-            <div className="glass rounded-3xl p-6">
+            <div className="glass rounded-3xl p-5">
               <h3 className="mb-4 text-sm font-semibold text-neutral-700">Change password</h3>
               <ChangePasswordForm />
             </div>

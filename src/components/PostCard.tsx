@@ -19,6 +19,40 @@ import { PostEditForm } from './PostEditForm'
 import { PostImages } from './PostImages'
 
 const CLOSE_MS = 300
+const CONTENT_PREVIEW_LEN = 300
+
+// Collapses long text behind an inline "See more" toggle.
+function ExpandableText({ content, className }: { content: string; className?: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const isLong = content.length > CONTENT_PREVIEW_LEN
+  const shown =
+    isLong && !expanded
+      ? content
+          .slice(0, CONTENT_PREVIEW_LEN)
+          .replace(/\s+\S*$/, '')
+          .trimEnd()
+      : content
+
+  return (
+    <div className={className}>
+      <p className="whitespace-pre-wrap leading-relaxed">
+        {shown}
+        {isLong && (
+          <>
+            {!expanded && '…'}{' '}
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="font-medium text-emerald-600 transition-colors hover:text-emerald-700"
+            >
+              {expanded ? 'See less' : 'See more'}
+            </button>
+          </>
+        )}
+      </p>
+    </div>
+  )
+}
 
 export const PostCard = memo(function PostCard({ post }: { post: PostCardData }) {
   const router = useRouter()
@@ -170,25 +204,19 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
             </p>
           </Link>
           {post.sharedPost.content && (
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
-              {post.sharedPost.content}
-            </p>
+            <ExpandableText content={post.sharedPost.content} className="mt-2 text-sm" />
           )}
           {post.sharedPost.imageUrls.length > 0 && <PostImages urls={post.sharedPost.imageUrls} />}
         </div>
       ) : (
         <>
-          {post.content && (
-            <button type="button" onClick={openComments} className="mt-3 block w-full text-left">
-              <p className="whitespace-pre-wrap text-[15px] leading-relaxed">{post.content}</p>
-            </button>
-          )}
+          {post.content && <ExpandableText content={post.content} className="mt-3 text-sm" />}
 
           {imageUrls.length > 0 && <PostImages urls={imageUrls} />}
         </>
       )}
 
-      <div className="mt-3 flex items-center gap-6 border-t border-black/5 pt-3">
+      <div className="mt-3 flex items-center gap-4 border-t border-black/5 pt-3">
         <LikeButton
           postId={post.id}
           initialLiked={post.likedByMe}
@@ -242,7 +270,7 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
 
       {/* Latest comments preview — tap to open the full thread */}
       {post.latestComments.length > 0 && (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="mt-2 flex flex-col gap-1.5">
           {post.latestComments.map((comment, i) => (
             <button
               key={i}

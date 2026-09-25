@@ -14,14 +14,14 @@ export default async function RegisterPage() {
   const settings = await getSiteSettings()
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+    <main className="flex min-h-screen items-center justify-center px-4 py-8">
       <div className="animate-page-in w-full max-w-sm">
-        <div className="mx-auto mb-5 w-fit">
+        <div className="mx-auto mb-2 w-fit">
           <BrandMark size="lg" />
         </div>
-        <p className="mt-1.5 text-center text-sm text-neutral-500">{settings.heroTagline}</p>
-        <div className="glass mt-7 rounded-3xl p-6 sm:p-7">
-          <h2 className="mb-5 text-center text-sm font-semibold text-neutral-700">
+        <p className="mt-0.5 text-center text-xs text-neutral-400">{settings.heroTagline}</p>
+        <div className="glass mt-4 rounded-3xl p-5 sm:p-6">
+          <h2 className="mb-4 text-center text-sm font-semibold text-neutral-700">
             {settings.registerPrompt}
           </h2>
           <RegisterForm />

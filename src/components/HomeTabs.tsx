@@ -3,50 +3,49 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
-import type { PostCardData } from '@/lib/serialize'
+import type { ActivityData, PostCardData } from '@/lib/serialize'
 
+import { ActivitiesView } from './ActivitiesView'
 import { Feed } from './Feed'
-import { BookmarkIcon, SparklesIcon, UsersIcon } from './icons'
+import { ActivityIcon, BookmarkIcon, HomeIcon, UsersIcon } from './icons'
 
-type Tab = 'foryou' | 'following' | 'saved'
+type Tab = 'feed' | 'activities' | 'saved'
 
-const TABS: { value: Tab; label: string; icon: typeof SparklesIcon }[] = [
-  { value: 'foryou', label: 'For You', icon: SparklesIcon },
-  { value: 'following', label: 'Following', icon: UsersIcon },
+const TABS: { value: Tab; label: string; icon: typeof HomeIcon }[] = [
+  { value: 'feed', label: 'Feed', icon: HomeIcon },
+  { value: 'activities', label: 'Activities', icon: ActivityIcon },
   { value: 'saved', label: 'Saved', icon: BookmarkIcon },
 ]
 
 const THUMB_POSITION: Record<Tab, string> = {
-  foryou: 'translate-x-0',
-  following: 'translate-x-full',
+  feed: 'translate-x-0',
+  activities: 'translate-x-full',
   saved: 'translate-x-[200%]',
 }
 
-// For You / Following / Saved segmented control for the home page — a glass
+// Feed / Activities / Saved segmented control for the home page — a glass
 // pill with a sliding gradient thumb. All feeds stay mounted (hidden when
 // inactive) so tab switches preserve scroll position and pagination state.
 export function HomeTabs({
-  forYouPosts,
-  forYouHasMore,
-  forYouSeed,
-  followingPosts,
-  followingHasMore,
+  feedPosts,
+  feedHasMore,
+  activityItems,
+  activityHasMore,
   savedPosts,
   savedHasMore,
 }: {
-  forYouPosts: PostCardData[]
-  forYouHasMore: boolean
-  forYouSeed: number
-  followingPosts: PostCardData[]
-  followingHasMore: boolean
+  feedPosts: PostCardData[]
+  feedHasMore: boolean
+  activityItems: ActivityData[]
+  activityHasMore: boolean
   savedPosts: PostCardData[]
   savedHasMore: boolean
 }) {
-  const [tab, setTab] = useState<Tab>('foryou')
+  const [tab, setTab] = useState<Tab>('feed')
 
   return (
     <section>
-      <div role="tablist" aria-label="Home feed" className="mb-4">
+      <div role="tablist" aria-label="Home feed" className="mb-3">
         <div className="glass relative flex rounded-full p-1">
           {/* Sliding thumb — covers the active tab; with three equal tabs each
               full-width translate lands exactly on the next tab. */}
@@ -63,7 +62,7 @@ export function HomeTabs({
                 role="tab"
                 aria-selected={active}
                 onClick={() => setTab(value)}
-                className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-sm font-semibold transition-colors duration-300 active:scale-[0.98] ${
+                className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-sm font-semibold transition-colors duration-300 active:scale-[0.98] ${
                   active ? 'text-white' : 'text-neutral-500 hover:text-neutral-700'
                 }`}
               >
@@ -75,21 +74,10 @@ export function HomeTabs({
         </div>
       </div>
 
-      <div role="tabpanel" hidden={tab !== 'foryou'}>
+      <div role="tabpanel" hidden={tab !== 'feed'}>
         <Feed
-          initialPosts={forYouPosts}
-          initialHasMore={forYouHasMore}
-          feed="foryou"
-          seed={forYouSeed}
-          emptyIcon={<SparklesIcon />}
-          emptyTitle="No public posts yet"
-          emptyMessage="Posts from the community will show up here."
-        />
-      </div>
-      <div role="tabpanel" hidden={tab !== 'following'}>
-        <Feed
-          initialPosts={followingPosts}
-          initialHasMore={followingHasMore}
+          initialPosts={feedPosts}
+          initialHasMore={feedHasMore}
           feed="following"
           emptyIcon={<UsersIcon />}
           emptyTitle="Your feed is empty"
@@ -100,6 +88,9 @@ export function HomeTabs({
             </Link>
           }
         />
+      </div>
+      <div role="tabpanel" hidden={tab !== 'activities'}>
+        <ActivitiesView activities={activityItems} initialHasMore={activityHasMore} />
       </div>
       <div role="tabpanel" hidden={tab !== 'saved'}>
         <Feed

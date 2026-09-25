@@ -28,7 +28,7 @@ export function EmptyState({
       className={[
         'flex flex-col items-center text-center',
         plain ? 'gap-2.5 px-4' : 'glass gap-3 rounded-3xl px-6',
-        compact ? 'py-8' : plain ? 'py-12' : 'py-14',
+        compact ? 'py-8' : plain ? 'py-10' : 'py-10',
         className,
       ].join(' ')}
     >

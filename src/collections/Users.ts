@@ -161,7 +161,7 @@ export const Users: CollectionConfig = {
       name: 'isPrivate',
       type: 'checkbox',
       defaultValue: false,
-      // Filtered in For You feed, public-post queries, and profile lookups.
+      // Filtered in public-post queries and profile lookups.
       index: true,
     },
     {

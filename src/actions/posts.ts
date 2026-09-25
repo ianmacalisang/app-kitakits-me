@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
-import { FEED_PAGE_SIZE, getForYouPosts, getSavedPosts, hydratePosts } from '@/lib/posts'
+import { FEED_PAGE_SIZE, getSavedPosts, hydratePosts } from '@/lib/posts'
 import { type Paged, type PostCardData, mediaUrl, relId } from '@/lib/serialize'
 import type { Media, User } from '@/payload-types'
 
@@ -411,13 +411,12 @@ export async function getUserMedia(
 export async function loadMorePosts(options: {
   page: number
   authorId?: number
-  feed?: 'foryou' | 'following' | 'saved'
-  seed?: number
+  feed?: 'following' | 'saved'
 }): Promise<FeedPage> {
   const user = await getCurrentUser()
 
   const payload = await getPayloadClient()
-  const { page, authorId, feed, seed } = options
+  const { page, authorId, feed } = options
 
   // Signed-out readers only arrive here from public profiles — serve the
   // author's public posts with the same limits anonymous canReadPosts applies.
@@ -443,8 +442,6 @@ export async function loadMorePosts(options: {
   let where
   if (authorId) {
     where = { author: { equals: authorId } }
-  } else if (feed === 'foryou') {
-    return getForYouPosts(user, page, seed ?? 0)
   } else if (feed === 'saved') {
     return getSavedPosts(user, page)
   } else {

@@ -319,7 +319,7 @@ export interface NotificationData {
   commentSnippet?: string
 }
 
-const snippet = (value: unknown): string | undefined => {
+export const snippet = (value: unknown): string | undefined => {
   if (!isObj(value)) return undefined
   const content = (value as { content?: string | null }).content
   if (!content) return undefined
@@ -343,6 +343,26 @@ export function toNotificationData(notification: Notification): NotificationData
     postSnippet: snippet(notification.post),
     commentSnippet: snippet(notification.comment),
   }
+}
+
+// One row in the home Activities tab — something a followed user did.
+// Which fields are populated depends on `type`: post fields for like/comment,
+// target fields for follow.
+export interface ActivityData {
+  id: string
+  type: 'like' | 'comment' | 'follow'
+  createdAt: string
+  actorName: string
+  actorUsername: string
+  actorAvatarUrl?: string
+  postId?: number
+  postSnippet?: string
+  postAuthorName?: string
+  postAuthorUsername?: string
+  commentSnippet?: string
+  targetName?: string
+  targetUsername?: string
+  targetAvatarUrl?: string
 }
 
 export interface ThreadData {

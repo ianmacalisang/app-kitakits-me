@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation'
 
 import { HomeTabs } from '@/components/HomeTabs'
+import { getFollowingActivities } from '@/lib/activities'
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
-import { FEED_PAGE_SIZE, getForYouPosts, getSavedPosts, hydratePosts } from '@/lib/posts'
+import { FEED_PAGE_SIZE, getSavedPosts, hydratePosts } from '@/lib/posts'
 import { relId } from '@/lib/serialize'
 import type { Post } from '@/payload-types'
 
@@ -29,9 +30,7 @@ export default async function HomePage() {
     .map((f) => relId(f.following))
     .filter((id): id is number => id !== null)
 
-  // getForYouPosts returns the seed it shuffled with — the client passes it
-  // back on load-more calls so pages stay consistent with this first page.
-  const [posts, forYou, saved] = await Promise.all([
+  const [posts, activities, saved] = await Promise.all([
     authorIds.length === 0
       ? Promise.resolve({ docs: [] as Post[], hasNextPage: false })
       : payload.find({
@@ -44,7 +43,7 @@ export default async function HomePage() {
           user,
           overrideAccess: false,
         }),
-    getForYouPosts(user, 1),
+    getFollowingActivities(user, authorIds, 1),
     getSavedPosts(user, 1),
   ])
 
@@ -54,11 +53,10 @@ export default async function HomePage() {
     <div className="flex flex-col gap-4">
       <h1 className="sr-only">Home</h1>
       <HomeTabs
-        forYouPosts={forYou.posts}
-        forYouHasMore={forYou.hasMore}
-        forYouSeed={forYou.seed}
-        followingPosts={cards}
-        followingHasMore={posts.hasNextPage}
+        feedPosts={cards}
+        feedHasMore={posts.hasNextPage}
+        activityItems={activities.items}
+        activityHasMore={activities.hasMore}
         savedPosts={saved.posts}
         savedHasMore={saved.hasMore}
       />

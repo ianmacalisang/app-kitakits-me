@@ -50,6 +50,12 @@ export const BellIcon = (props: IconProps) => (
   </svg>
 )
 
+export const ActivityIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+  </svg>
+)
+
 export const MailboxIcon = (props: IconProps) => (
   <svg viewBox="0 0 24 24" {...base} {...props}>
     <path d="M22 17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9.5C2 7 4 5 6.5 5H18c2.2 0 4 1.8 4 4v8z" />

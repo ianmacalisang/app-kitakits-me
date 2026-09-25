@@ -131,7 +131,7 @@ function PeopleResults({ users, query }: { users: UserCardData[]; query: string 
       <p className="mb-2 mt-6 text-xs font-medium text-neutral-400">
         {query ? 'People' : 'Suggested for you'}
       </p>
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <ul className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {users.map((user) => (
           <UserCoverCard key={user.id} user={user} />
         ))}
@@ -164,7 +164,7 @@ function PostResults({ posts, query }: { posts: PostCardData[]; query: string })
           message={query ? `Nothing matches “${query}” — try a different search.` : undefined}
         />
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {posts.map((post) => (
             <ExplorePostCard key={post.id} post={post} />
           ))}

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Poppins } from 'next/font/google'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import React from 'react'
 
 import { BrandingProvider } from '@/components/Branding'
@@ -8,10 +8,10 @@ import { getSiteSettings } from '@/lib/settings'
 
 import './globals.css'
 
-const poppins = Poppins({
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
-  variable: '--font-poppins',
+  variable: '--font-plus-jakarta-sans',
   display: 'swap',
 })
 
@@ -35,7 +35,7 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${poppins.variable}${theme === 'dark' ? ' dark' : ''}`}
+      className={`${plusJakartaSans.variable}${theme === 'dark' ? ' dark' : ''}`}
       data-theme={theme}
     >
       <head>

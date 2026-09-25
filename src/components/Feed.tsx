@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, useTransition, type ReactNode } from 'react'
 
 import { getPost, loadMorePosts } from '@/actions/posts'
 import { POST_SAVE_TOGGLED, type PostSaveToggledDetail } from '@/lib/events'
@@ -21,7 +21,6 @@ export function Feed({
   emptyAction,
   timeline = false,
   feed,
-  seed: seedProp,
 }: {
   initialPosts: PostCardData[]
   initialHasMore: boolean
@@ -31,19 +30,13 @@ export function Feed({
   emptyMessage?: ReactNode
   emptyAction?: ReactNode
   timeline?: boolean
-  feed?: 'foryou' | 'following' | 'saved'
-  seed?: number
+  feed?: 'following' | 'saved'
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [hasMore, setHasMore] = useState(initialHasMore)
   const [page, setPage] = useState(1)
   const [pending, startTransition] = useTransition()
   const [prevInitial, setPrevInitial] = useState(initialPosts)
-  // Seed for the For You shuffle — stable for the life of this feed so pages
-  // stay consistent with the server-rendered first page. Generated lazily in
-  // loadMore when the server didn't provide one (Math.random can't run during
-  // render).
-  const seedRef = useRef(seedProp)
 
   // When the server data changes (e.g. after router.refresh()), reconcile: if the
   // refreshed first page matches what we already show, swap in the fresh page but
@@ -67,8 +60,7 @@ export function Feed({
     if (pending) return
     startTransition(async () => {
       const next = page + 1
-      seedRef.current ??= Math.floor(Math.random() * 0x7fffffff)
-      const result = await loadMorePosts({ page: next, authorId, feed, seed: seedRef.current })
+      const result = await loadMorePosts({ page: next, authorId, feed })
       setPosts((prev) => {
         const seen = new Set(prev.map((p) => p.id))
         return [...prev, ...result.posts.filter((p) => !seen.has(p.id))]
@@ -110,7 +102,7 @@ export function Feed({
 
   if (!timeline) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {posts.map((post) => (
           <PostCard key={post.id} post={post} />
         ))}

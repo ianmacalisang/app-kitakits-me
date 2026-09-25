@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
-import { Avatar } from '@/components/Avatar'
 import { BrandMark } from '@/components/Branding'
 import {
   BookmarkIcon,
@@ -24,9 +23,8 @@ import {
   UsersIcon,
   XIcon,
 } from '@/components/icons'
+import { LandingUserSearch } from '@/components/LandingUserSearch'
 import { getCurrentUser } from '@/lib/auth'
-import { getPayloadClient } from '@/lib/payload'
-import { avatarUrl } from '@/lib/serialize'
 import { getSiteSettings } from '@/lib/settings'
 
 type Feature = {
@@ -257,43 +255,21 @@ const STEPS: { title: string; description: string }[] = [
   },
 ]
 
-// Fetch a sample of publicly discoverable profiles to show on the landing page.
-// Only users who explicitly opted in (publicProfile + discoverable) are returned.
-// overrideAccess defaults to true in the Local API — safe here because we run
-// server-side and only surface name/username/bio/avatar to anonymous visitors.
-const getPublicUsers = async () => {
-  try {
-    const payload = await getPayloadClient()
-    const result = await payload.find({
-      collection: 'users',
-      where: {
-        and: [{ publicProfile: { equals: true } }, { discoverable: { equals: true } }],
-      },
-      limit: 8,
-      sort: '-createdAt',
-      depth: 1, // populate avatar media
-    })
-    return result.docs
-  } catch {
-    return []
-  }
-}
-
 function FeatureCard({ icon: Icon, title, description, preview }: Feature) {
   return (
-    <div className="glass group relative overflow-hidden rounded-3xl p-6 transition-all duration-200 hover:-translate-y-1 hover:border-emerald-300/60 hover:shadow-xl hover:shadow-emerald-600/10">
+    <div className="glass group relative overflow-hidden rounded-3xl p-5 transition-all duration-200 hover:-translate-y-1 hover:border-emerald-300/60 hover:shadow-xl hover:shadow-emerald-600/10">
       {/* Soft glow that fades in behind the tile on hover */}
       <span
         className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-emerald-400/0 blur-2xl transition-colors duration-300 group-hover:bg-emerald-400/20"
         aria-hidden="true"
       />
-      <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 ring-1 ring-inset ring-emerald-500/15 transition-all duration-200 group-hover:bg-gradient-to-br group-hover:from-emerald-500 group-hover:to-teal-600 group-hover:text-white group-hover:shadow-md group-hover:shadow-emerald-600/30 group-hover:ring-emerald-500">
+      <span className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 ring-1 ring-inset ring-emerald-500/15 transition-all duration-200 group-hover:bg-gradient-to-br group-hover:from-emerald-500 group-hover:to-teal-600 group-hover:text-white group-hover:shadow-md group-hover:shadow-emerald-600/30 group-hover:ring-emerald-500">
         <Icon className="h-5 w-5" />
       </span>
-      <h3 className="relative mt-4 text-[15px] font-semibold text-neutral-800">{title}</h3>
-      <p className="relative mt-1.5 text-sm leading-relaxed text-neutral-500">{description}</p>
+      <h3 className="relative mt-3 text-sm font-semibold text-neutral-800">{title}</h3>
+      <p className="relative mt-1 text-sm leading-relaxed text-neutral-500">{description}</p>
       <div
-        className="relative mt-4 h-28 overflow-hidden rounded-xl border border-neutral-200/60 bg-white/50 p-2.5"
+        className="relative mt-3 h-28 overflow-hidden rounded-xl border border-neutral-200/60 bg-white/50 p-2.5"
         aria-hidden="true"
       >
         {preview}
@@ -329,12 +305,12 @@ export default async function LandingPage() {
   const user = await getCurrentUser()
   if (user) redirect('/home')
 
-  const [settings, publicUsers] = await Promise.all([getSiteSettings(), getPublicUsers()])
+  const settings = await getSiteSettings()
 
   return (
     <main className="animate-page-in">
       {/* Hero */}
-      <section className="mx-auto flex max-w-3xl flex-col items-center px-4 pb-20 pt-16 text-center sm:pt-24">
+      <section className="mx-auto flex max-w-3xl flex-col items-center px-4 pb-16 pt-12 text-center sm:pt-20">
         <BrandMark size="lg" />
         <p className="mt-6 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-500/20">
           <SparklesIcon className="h-3.5 w-3.5" />
@@ -369,37 +345,12 @@ export default async function LandingPage() {
           kwento — Tagalog for &ldquo;story&rdquo;
         </p>
 
-        {publicUsers.length > 0 && (
-          <div className="mt-8 w-full">
-            <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-emerald-600">
-              Already tambaying
-            </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {publicUsers.slice(0, 4).map((u) => (
-                <Link
-                  key={u.id}
-                  href={`/@${u.username}`}
-                  className="glass group relative flex flex-col items-center overflow-hidden rounded-2xl px-3 py-5 transition-all duration-200 hover:-translate-y-1 hover:border-emerald-300/60 hover:shadow-xl hover:shadow-emerald-600/10"
-                >
-                  {/* Hover glow — same pattern as FeatureCard */}
-                  <span
-                    className="absolute inset-0 bg-gradient-to-b from-emerald-400/0 to-emerald-400/0 transition-all duration-300 group-hover:from-emerald-400/5 group-hover:to-transparent"
-                    aria-hidden="true"
-                  />
-                  <span className="relative inline-flex rounded-full ring-2 ring-emerald-500/20 ring-offset-2 ring-offset-white/80 transition-all duration-300 group-hover:ring-emerald-500/60 group-hover:ring-offset-white">
-                    <Avatar src={avatarUrl(u)} name={u.name} size="md" />
-                  </span>
-                  <p className="relative mt-3 w-full truncate text-center text-[13px] font-semibold leading-tight text-neutral-800 transition-colors group-hover:text-emerald-700">
-                    {u.name}
-                  </p>
-                  <p className="relative w-full truncate text-center text-[11px] leading-snug text-neutral-400">
-                    @{u.username}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="mt-7 w-full">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-emerald-600">
+            FIND YOUR TROOPS
+          </p>
+          <LandingUserSearch />
+        </div>
 
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link
@@ -451,13 +402,13 @@ export default async function LandingPage() {
                 </span>
               </span>
             </div>
-            <p className="mt-3 text-[15px] leading-relaxed text-neutral-700">
+            <p className="mt-3 text-sm leading-relaxed text-neutral-700">
               Walang algorithm dito, walang arte — kwento lang. Parang internet dati. Tambay tayo!
             </p>
-            <div className="mt-3 flex h-36 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400/50 via-teal-300/40 to-lime-300/40 text-emerald-700/50">
+            <div className="mt-3 flex h-28 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400/50 via-teal-300/40 to-lime-300/40 text-emerald-700/50">
               <ImageIcon className="h-6 w-6" />
             </div>
-            <div className="mt-4 flex items-center gap-5 text-xs font-medium text-neutral-500">
+            <div className="mt-3 flex items-center gap-4 text-xs font-medium text-neutral-500">
               <span className="flex items-center gap-1.5 text-emerald-600">
                 <HeartIcon filled className="h-4 w-4" /> 24
               </span>
@@ -473,7 +424,7 @@ export default async function LandingPage() {
       </section>
 
       {/* The promise — what we left behind vs. what you get */}
-      <section className="mx-auto max-w-5xl px-4 pb-20 sm:pb-24">
+      <section className="mx-auto max-w-5xl px-4 pb-16 sm:pb-20">
         <div className="mx-auto max-w-xl text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
             The promise
@@ -481,13 +432,13 @@ export default async function LandingPage() {
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
             Out with the feed fatigue. In with the kwento.
           </h2>
-          <p className="mt-3 text-[15px] leading-relaxed text-neutral-500">
+          <p className="mt-3 text-sm leading-relaxed text-neutral-500">
             We kept what made social media good and cut what made it exhausting.
           </p>
         </div>
 
-        <div className="relative mt-10 grid gap-4 md:grid-cols-2">
-          <div className="glass rounded-3xl p-6 sm:p-7">
+        <div className="relative mt-8 grid gap-3 md:grid-cols-2">
+          <div className="glass rounded-3xl p-5 sm:p-6">
             <div className="flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-500/10 text-neutral-400">
                 <XIcon className="h-4 w-4" />
@@ -498,7 +449,7 @@ export default async function LandingPage() {
             </div>
             <ul className="mt-3 divide-y divide-black/5">
               {LEFT_BEHIND.map((item) => (
-                <li key={item} className="flex items-start gap-3 py-3 text-sm text-neutral-500">
+                <li key={item} className="flex items-start gap-3 py-2.5 text-sm text-neutral-500">
                   <XIcon className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
                   {item}
                 </li>
@@ -506,7 +457,7 @@ export default async function LandingPage() {
             </ul>
           </div>
 
-          <div className="glass rounded-3xl p-6 ring-2 ring-emerald-500/25 sm:p-7">
+          <div className="glass rounded-3xl p-5 ring-2 ring-emerald-500/25 sm:p-6">
             <div className="flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600">
                 <SparklesIcon className="h-4 w-4" />
@@ -517,7 +468,7 @@ export default async function LandingPage() {
             </div>
             <ul className="mt-3 divide-y divide-black/5">
               {YOU_GET.map((item) => (
-                <li key={item} className="flex items-start gap-3 py-3 text-sm text-neutral-700">
+                <li key={item} className="flex items-start gap-3 py-2.5 text-sm text-neutral-700">
                   <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                   {item}
                 </li>
@@ -536,7 +487,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="mx-auto max-w-5xl px-4 pb-20 sm:pb-24">
+      <section className="mx-auto max-w-5xl px-4 pb-16 sm:pb-20">
         <div className="mx-auto max-w-xl text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
             Everything in one place
@@ -544,12 +495,12 @@ export default async function LandingPage() {
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
             Your own corner of the internet
           </h2>
-          <p className="mt-3 text-[15px] leading-relaxed text-neutral-500">
+          <p className="mt-3 text-sm leading-relaxed text-neutral-500">
             {settings.appName} keeps the good parts of social media — posting, following, messaging
             — and drops the rest.
           </p>
         </div>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((feature) => (
             <FeatureCard key={feature.title} {...feature} />
           ))}
@@ -566,8 +517,8 @@ export default async function LandingPage() {
       </section>
 
       {/* Handle claim — the @handle is the visitor's stake in the community */}
-      <section className="mx-auto max-w-3xl px-4 pb-20 sm:pb-24">
-        <div className="glass rounded-[2rem] px-6 py-12 text-center sm:px-12">
+      <section className="mx-auto max-w-3xl px-4 pb-16 sm:pb-20">
+        <div className="glass rounded-[2rem] px-6 py-10 text-center sm:px-12">
           <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
             Claim your handle
           </p>
@@ -577,7 +528,7 @@ export default async function LandingPage() {
 
           {/* Decorative handle pill — looks like the visitor is mid-signup */}
           <div
-            className="mx-auto mt-7 flex w-fit items-center gap-1.5 rounded-full border border-neutral-200/60 bg-white/70 py-2.5 pl-5 pr-2.5 text-sm shadow-sm backdrop-blur-sm"
+            className="mx-auto mt-5 flex w-fit items-center gap-1.5 rounded-full border border-neutral-200/60 bg-white/70 py-2.5 pl-5 pr-2.5 text-sm shadow-sm backdrop-blur-sm"
             aria-hidden="true"
           >
             <span className="font-semibold text-neutral-400">@</span>
@@ -595,7 +546,7 @@ export default async function LandingPage() {
           </p>
           <Link
             href="/register"
-            className="btn-primary mt-7 inline-block rounded-full px-7 py-3 text-sm"
+            className="btn-primary mt-6 inline-block rounded-full px-7 py-3 text-sm"
           >
             Claim yours
           </Link>
@@ -603,7 +554,7 @@ export default async function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section className="mx-auto max-w-4xl px-4 pb-20 sm:pb-24">
+      <section className="mx-auto max-w-4xl px-4 pb-16 sm:pb-20">
         <div className="mx-auto max-w-xl text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
             Get started in seconds
@@ -612,7 +563,7 @@ export default async function LandingPage() {
             Three steps and you&apos;re in
           </h2>
         </div>
-        <ol className="mt-10 grid gap-4 sm:grid-cols-3">
+        <ol className="mt-8 grid gap-3 sm:grid-cols-3">
           {STEPS.map((step, i) => (
             <li key={step.title} className="glass overflow-hidden rounded-3xl">
               {/* Progress strip — fills a third further on each step */}
@@ -622,11 +573,11 @@ export default async function LandingPage() {
                   style={{ width: `${((i + 1) / STEPS.length) * 100}%` }}
                 />
               </div>
-              <div className="p-6">
+              <div className="p-5">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-500/15">
                   {i + 1}
                 </span>
-                <h3 className="mt-4 text-[15px] font-semibold text-neutral-800">{step.title}</h3>
+                <h3 className="mt-3 text-sm font-semibold text-neutral-800">{step.title}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-neutral-500">
                   {step.description}
                 </p>
@@ -637,8 +588,8 @@ export default async function LandingPage() {
       </section>
 
       {/* Closing CTA — solid gradient card so the ask stands out from the glass */}
-      <section className="mx-auto max-w-3xl px-4 pb-24">
-        <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-600 px-6 py-14 text-center shadow-xl shadow-emerald-600/30 sm:px-12">
+      <section className="mx-auto max-w-3xl px-4 pb-20">
+        <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-600 px-6 py-12 text-center shadow-xl shadow-emerald-600/30 sm:px-12">
           <div
             className="absolute -top-28 left-1/2 h-64 w-[36rem] -translate-x-1/2 rounded-full bg-white/20 blur-3xl"
             aria-hidden="true"
@@ -646,13 +597,13 @@ export default async function LandingPage() {
           <h2 className="relative text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Tara, tambay na.
           </h2>
-          <p className="relative mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-emerald-50/90">
+          <p className="relative mx-auto mt-3 max-w-md text-sm leading-relaxed text-emerald-50/90">
             No algorithms. No character building. Just you and your kwento — claim your handle on{' '}
             {settings.appName} today.
           </p>
           <Link
             href="/register"
-            className="relative mt-8 inline-flex items-center gap-1.5 rounded-full bg-white px-8 py-3.5 text-sm font-bold text-emerald-700 shadow-lg transition-all hover:scale-[1.03] hover:shadow-xl active:scale-[0.98]"
+            className="relative mt-7 inline-flex items-center gap-1.5 rounded-full bg-white px-8 py-3.5 text-sm font-bold text-emerald-700 shadow-lg transition-all hover:scale-[1.03] hover:shadow-xl active:scale-[0.98]"
           >
             Create your account — it&apos;s free
             <ChevronRightIcon className="h-4 w-4" />

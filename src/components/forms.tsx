@@ -21,16 +21,16 @@ import { Spinner } from './Spinner'
 
 const inputClass = 'glass-input'
 
-const labelClass = 'mb-1 block text-sm font-medium text-neutral-700'
+const labelClass = 'mb-0.5 block text-sm font-medium text-neutral-600'
 
 const submitClass =
   'btn-primary flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm'
 
 const errorClass =
-  'rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-2.5 text-sm text-red-600'
+  'rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-600'
 
 const successClass =
-  'rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-2.5 text-sm text-emerald-700'
+  'rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700'
 
 const hintClass = 'mt-1.5 text-xs'
 
@@ -94,7 +94,7 @@ export function LoginForm() {
   const [state, formAction, pending] = useActionState(login, {})
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-3">
       <div>
         <label htmlFor="email" className={labelClass}>
           Email
@@ -119,7 +119,7 @@ export function LoginForm() {
         autoComplete="current-password"
         defaultValue={state.values?.password}
       />
-      <div className="-mt-2 text-right">
+      <div className="-mt-1 text-right">
         <Link
           href="/forgot-password"
           className="text-xs font-medium text-emerald-700 hover:underline"
@@ -151,7 +151,7 @@ export function ForgotPasswordForm() {
 
   if (state.success) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <p role="status" className={successClass}>
           If an account exists for that email, a reset link is on its way. Check your inbox — and
           the spam folder.
@@ -166,7 +166,7 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-3">
       <div>
         <label htmlFor="email" className={labelClass}>
           Email
@@ -213,7 +213,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
   return (
     <form
       action={formAction}
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-3"
       onSubmit={(e) => {
         if (password !== confirm) e.preventDefault()
       }}
@@ -310,7 +310,7 @@ export function RegisterForm() {
   return (
     <form
       action={formAction}
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-3"
       onSubmit={(e) => {
         if (password !== confirm || usernameStatus === 'taken') e.preventDefault()
       }}
