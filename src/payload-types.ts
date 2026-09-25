@@ -289,6 +289,10 @@ export interface Video {
   duration?: number | null;
   width?: number | null;
   height?: number | null;
+  /**
+   * How many times playback started
+   */
+  playCount?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -818,6 +822,7 @@ export interface VideosSelect<T extends boolean = true> {
   duration?: T;
   width?: T;
   height?: T;
+  playCount?: T;
   updatedAt?: T;
   createdAt?: T;
 }

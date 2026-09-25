@@ -53,6 +53,12 @@ export const Videos: CollectionConfig = {
     },
     { name: 'width', type: 'number' },
     { name: 'height', type: 'number' },
+    {
+      name: 'playCount',
+      type: 'number',
+      defaultValue: 0,
+      admin: { readOnly: true, description: 'How many times playback started' },
+    },
   ],
   timestamps: true,
 }

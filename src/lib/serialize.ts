@@ -50,6 +50,7 @@ export interface PostVideoData {
   thumbnailUrl: string
   duration: number | null
   aspectRatio: number | null
+  playCount: number
 }
 
 export function toVideoData(video: Video): PostVideoData {
@@ -63,6 +64,7 @@ export function toVideoData(video: Video): PostVideoData {
     thumbnailUrl: host ? `${host}/${bunnyVideoId}/thumbnail.jpg` : '',
     duration: video.duration ?? null,
     aspectRatio: width && height ? width / height : null,
+    playCount: video.playCount ?? 0,
   }
 }
 

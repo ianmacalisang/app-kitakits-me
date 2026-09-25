@@ -139,6 +139,12 @@ export const VideoIcon = (props: IconProps) => (
   </svg>
 )
 
+export const PlayIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <polygon points="6 3 20 12 6 21 6 3" />
+  </svg>
+)
+
 export const ImageIcon = (props: IconProps) => (
   <svg viewBox="0 0 24 24" {...base} {...props}>
     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />

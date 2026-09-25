@@ -2,13 +2,16 @@
 
 import { memo, useEffect, useRef, useState } from 'react'
 
-import { getVideoStatus } from '@/actions/videos'
+import { getVideoStatus, recordVideoPlay } from '@/actions/videos'
 import type { PostVideoData } from '@/lib/serialize'
 
-import { VideoIcon } from './icons'
+import { PlayIcon, VideoIcon } from './icons'
 
 const POLL_MS = 5000
 const MAX_POLLS = 72 // ~6 minutes, then stop polling
+
+// Only one video in the feed plays at a time — starting one pauses the other.
+let activeVideo: HTMLVideoElement | null = null
 
 // Plays a Bunny Stream video in the post card. While Bunny transcodes, a
 // processing placeholder polls getVideoStatus until the HLS playlist is
@@ -17,6 +20,9 @@ const MAX_POLLS = 72 // ~6 minutes, then stop polling
 export const PostVideo = memo(function PostVideo({ video }: { video: PostVideoData }) {
   const [data, setData] = useState(video)
   const videoRef = useRef<HTMLVideoElement>(null)
+  // Count one play per watch-through — pause/resume doesn't recount, but a
+  // replay after `ended` does.
+  const playCountedRef = useRef(false)
 
   // Pick up a refreshed video prop (e.g. after router.refresh()).
   useEffect(() => setData(video), [video])
@@ -66,11 +72,49 @@ export const PostVideo = memo(function PostVideo({ video }: { video: PostVideoDa
     }
   }, [data.status, data.hlsUrl])
 
+  // If this card's video is the active one when it unmounts, release it.
+  useEffect(
+    () => () => {
+      if (activeVideo === videoRef.current) activeVideo = null
+    },
+    [],
+  )
+
+  const handlePlay = () => {
+    const el = videoRef.current
+    if (!el) return
+    if (activeVideo && activeVideo !== el) activeVideo.pause()
+    activeVideo = el
+    if (!playCountedRef.current) {
+      playCountedRef.current = true
+      void recordVideoPlay(video.id).then(({ playCount }) => {
+        if (playCount !== undefined) setData((d) => ({ ...d, playCount }))
+      })
+    }
+  }
+
+  const handlePause = () => {
+    if (activeVideo === videoRef.current) activeVideo = null
+  }
+
+  const handleEnded = () => {
+    handlePause()
+    playCountedRef.current = false
+  }
+
   return (
-    <div
-      className="mt-3 overflow-hidden rounded-2xl border border-black/5 bg-neutral-950"
-      style={{ aspectRatio: String(data.aspectRatio ?? 16 / 9) }}
-    >
+    <div className="relative mt-3 h-[260px] w-full overflow-hidden rounded-2xl border border-black/5 bg-neutral-950 sm:h-[420px]">
+      {/* Blurred thumbnail backdrop — fills the letterbox space for portrait
+          or odd-aspect videos instead of plain black bars. */}
+      {data.thumbnailUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={data.thumbnailUrl}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full scale-125 object-cover opacity-50 blur-2xl"
+        />
+      )}
       {data.status === 'ready' ? (
         <video
           ref={videoRef}
@@ -78,7 +122,10 @@ export const PostVideo = memo(function PostVideo({ video }: { video: PostVideoDa
           playsInline
           preload="metadata"
           poster={data.thumbnailUrl || undefined}
-          className="h-full w-full"
+          onPlay={handlePlay}
+          onPause={handlePause}
+          onEnded={handleEnded}
+          className="relative h-full w-full object-contain"
         />
       ) : data.status === 'processing' ? (
         <div className="relative flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden">
@@ -101,10 +148,16 @@ export const PostVideo = memo(function PostVideo({ video }: { video: PostVideoDa
           </div>
         </div>
       ) : (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-neutral-500">
+        <div className="relative flex h-full w-full flex-col items-center justify-center gap-2 text-neutral-400">
           <VideoIcon className="h-6 w-6" />
           <span className="text-xs">Video unavailable</span>
         </div>
+      )}
+      {data.status === 'ready' && data.playCount > 0 && (
+        <span className="pointer-events-none absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+          <PlayIcon className="h-3 w-3" />
+          {data.playCount} {data.playCount === 1 ? 'play' : 'plays'}
+        </span>
       )}
     </div>
   )

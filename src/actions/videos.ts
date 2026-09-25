@@ -192,3 +192,27 @@ export async function getVideoStatus(videoId: number): Promise<PostVideoData | n
     return null
   }
 }
+
+// Called by PostVideo when playback starts — anyone can bump the count, so
+// this bypasses the owner-only update access on purpose.
+export async function recordVideoPlay(videoId: number): Promise<{ playCount?: number }> {
+  const payload = await getPayloadClient()
+  try {
+    const video = await payload.findByID({
+      collection: 'videos',
+      id: videoId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const playCount = (video.playCount ?? 0) + 1
+    await payload.update({
+      collection: 'videos',
+      id: videoId,
+      data: { playCount },
+      overrideAccess: true,
+    })
+    return { playCount }
+  } catch {
+    return {}
+  }
+}
