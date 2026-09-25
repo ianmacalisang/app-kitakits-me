@@ -1,9 +1,9 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 
-import { getNotifications } from '@/actions/notifications'
+import { getNotifications, markAllNotificationsRead } from '@/actions/notifications'
 import type { NotificationData } from '@/lib/serialize'
 
 import { BellIcon } from './icons'
@@ -12,11 +12,12 @@ import { Spinner } from './Spinner'
 
 export function NotificationsMenu({ unreadCount }: { unreadCount: number }) {
   const pathname = usePathname()
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [notifications, setNotifications] = useState<NotificationData[]>([])
   const [hasMore, setHasMore] = useState(false)
-  const [, startTransition] = useTransition()
+  const [pending, startTransition] = useTransition()
   const boxRef = useRef<HTMLDivElement>(null)
 
   const refresh = useCallback(() => {
@@ -58,6 +59,13 @@ export function NotificationsMenu({ unreadCount }: { unreadCount: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unreadCount])
 
+  const markAll = () => {
+    startTransition(async () => {
+      await markAllNotificationsRead()
+      router.refresh()
+    })
+  }
+
   const toggle = () => {
     const next = !open
     setOpen(next)
@@ -89,14 +97,29 @@ export function NotificationsMenu({ unreadCount }: { unreadCount: number }) {
           sheets — rendered through portals — survive the dropdown closing. */}
       {(open || loaded) && (
         <div
-          className={`glass-pop motion-safe:animate-menu-pop absolute right-0 top-full z-20 mt-2 max-h-[70vh] w-[30rem] max-w-[calc(100vw-2rem)] origin-top-right overflow-y-auto rounded-2xl p-3 ${
+          className={`glass-pop motion-safe:animate-menu-pop absolute right-0 top-full z-20 mt-2 flex max-h-[70vh] w-[30rem] max-w-[calc(100vw-2rem)] origin-top-right flex-col overflow-hidden rounded-2xl ${
             open ? '' : 'hidden'
           }`}
         >
           {loaded ? (
-            <NotificationsView notifications={notifications} initialHasMore={hasMore} compact />
+            <>
+              <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                <NotificationsView notifications={notifications} initialHasMore={hasMore} compact />
+              </div>
+              {unreadCount > 0 && (
+                <div className="flex justify-end border-t border-neutral-200/60 p-3 dark:border-white/10">
+                  <button
+                    onClick={markAll}
+                    disabled={pending}
+                    className="text-sm font-medium text-emerald-600 transition-colors hover:text-emerald-700 disabled:opacity-50"
+                  >
+                    Mark all as read
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
-            <div className="flex justify-center py-12">
+            <div className="flex justify-center p-3 py-12">
               <Spinner className="h-5 w-5 text-neutral-400" />
             </div>
           )}

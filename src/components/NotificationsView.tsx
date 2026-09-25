@@ -139,9 +139,7 @@ export function NotificationsView({
 
   return (
     <div>
-      {compact ? (
-        markAllButton && <div className="mb-3 flex justify-end">{markAllButton}</div>
-      ) : (
+      {!compact && (
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-bold">Notifications</h1>
           {markAllButton}
