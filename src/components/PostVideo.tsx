@@ -5,7 +5,7 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { getVideoStatus } from '@/actions/videos'
 import type { PostVideoData } from '@/lib/serialize'
 
-import { Spinner } from './Spinner'
+import { VideoIcon } from './icons'
 
 const POLL_MS = 5000
 const MAX_POLLS = 72 // ~6 minutes, then stop polling
@@ -81,13 +81,29 @@ export const PostVideo = memo(function PostVideo({ video }: { video: PostVideoDa
           className="h-full w-full"
         />
       ) : data.status === 'processing' ? (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-neutral-300">
-          <Spinner className="h-6 w-6" />
-          <span className="text-xs">Processing video…</span>
+        <div className="relative flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden">
+          {/* Breathing emerald wash behind the icon */}
+          <div className="absolute -inset-10 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.22),rgba(13,148,136,0.1)_45%,transparent_70%)] motion-safe:animate-processing-glow" />
+
+          <span className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur-md">
+            <VideoIcon className="h-6 w-6 text-emerald-300" />
+          </span>
+          <div className="relative flex flex-col items-center gap-0.5 px-4 text-center">
+            <span className="text-[13px] font-medium text-white">Processing video…</span>
+            <span className="text-[11px] text-white/50">
+              It&apos;ll start playing here once it&apos;s ready
+            </span>
+          </div>
+
+          {/* Indeterminate sweep — Bunny doesn't report encode progress */}
+          <div className="absolute inset-x-0 bottom-0 h-1 bg-white/10">
+            <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 motion-safe:animate-processing-sweep" />
+          </div>
         </div>
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-xs text-neutral-400">
-          Video unavailable
+        <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-neutral-500">
+          <VideoIcon className="h-6 w-6" />
+          <span className="text-xs">Video unavailable</span>
         </div>
       )}
     </div>

@@ -37,16 +37,34 @@ body::before {
   inset: -15%;
   z-index: -2;
   background:
-    radial-gradient(38% 42% at 12% 8%, rgba(110, 231, 183, 0.5), transparent 70%),
-    radial-gradient(34% 40% at 88% 10%, rgba(94, 234, 212, 0.45), transparent 70%),
-    radial-gradient(42% 46% at 85% 90%, rgba(163, 230, 53, 0.32), transparent 70%),
-    radial-gradient(40% 44% at 8% 88%, rgba(52, 211, 153, 0.38), transparent 70%),
-    radial-gradient(55% 55% at 50% 40%, rgba(220, 252, 231, 0.55), transparent 75%);
+    radial-gradient(38% 42% at 12% 8%, rgba(110, 231, 183, 0.55), transparent 70%),
+    radial-gradient(34% 40% at 88% 10%, rgba(94, 234, 212, 0.5), transparent 70%),
+    radial-gradient(42% 46% at 85% 90%, rgba(163, 230, 53, 0.34), transparent 70%),
+    radial-gradient(40% 44% at 8% 88%, rgba(52, 211, 153, 0.42), transparent 70%),
+    radial-gradient(30% 30% at 62% 58%, rgba(167, 243, 208, 0.4), transparent 75%),
+    radial-gradient(55% 55% at 50% 40%, rgba(220, 252, 231, 0.5), transparent 75%);
+}
+
+/* Second aurora layer — larger, slower orbs drifting the opposite way, so the
+   two layers slide against each other for a subtle parallax depth */
+html::before {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  z-index: -3;
+  background:
+    radial-gradient(46% 50% at 25% 18%, rgba(125, 211, 252, 0.18), transparent 72%),
+    radial-gradient(50% 48% at 78% 25%, rgba(134, 239, 172, 0.3), transparent 72%),
+    radial-gradient(48% 52% at 60% 88%, rgba(45, 212, 191, 0.26), transparent 72%),
+    radial-gradient(40% 42% at 10% 70%, rgba(190, 242, 100, 0.16), transparent 70%);
 }
 
 @media (prefers-reduced-motion: no-preference) {
   body::before {
     animation: aurora-drift 36s ease-in-out infinite alternate;
+  }
+  html::before {
+    animation: aurora-drift-alt 52s ease-in-out infinite alternate;
   }
 }
 
@@ -59,14 +77,26 @@ body::before {
   }
 }
 
-/* Fine grain — keeps the gradients from looking flat or banded */
+@keyframes aurora-drift-alt {
+  from {
+    transform: translate3d(2.5%, 2.5%, 0) scale(1.05) rotate(0.4deg);
+  }
+  to {
+    transform: translate3d(-2%, -2%, 0) scale(1) rotate(-0.4deg);
+  }
+}
+
+/* Fine grain + soft edge vignette — keeps the gradients from looking flat or
+   banded and gently darkens the frame corners for depth */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E"),
+    radial-gradient(135% 110% at 50% 42%, transparent 58%, rgba(6, 78, 59, 0.09) 100%);
 }
 
 ::selection {
@@ -383,6 +413,38 @@ body::after {
   }
 }
 
+/* Video processing placeholder — soft emerald glow breathing behind the icon */
+@utility animate-processing-glow {
+  animation: processing-glow 3s ease-in-out infinite;
+}
+
+@keyframes processing-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+/* Indeterminate progress sweep along the video tile's bottom edge — encoding
+   progress isn't reported, so the bar slides rather than fills */
+@utility animate-processing-sweep {
+  animation: processing-sweep 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes processing-sweep {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(330%);
+  }
+}
+
 /* ------------------------------------------------------------------
    Dark theme — activated by the `dark` class on <html> (user's theme
    preference on their account). Mostly a palette remap so the shared
@@ -404,7 +466,23 @@ html.dark {
     radial-gradient(34% 40% at 88% 10%, rgba(45, 212, 191, 0.17), transparent 70%),
     radial-gradient(42% 46% at 85% 90%, rgba(101, 163, 13, 0.13), transparent 70%),
     radial-gradient(40% 44% at 8% 88%, rgba(5, 150, 105, 0.19), transparent 70%),
+    radial-gradient(30% 30% at 62% 58%, rgba(52, 211, 153, 0.12), transparent 75%),
     radial-gradient(55% 55% at 50% 40%, rgba(6, 95, 70, 0.38), transparent 75%);
+}
+
+html.dark::before {
+  background:
+    radial-gradient(46% 50% at 25% 18%, rgba(56, 189, 248, 0.07), transparent 72%),
+    radial-gradient(50% 48% at 78% 25%, rgba(52, 211, 153, 0.13), transparent 72%),
+    radial-gradient(48% 52% at 60% 88%, rgba(45, 212, 191, 0.11), transparent 72%),
+    radial-gradient(40% 42% at 10% 70%, rgba(132, 204, 22, 0.06), transparent 70%);
+}
+
+/* Same grain, stronger vignette for dark surfaces */
+.dark body::after {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E"),
+    radial-gradient(135% 110% at 50% 42%, transparent 52%, rgba(0, 0, 0, 0.42) 100%);
 }
 
 /* Frosted surfaces go dark */
