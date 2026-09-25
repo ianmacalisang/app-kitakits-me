@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { isAdmin, isAdminField, isAdminUser, isAuthenticated, isSelfOrAdmin } from '../access'
 import { sendWelcomeEmail } from '../hooks/sendWelcomeEmail'
+import { deleteUserData } from '../lib/account'
 import { escapeHtml, resolveEmailBaseUrl } from '../lib/email'
 
 export const Users: CollectionConfig = {
@@ -50,6 +51,47 @@ export const Users: CollectionConfig = {
     update: isSelfOrAdmin,
     delete: isAdmin,
   },
+  endpoints: [
+    // Self-service account deletion for API clients (iOS app) — the web app
+    // uses the deleteAccount server action, which shares the same cascade.
+    // Identity is confirmed by the authenticated session + typed username.
+    {
+      path: '/delete-account',
+      method: 'post',
+      handler: async (req) => {
+        const user = req.user
+        if (!user) return Response.json({ message: 'Unauthorized' }, { status: 401 })
+
+        let confirmation = ''
+        try {
+          const body = (await req.json?.()) as { confirmation?: unknown } | undefined
+          if (typeof body?.confirmation === 'string') confirmation = body.confirmation
+        } catch {
+          // No/invalid JSON body — the confirmation check below rejects it.
+        }
+
+        if (confirmation.trim() !== user.username) {
+          return Response.json(
+            { message: 'The username you entered does not match.' },
+            { status: 400 },
+          )
+        }
+
+        const userId = user.id
+        try {
+          await deleteUserData(req.payload, userId)
+        } catch (err) {
+          req.payload.logger.error({ err, msg: 'Account deletion failed', userId })
+          return Response.json(
+            { message: 'Could not delete your account. Please try again.' },
+            { status: 500 },
+          )
+        }
+
+        return Response.json({ success: true })
+      },
+    },
+  ],
   hooks: {
     afterChange: [sendWelcomeEmail],
   },
