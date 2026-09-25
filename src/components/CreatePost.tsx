@@ -8,6 +8,7 @@ import { createPost } from '@/actions/posts'
 import { compressImage } from '@/lib/image'
 
 import { Avatar } from './Avatar'
+import { BlurImage } from './BlurImage'
 import { ChevronDownIcon, EyeIcon, ImageIcon, PlusIcon, UserIcon, XIcon } from './icons'
 import { Spinner } from './Spinner'
 
@@ -241,8 +242,7 @@ export const CreatePost = memo(function CreatePost({
                   <div className="ml-[52px] mt-2 flex flex-wrap gap-2">
                     {images.map((item, i) => (
                       <div key={item.url} className="relative h-24 w-24">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <BlurImage
                           src={item.url}
                           alt="Selected image"
                           className="h-full w-full rounded-xl border border-black/5 object-cover"

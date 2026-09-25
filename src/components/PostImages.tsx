@@ -4,6 +4,7 @@ import { memo, useCallback, useState } from 'react'
 
 import { toCdnUrl } from '@/lib/cdn'
 
+import { BlurImage } from './BlurImage'
 import { ImageLightbox } from './ImageLightbox'
 
 // Count-aware image grid for posts:
@@ -35,11 +36,10 @@ export const PostImages = memo(function PostImages({ urls }: { urls: string[] })
           onClick={() => setOpenIdx(0)}
           className="mt-3 block w-full cursor-zoom-in overflow-hidden rounded-2xl border border-black/5"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <BlurImage
             src={toCdnUrl(urls[0])}
             alt=""
-            className="max-h-[420px] w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
+            className="max-h-[420px] w-full bg-neutral-200/70 object-cover transition-transform duration-300 hover:scale-[1.02]"
           />
         </button>
         {lightbox}
@@ -67,11 +67,10 @@ export const PostImages = memo(function PostImages({ urls }: { urls: string[] })
               three && i === 0 ? 'row-span-2' : ''
             }`}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <BlurImage
               src={toCdnUrl(url)}
               alt=""
-              className={`w-full object-cover transition-transform duration-300 hover:scale-105 ${
+              className={`w-full bg-neutral-200/70 object-cover transition-transform duration-300 hover:scale-105 ${
                 three && i === 0 ? 'h-full' : 'aspect-square'
               }`}
             />

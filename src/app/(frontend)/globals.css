@@ -4,7 +4,7 @@
 
 @theme {
   --font-sans:
-    var(--font-plus-jakarta-sans), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    var(--font-poppins), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
 }
 
@@ -20,6 +20,14 @@ html {
 body {
   @apply font-sans text-neutral-900;
   min-height: 100vh;
+}
+
+/* Tailwind's bg-clip-text emits only the unprefixed property, but mobile
+   Safari (and WKWebView) still requires -webkit-background-clip: text —
+   without it the gradient clip is dropped and `text-transparent` leaves the
+   text completely invisible. */
+.bg-clip-text {
+  -webkit-background-clip: text;
 }
 
 /* Ambient aurora — layered green light blobs that slowly drift behind the app */

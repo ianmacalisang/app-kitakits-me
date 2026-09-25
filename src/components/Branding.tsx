@@ -4,6 +4,8 @@ import { createContext, useContext } from 'react'
 
 import { DEFAULT_BRANDING, type SiteBranding } from '@/lib/branding'
 
+import { BlurImage } from './BlurImage'
+
 const BrandingContext = createContext<SiteBranding>(DEFAULT_BRANDING)
 
 export function BrandingProvider({
@@ -30,8 +32,7 @@ export function BrandMark({ size = 'sm' }: { size?: keyof typeof markSizes }) {
   const classes = `${markSizes[size]} shrink-0`
 
   if (logoUrl) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={logoUrl} alt={appName} className={`${classes} object-contain`} />
+    return <BlurImage src={logoUrl} alt={appName} className={`${classes} object-contain`} />
   }
 
   return (

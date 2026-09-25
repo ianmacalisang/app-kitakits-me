@@ -38,6 +38,34 @@ const typeColor = {
 
 const sectionLabel = 'mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400'
 
+type NotificationEntry =
+  | { kind: 'single'; notification: NotificationData }
+  | { kind: 'stack'; postId: number; items: NotificationData[] }
+
+// Notifications on the same post stack into one entry (Facebook-style): one
+// card holds every actor line with a single post snippet at the bottom. The
+// stack sits where its newest notification falls in the list. Caller passes an
+// already sectioned list, so a stack never mixes read and unread items.
+const groupNotifications = (list: NotificationData[]): NotificationEntry[] => {
+  const entries: NotificationEntry[] = []
+  const stacks = new Map<number, { kind: 'stack'; postId: number; items: NotificationData[] }>()
+  for (const notification of list) {
+    if (notification.type !== 'follow' && notification.postId !== undefined) {
+      const stack = stacks.get(notification.postId)
+      if (stack) {
+        stack.items.push(notification)
+      } else {
+        const entry = { kind: 'stack' as const, postId: notification.postId, items: [notification] }
+        stacks.set(notification.postId, entry)
+        entries.push(entry)
+      }
+    } else {
+      entries.push({ kind: 'single', notification })
+    }
+  }
+  return entries
+}
+
 export function NotificationsView({
   notifications,
   initialHasMore,
@@ -91,6 +119,8 @@ export function NotificationsView({
 
   const unread = useMemo(() => items.filter((n) => !n.read), [items])
   const read = useMemo(() => items.filter((n) => n.read), [items])
+  const unreadEntries = useMemo(() => groupNotifications(unread), [unread])
+  const readEntries = useMemo(() => groupNotifications(read), [read])
 
   const markAll = () => {
     startTransition(async () => {
@@ -99,10 +129,13 @@ export function NotificationsView({
     })
   }
 
+  // Tapping any line of a stack marks every notification in it read — the
+  // stack is one logical notification, like Facebook's grouped alerts.
   const open = useCallback(
-    (notification: NotificationData) => {
+    (notification: NotificationData, stack?: NotificationData[]) => {
       startTransition(async () => {
-        if (!notification.read) await markNotificationRead(notification.id)
+        const unreadIds = (stack ?? [notification]).filter((n) => !n.read).map((n) => n.id)
+        await Promise.all(unreadIds.map((id) => markNotificationRead(id)))
         if (notification.type === 'follow') {
           router.push(`/profile/${notification.actorUsername}`)
         } else if (notification.postId) {
@@ -118,14 +151,22 @@ export function NotificationsView({
   const closePost = useCallback(() => setOpenPostId(null), [])
   const closeViewPost = useCallback(() => setViewPostId(null), [])
 
-  const renderItem = (notification: NotificationData) => (
-    <NotificationItem
-      key={notification.id}
-      notification={notification}
-      pending={pending}
-      onOpenAction={open}
-    />
-  )
+  const renderEntry = (entry: NotificationEntry) =>
+    entry.kind === 'stack' && entry.items.length > 1 ? (
+      <NotificationStack
+        key={`post-${entry.postId}`}
+        items={entry.items}
+        pending={pending}
+        onOpenAction={open}
+      />
+    ) : (
+      <NotificationItem
+        key={entry.kind === 'stack' ? entry.items[0].id : entry.notification.id}
+        notification={entry.kind === 'stack' ? entry.items[0] : entry.notification}
+        pending={pending}
+        onOpenAction={open}
+      />
+    )
 
   const markAllButton = unread.length > 0 && (
     <button
@@ -178,20 +219,20 @@ export function NotificationsView({
             message="New notifications will appear here."
           />
         ) : (
-          <ul className="flex flex-col gap-1">{unread.map(renderItem)}</ul>
+          <ul className="flex flex-col gap-1">{unreadEntries.map(renderEntry)}</ul>
         )
       ) : (
         <div className="flex flex-col gap-5">
-          {unread.length > 0 && (
+          {unreadEntries.length > 0 && (
             <section>
               <h2 className={sectionLabel}>New</h2>
-              <ul className="flex flex-col gap-1">{unread.map(renderItem)}</ul>
+              <ul className="flex flex-col gap-1">{unreadEntries.map(renderEntry)}</ul>
             </section>
           )}
-          {read.length > 0 && (
+          {readEntries.length > 0 && (
             <section>
               <h2 className={sectionLabel}>Earlier</h2>
-              <ul className="flex flex-col gap-1">{read.map(renderItem)}</ul>
+              <ul className="flex flex-col gap-1">{readEntries.map(renderEntry)}</ul>
             </section>
           )}
         </div>
@@ -261,6 +302,71 @@ const NotificationItem = memo(function NotificationItem({
         </span>
         {!notification.read && <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />}
       </button>
+    </li>
+  )
+})
+
+// All notifications on the same post in one card — each actor gets a line
+// (avatar with type badge, action, comment quote, timestamp) and the post
+// snippet shows once at the bottom. Every line opens the same sheet as a
+// standalone row would.
+const NotificationStack = memo(function NotificationStack({
+  items,
+  pending,
+  onOpenAction,
+}: {
+  items: NotificationData[]
+  pending: boolean
+  onOpenAction: (notification: NotificationData, stack?: NotificationData[]) => void
+}) {
+  const hasUnread = items.some((n) => !n.read)
+  const postSnippet = items.find((n) => n.postSnippet)?.postSnippet
+  return (
+    <li
+      className={`relative rounded-2xl border transition-all ${
+        hasUnread ? 'glass' : 'border-transparent'
+      }`}
+    >
+      {hasUnread && <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-emerald-500" />}
+      <div className="flex flex-col py-1">
+        {items.map((notification) => (
+          <button
+            key={notification.id}
+            onClick={() => onOpenAction(notification, items)}
+            disabled={pending}
+            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 pr-6 text-left transition-colors hover:bg-white/60 disabled:opacity-60"
+          >
+            {/* Avatar with a corner type badge */}
+            <span className="relative shrink-0">
+              <Avatar src={notification.actorAvatarUrl} name={notification.actorName} size="sm" />
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full ring-2 ring-white/80 ${typeColor[notification.type]}`}
+              >
+                {typeIcon[notification.type]}
+              </span>
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm">
+                <span className="font-semibold">{notification.actorName}</span>{' '}
+                {typeText[notification.type]}
+              </span>
+              {notification.commentSnippet && (
+                <span className="block truncate text-xs italic text-neutral-600">
+                  “{notification.commentSnippet}”
+                </span>
+              )}
+              <span className="block text-xs text-neutral-500">
+                @{notification.actorUsername} · {formatRelativeTime(notification.createdAt)}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+      {postSnippet && (
+        <div className="mx-3 mb-3 truncate rounded-lg bg-black/5 px-2.5 py-1.5 text-xs text-neutral-500">
+          {postSnippet}
+        </div>
+      )}
     </li>
   )
 })

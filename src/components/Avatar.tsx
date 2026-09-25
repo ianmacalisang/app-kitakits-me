@@ -2,6 +2,8 @@ import { memo } from 'react'
 
 import { toCdnUrl } from '@/lib/cdn'
 
+import { BlurImage } from './BlurImage'
+
 const sizes = {
   xs: 'h-6 w-6 text-[10px]',
   sm: 'h-8 w-8 text-xs',
@@ -24,8 +26,7 @@ export const Avatar = memo(function Avatar({
   const classes = `${sizes[size]} shrink-0 rounded-full bg-emerald-100/80 object-cover ring-1 ring-emerald-900/10`
 
   if (url) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt={name} className={classes} />
+    return <BlurImage src={url} alt={name} className={classes} />
   }
 
   return (

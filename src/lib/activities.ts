@@ -3,6 +3,7 @@ import type { Where } from 'payload'
 import type { Comment, Follow, Like, Post, User } from '@/payload-types'
 
 import { getPayloadClient } from './payload'
+import { hydratePosts } from './posts'
 import { type ActivityData, type Paged, avatarUrl, snippet } from './serialize'
 
 const ACTIVITY_PAGE_SIZE = 20
@@ -106,12 +107,15 @@ export async function getFollowingActivities(
   }
 
   const [likes, comments, follows] = await Promise.all([
+    // Depth 3 so the embedded post is fully usable by hydratePosts: post
+    // images (2), the post author's avatar (3), and a shared original's
+    // author (3) all come back populated.
     payload.find({
       collection: 'likes',
       where: { and: [{ user: { in: authorIds } }, visiblePost] },
       sort: '-createdAt',
       limit,
-      depth: 2,
+      depth: 3,
       user: viewer,
       overrideAccess: false,
     }),
@@ -120,7 +124,7 @@ export async function getFollowingActivities(
       where: { and: [{ author: { in: authorIds } }, visiblePost] },
       sort: '-createdAt',
       limit,
-      depth: 2,
+      depth: 3,
       user: viewer,
       overrideAccess: false,
     }),
@@ -137,21 +141,38 @@ export async function getFollowingActivities(
     }),
   ])
 
-  const activities: ActivityData[] = [
-    ...likes.docs.map(toLikeActivity),
-    ...comments.docs.map(toCommentActivity),
-    ...follows.docs.map(toFollowActivity),
+  const entries = [
+    ...likes.docs.map((like) => ({ data: toLikeActivity(like), post: asPost(like.post) })),
+    ...comments.docs.map((comment) => ({
+      data: toCommentActivity(comment),
+      post: asPost(comment.post),
+    })),
+    ...follows.docs.map((follow) => ({ data: toFollowActivity(follow), post: null })),
   ]
-    .filter((a): a is ActivityData => a !== null)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .filter((e): e is { data: ActivityData; post: Post | null } => e.data !== null)
+    .sort((a, b) => b.data.createdAt.localeCompare(a.data.createdAt))
 
   const start = (page - 1) * ACTIVITY_PAGE_SIZE
-  const items = activities.slice(start, start + ACTIVITY_PAGE_SIZE)
+  const pageEntries = entries.slice(start, start + ACTIVITY_PAGE_SIZE)
   const hasMore =
-    activities.length > start + ACTIVITY_PAGE_SIZE ||
+    entries.length > start + ACTIVITY_PAGE_SIZE ||
     likes.hasNextPage ||
     comments.hasNextPage ||
     follows.hasNextPage
+
+  // Hydrate the distinct posts shown on this page in one batched pass so each
+  // like/comment row can render the full post card, not just a snippet.
+  const postDocs = new Map<number, Post>()
+  for (const entry of pageEntries) {
+    if (entry.post) postDocs.set(entry.post.id, entry.post)
+  }
+  const cards = new Map(
+    (await hydratePosts([...postDocs.values()], viewer)).map((card) => [card.id, card]),
+  )
+
+  const items = pageEntries.map((entry) =>
+    entry.post ? { ...entry.data, post: cards.get(entry.post.id) } : entry.data,
+  )
 
   return { items, hasMore }
 }

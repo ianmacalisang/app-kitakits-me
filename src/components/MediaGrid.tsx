@@ -5,6 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useState, useTransition } from '
 import { getUserMedia, type MediaItem } from '@/actions/posts'
 import { toCdnUrl } from '@/lib/cdn'
 
+import { BlurImage } from './BlurImage'
 import { EmptyState } from './EmptyState'
 import { ImageIcon } from './icons'
 import { ImageLightbox } from './ImageLightbox'
@@ -101,8 +102,7 @@ const MediaTile = memo(function MediaTile({
       onClick={() => onSelectAction(index)}
       className="relative aspect-square cursor-zoom-in overflow-hidden bg-white/40"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <BlurImage
         src={toCdnUrl(url)}
         alt=""
         loading="lazy"

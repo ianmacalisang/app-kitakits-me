@@ -8,6 +8,7 @@ import type { PostCardData } from '@/lib/serialize'
 import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
+import { BlurImage } from './BlurImage'
 import { CommentIcon, LockIcon, ShareIcon } from './icons'
 import { LikeButton } from './LikeButton'
 import { PostSheet } from './PostSheet'
@@ -35,12 +36,11 @@ export const ExplorePostCard = memo(function ExplorePostCard({ post }: { post: P
         className="relative block w-full overflow-hidden text-left"
       >
         {cover ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <BlurImage
             src={cover}
             alt=""
             loading="lazy"
-            className="aspect-[4/5] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            className="aspect-[4/5] w-full bg-neutral-200/70 object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           />
         ) : (
           <div className="flex aspect-[4/5] w-full items-center bg-gradient-to-br from-emerald-100/70 via-teal-50 to-emerald-200/50 p-4">

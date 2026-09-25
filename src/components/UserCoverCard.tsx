@@ -5,6 +5,7 @@ import { toCdnUrl } from '@/lib/cdn'
 import type { UserCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BlurImage } from './BlurImage'
 import { FollowButton } from './FollowButton'
 
 // Cover-banner user card — cover image, overlapping avatar, follower count.
@@ -26,10 +27,7 @@ export const UserCoverCard = memo(function UserCoverCard({
         aria-label={user.name}
         className="block h-20 bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-700 sm:h-24"
       >
-        {cover ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover} alt="" className="h-full w-full object-cover" />
-        ) : null}
+        {cover ? <BlurImage src={cover} alt="" className="h-full w-full object-cover" /> : null}
       </Link>
       <div className="flex flex-1 flex-col items-center px-4 pb-4 text-center">
         <Link href={href} className="-mt-10 inline-flex rounded-full ring-4 ring-white/70">

@@ -15,6 +15,7 @@ import type { MailMessageData, ThreadData } from '@/lib/serialize'
 import { formatMailDate } from '@/lib/time'
 
 import { Avatar } from './Avatar'
+import { BlurImage } from './BlurImage'
 import { ChevronLeftIcon, PaperclipIcon, ReplyIcon, SendIcon, TrashIcon, XIcon } from './icons'
 import { MailEditor } from './MailEditor'
 
@@ -186,8 +187,7 @@ export function MailThreadView({
                       className="flex items-center gap-2 rounded-2xl border border-black/5 bg-white/60 px-3 py-2 text-xs font-medium text-neutral-700 transition-colors hover:bg-white"
                     >
                       {a.mimeType?.startsWith('image/') ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <BlurImage
                           src={a.url}
                           alt={a.filename}
                           className="h-8 w-8 shrink-0 rounded-lg object-cover"

@@ -83,6 +83,7 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
   const LIKES_CAP = Math.max(1000, batchSize * 200) // ≥1000, scales with batch
   const COMMENTS_CAP = Math.max(500, batchSize * 50)
   const SHARES_CAP = Math.max(500, batchSize * 50)
+  const SAVES_CAP = Math.max(500, batchSize * 50)
 
   const [likes, comments, shares, saves, avatarMedia] = await Promise.all([
     payload.find({
@@ -108,17 +109,15 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
       depth: 0,
       select: { sharedPost: true, author: true },
     }),
-    viewer
-      ? payload.find({
-          collection: 'saves',
-          where: {
-            and: [{ post: { in: postIds } }, { user: { equals: viewer.id } }],
-          },
-          limit: batchSize, // one save per post per viewer at most
-          depth: 0,
-          select: { post: true },
-        })
-      : Promise.resolve({ docs: [] as { post?: unknown }[] }),
+    // All saves on these posts — feeds both the per-post save count and the
+    // viewer's own savedByMe flag in one query.
+    payload.find({
+      collection: 'saves',
+      where: { post: { in: postIds } },
+      limit: SAVES_CAP,
+      depth: 0,
+      select: { post: true, user: true },
+    }),
     embeddedAvatarIds.length > 0
       ? payload.find({
           collection: 'media',
@@ -185,10 +184,13 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
     if (viewer && relId(share.author) === viewer.id) sharedByMe.add(postId)
   }
 
+  const saveCounts = new Map<number, number>()
   const savedByMe = new Set<number>()
   for (const save of saves.docs) {
     const postId = relId(save.post)
-    if (postId !== null) savedByMe.add(postId)
+    if (postId === null) continue
+    saveCounts.set(postId, (saveCounts.get(postId) ?? 0) + 1)
+    if (viewer && relId(save.user) === viewer.id) savedByMe.add(postId)
   }
 
   const avatarMap = new Map(avatarMedia.docs.map((m) => [m.id, mediaUrl(m)]))
@@ -224,6 +226,7 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
       sharedByMe: sharedByMe.has(post.id),
       sharedPost: embedded,
       savedByMe: savedByMe.has(post.id),
+      saveCount: saveCounts.get(post.id) ?? 0,
     })
   })
 }

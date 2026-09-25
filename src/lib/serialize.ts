@@ -74,6 +74,7 @@ export interface PostCardData {
   sharedByMe: boolean
   sharedPost?: EmbeddedPostData
   savedByMe: boolean
+  saveCount: number
   pinned: boolean
   canEdit: boolean
   canShare: boolean
@@ -92,6 +93,7 @@ export interface PostCardExtras {
   sharedByMe?: boolean
   sharedPost?: EmbeddedPostData
   savedByMe?: boolean
+  saveCount?: number
 }
 
 export function toPostCardData(
@@ -107,6 +109,7 @@ export function toPostCardData(
     sharedByMe = false,
     sharedPost,
     savedByMe = false,
+    saveCount = 0,
   }: PostCardExtras,
 ): PostCardData {
   const author = post.author as User
@@ -132,6 +135,7 @@ export function toPostCardData(
     sharedByMe,
     sharedPost,
     savedByMe,
+    saveCount,
     pinned: Boolean(post.pinned),
     canEdit: viewer !== null && author.id === viewer.id,
     viewerAuthenticated: viewer !== null,
@@ -360,6 +364,9 @@ export interface ActivityData {
   postAuthorName?: string
   postAuthorUsername?: string
   commentSnippet?: string
+  // The fully hydrated post card for like/comment rows — the row renders the
+  // whole post inline, not just the snippet.
+  post?: PostCardData
   targetName?: string
   targetUsername?: string
   targetAvatarUrl?: string

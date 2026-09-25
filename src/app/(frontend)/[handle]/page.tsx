@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { cache } from 'react'
 
 import { Avatar } from '@/components/Avatar'
+import { BlurImage } from '@/components/BlurImage'
 import { BrandMark } from '@/components/Branding'
 import { CalendarIcon, LinkIcon, LockIcon } from '@/components/icons'
 import { ProfileTabs } from '@/components/ProfileTabs'
@@ -155,8 +156,7 @@ export default async function PublicProfilePage({
           <header className="glass overflow-hidden rounded-3xl">
             <div className="relative h-52 sm:h-60">
               {cover ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={cover} alt="" className="h-full w-full object-cover" />
+                <BlurImage src={cover} alt="" className="h-full w-full object-cover" />
               ) : (
                 <div className="h-full w-full bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-700" />
               )}

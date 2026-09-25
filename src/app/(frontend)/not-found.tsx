@@ -14,13 +14,8 @@ export default async function NotFound() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-16">
       <div className="animate-page-in flex w-full max-w-md flex-col items-center text-center">
-        <BrandMark size="md" />
-
         {/* 4—0—4: the missing page is the hollow ring that drifted off */}
-        <div
-          className="mt-10 flex items-center justify-center gap-2 sm:gap-3"
-          aria-hidden="true"
-        >
+        <div className="mt-10 flex items-center justify-center gap-2 sm:gap-3" aria-hidden="true">
           <span className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 bg-clip-text text-8xl font-bold leading-none text-transparent sm:text-9xl">
             4
           </span>

@@ -8,6 +8,7 @@ import { toCdnUrl } from '@/lib/cdn'
 import { compressImage } from '@/lib/image'
 
 import { Avatar } from './Avatar'
+import { BlurImage } from './BlurImage'
 import { ImageIcon } from './icons'
 import { Spinner } from './Spinner'
 
@@ -101,8 +102,7 @@ export function ProfileMedia({
       {/* Cover photo — fills the entire profile card behind the info */}
       <div className="absolute inset-0">
         {cover ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={toCdnUrl(cover)} alt="" className="h-full w-full object-cover" />
+          <BlurImage src={toCdnUrl(cover)} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-700" />
         )}

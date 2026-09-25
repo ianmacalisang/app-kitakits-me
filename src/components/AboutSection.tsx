@@ -10,6 +10,7 @@ import { getEmbed } from '@/lib/embed'
 import { compressImage } from '@/lib/image'
 import type { AboutBlockData } from '@/lib/serialize'
 
+import { BlurImage } from './BlurImage'
 import { EmptyState } from './EmptyState'
 import {
   ArrowUpRightIcon,
@@ -279,11 +280,10 @@ const AboutBlock = ({
       return (
         <figure className="group py-6">
           <div className="relative overflow-hidden rounded-2xl shadow-sm ring-1 ring-black/5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <BlurImage
               src={toCdnUrl(block.url) ?? block.url}
               alt={block.caption || 'About photo'}
-              className="w-full object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.02]"
+              className="w-full bg-neutral-200/70 object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.02]"
             />
             {block.caption && (
               <figcaption className="absolute inset-x-0 bottom-0 line-clamp-2 bg-gradient-to-t from-black/65 via-black/25 to-transparent px-4 pb-3 pt-10 text-[13px] font-medium leading-snug text-white">
@@ -1117,8 +1117,7 @@ export function AboutEditor({
                           <div className="flex flex-col gap-2">
                             {block.preview || block.url ? (
                               <div className="relative">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
+                                <BlurImage
                                   src={block.preview ?? toCdnUrl(block.url)}
                                   alt="About photo"
                                   className="max-h-64 w-full rounded-xl object-cover"

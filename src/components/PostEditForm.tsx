@@ -5,6 +5,7 @@ import { updatePost } from '@/actions/posts'
 import { toCdnUrl } from '@/lib/cdn'
 import { compressImage } from '@/lib/image'
 
+import { BlurImage } from './BlurImage'
 import { ImageIcon, XIcon } from './icons'
 
 const MAX_IMAGES = 4
@@ -97,8 +98,7 @@ export function PostEditForm({
         <div className="mt-2 flex flex-wrap gap-2">
           {kept.map((image) => (
             <div key={`keep-${image.id}`} className="relative h-24 w-24">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <BlurImage
                 src={toCdnUrl(image.url)}
                 alt=""
                 className="h-full w-full rounded-xl border border-black/5 object-cover"
@@ -115,8 +115,7 @@ export function PostEditForm({
           ))}
           {newImages.map((item, i) => (
             <div key={item.url} className="relative h-24 w-24">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <BlurImage
                 src={item.url}
                 alt="New image"
                 className="h-full w-full rounded-xl border border-black/5 object-cover"

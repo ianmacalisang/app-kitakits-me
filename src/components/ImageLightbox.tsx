@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 
 import { toCdnUrl } from '@/lib/cdn'
 
+import { BlurImage } from './BlurImage'
 import { ChevronLeftIcon, ChevronRightIcon, DownloadIcon, XIcon } from './icons'
 
 const CLOSE_MS = 220
@@ -81,8 +82,7 @@ export const ImageLightbox = memo(function ImageLightbox({
         onClick={close}
       />
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <BlurImage
         key={index}
         src={toCdnUrl(urls[index])}
         alt=""

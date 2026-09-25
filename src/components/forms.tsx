@@ -16,6 +16,7 @@ import { updateProfile } from '@/actions/users'
 import { compressImage } from '@/lib/image'
 
 import { Avatar } from './Avatar'
+import { BlurImage } from './BlurImage'
 import { CheckIcon, EyeIcon, EyeOffIcon, ImageIcon, XIcon } from './icons'
 import { Spinner } from './Spinner'
 
@@ -494,8 +495,7 @@ export function CoverField({ coverUrl }: { coverUrl?: string }) {
         }`}
       >
         {src ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt="Cover preview" className="h-full w-full object-cover" />
+          <BlurImage src={src} alt="Cover preview" className="h-full w-full object-cover" />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-emerald-200/80 via-teal-200/70 to-lime-200/70" />
         )}

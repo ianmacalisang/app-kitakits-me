@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
 
-export async function toggleSave(postId: number): Promise<{ saved: boolean }> {
+export async function toggleSave(postId: number): Promise<{ saved: boolean; count: number }> {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
@@ -29,7 +29,14 @@ export async function toggleSave(postId: number): Promise<{ saved: boolean }> {
       user,
       overrideAccess: false,
     })
-    return { saved: false }
+
+    const count = await payload.count({
+      collection: 'saves',
+      where: { post: { equals: postId } },
+      user,
+      overrideAccess: false,
+    })
+    return { saved: false, count: count.totalDocs }
   }
 
   await payload.create({
@@ -38,5 +45,12 @@ export async function toggleSave(postId: number): Promise<{ saved: boolean }> {
     user,
     overrideAccess: false,
   })
-  return { saved: true }
+
+  const count = await payload.count({
+    collection: 'saves',
+    where: { post: { equals: postId } },
+    user,
+    overrideAccess: false,
+  })
+  return { saved: true, count: count.totalDocs }
 }

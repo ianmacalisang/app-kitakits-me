@@ -178,6 +178,7 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
             <SaveButton
               postId={post.id}
               initialSaved={post.savedByMe}
+              initialCount={post.saveCount}
               authenticated={post.viewerAuthenticated}
             />
           )}
@@ -246,6 +247,13 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
               {post.shareCount} {post.shareCount === 1 ? 'Share' : 'Shares'}
             </span>
           )
+        )}
+        {/* Your own posts have no save button — show the count in the stats
+            row instead. */}
+        {post.canEdit && post.saveCount > 0 && (
+          <span className="text-sm text-neutral-500">
+            {post.saveCount} {post.saveCount === 1 ? 'Save' : 'Saves'}
+          </span>
         )}
 
         {/* Overlapping avatars of recent likers */}
