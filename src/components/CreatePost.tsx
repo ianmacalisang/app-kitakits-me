@@ -17,7 +17,7 @@ import { Spinner } from './Spinner'
 const CLOSE_MS = 300
 const MAX_IMAGES = 4
 const MAX_CHARS = 2000
-const MAX_VIDEO_BYTES = 512 * 1024 * 1024
+const MAX_VIDEO_BYTES = 256 * 1024 * 1024
 
 interface PickedVideo {
   previewUrl: string
@@ -137,7 +137,7 @@ export const CreatePost = memo(function CreatePost({
       return
     }
     if (file.size > MAX_VIDEO_BYTES) {
-      setError('Video must be under 512MB.')
+      setError('Video must be under 256MB.')
       return
     }
     removeVideo()
@@ -427,7 +427,7 @@ export const CreatePost = memo(function CreatePost({
                           ? 'cursor-not-allowed opacity-40'
                           : 'cursor-pointer'
                       }`}
-                      title="Add video"
+                      title="Add video (max 256MB)"
                     >
                       <VideoIcon className="h-5 w-5" />
                       <input

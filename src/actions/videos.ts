@@ -5,6 +5,7 @@ import {
   bunnyStreamConfigured,
   createStreamVideo,
   deleteStreamVideo,
+  fetchStreamVideo,
   TUS_ENDPOINT,
   tusUploadAuth,
 } from '@/lib/bunny'
@@ -13,7 +14,16 @@ import { relId, toVideoData, type PostVideoData } from '@/lib/serialize'
 
 // Cap enforced server-side too — encoding minutes are billed, so huge files
 // shouldn't rely on the client-side check alone.
-const MAX_VIDEO_BYTES = 512 * 1024 * 1024
+const MAX_VIDEO_BYTES = 256 * 1024 * 1024
+
+// getVideoStatus polls Bunny's API as a fallback while a doc isn't terminal —
+// bounded to one call per video per interval per server instance, since every
+// viewer's PostVideo polls this action every few seconds.
+const lastBunnyCheck = new Map<number, number>()
+const BUNNY_CHECK_MS = 15_000
+// A video still uploading/processing this long after creation is wedged —
+// surface it as failed rather than spinning forever.
+const STALE_MS = 30 * 60_000
 
 export interface VideoUploadCredentials {
   videoId: number
@@ -34,7 +44,7 @@ export async function createVideoUpload(input: {
   if (!user) return { error: 'Sign in to upload a video.' }
   if (!bunnyStreamConfigured()) return { error: 'Video uploads are not configured.' }
   if (!Number.isFinite(input.size) || input.size <= 0) return { error: 'Invalid video file.' }
-  if (input.size > MAX_VIDEO_BYTES) return { error: 'Video must be under 512MB.' }
+  if (input.size > MAX_VIDEO_BYTES) return { error: 'Video must be under 256MB.' }
 
   let guid: string
   try {
@@ -122,12 +132,61 @@ export async function discardVideo(videoId: number): Promise<{ error?: string }>
 export async function getVideoStatus(videoId: number): Promise<PostVideoData | null> {
   const payload = await getPayloadClient()
   try {
-    const video = await payload.findByID({
+    let video = await payload.findByID({
       collection: 'videos',
       id: videoId,
       depth: 0,
       overrideAccess: true,
     })
+    if (video.status === 'ready' || video.status === 'failed') return toVideoData(video)
+
+    const now = Date.now()
+    const lastCheck = lastBunnyCheck.get(videoId) ?? 0
+
+    // Fallback when the webhook can't reach us (localhost, missed delivery):
+    // ask Bunny directly, throttled so concurrent pollers don't stampede it.
+    if (now - lastCheck >= BUNNY_CHECK_MS) {
+      lastBunnyCheck.set(videoId, now)
+      const info = await fetchStreamVideo(video.bunnyVideoId).catch(() => null)
+      // Bunny status: 4 = finished, 5 = encoding error, 6 = upload failed.
+      if (info?.status === 4) {
+        video = await payload.update({
+          collection: 'videos',
+          id: videoId,
+          data: {
+            status: 'ready',
+            duration: info.duration,
+            width: info.width,
+            height: info.height,
+          },
+          overrideAccess: true,
+        })
+        lastBunnyCheck.delete(videoId)
+      } else if (info?.status === 5 || info?.status === 6) {
+        video = await payload.update({
+          collection: 'videos',
+          id: videoId,
+          data: { status: 'failed' },
+          overrideAccess: true,
+        })
+        lastBunnyCheck.delete(videoId)
+      }
+    }
+
+    // Wedged upload or encode — fail it so the card stops spinning.
+    if (
+      video.status !== 'ready' &&
+      video.status !== 'failed' &&
+      now - new Date(video.createdAt).getTime() > STALE_MS
+    ) {
+      video = await payload.update({
+        collection: 'videos',
+        id: videoId,
+        data: { status: 'failed' },
+        overrideAccess: true,
+      })
+    }
+
     return toVideoData(video)
   } catch {
     return null
