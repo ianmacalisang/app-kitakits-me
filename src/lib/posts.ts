@@ -38,7 +38,7 @@ export function mediaFilterClauses(mediaFilter?: MediaFilter): Where[] {
 export async function getSavedPosts(
   viewer: User,
   page: number,
-): Promise<{ posts: PostCardData[]; hasMore: boolean }> {
+): Promise<{ posts: PostCardData[]; hasMore: boolean; total: number }> {
   const payload = await getPayloadClient()
   const saves = await payload.find({
     collection: 'saves',
@@ -54,7 +54,7 @@ export async function getSavedPosts(
   const postIds = saves.docs
     .map((save) => relId(save.post))
     .filter((id): id is number => id !== null)
-  if (postIds.length === 0) return { posts: [], hasMore: saves.hasNextPage }
+  if (postIds.length === 0) return { posts: [], hasMore: saves.hasNextPage, total: saves.totalDocs }
 
   const result = await payload.find({
     collection: 'posts',
@@ -68,7 +68,11 @@ export async function getSavedPosts(
   const byId = new Map(result.docs.map((post) => [post.id, post]))
   const docs = postIds.map((id) => byId.get(id)).filter((post): post is Post => Boolean(post))
 
-  return { posts: await hydratePosts(docs, viewer), hasMore: saves.hasNextPage }
+  return {
+    posts: await hydratePosts(docs, viewer),
+    hasMore: saves.hasNextPage,
+    total: saves.totalDocs,
+  }
 }
 
 const isObj = (value: unknown): value is Record<string, unknown> =>

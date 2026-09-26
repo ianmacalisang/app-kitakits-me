@@ -14,14 +14,18 @@ import { FollowButton } from './FollowButton'
 export const UserCoverCard = memo(function UserCoverCard({
   user,
   isPublicPage = false,
+  className = '',
 }: {
   user: UserCardData
   isPublicPage?: boolean
+  className?: string
 }) {
   const cover = toCdnUrl(user.coverUrl)
   const href = isPublicPage ? `/@${user.username}` : `/profile/${user.username}`
   return (
-    <li className="glass flex flex-col overflow-hidden rounded-2xl transition-transform duration-300 hover:-translate-y-0.5">
+    <li
+      className={`glass flex flex-col overflow-hidden rounded-2xl transition-transform duration-300 hover:-translate-y-0.5 ${className}`}
+    >
       <Link
         href={href}
         aria-label={user.name}

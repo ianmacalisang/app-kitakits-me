@@ -6,6 +6,7 @@ import { useState } from 'react'
 import type { ActivityData, MediaFilter, PostCardData } from '@/lib/serialize'
 
 import { ActivitiesView } from './ActivitiesView'
+import { CountBadge } from './CountBadge'
 import { Feed } from './Feed'
 import { ActivityIcon, BookmarkIcon, HomeIcon, UsersIcon } from './icons'
 
@@ -34,6 +35,7 @@ export function HomeTabs({
   activityHasMore,
   savedPosts,
   savedHasMore,
+  savedCount,
 }: {
   feedPosts: PostCardData[]
   feedHasMore: boolean
@@ -42,6 +44,7 @@ export function HomeTabs({
   activityHasMore: boolean
   savedPosts: PostCardData[]
   savedHasMore: boolean
+  savedCount: number
 }) {
   const [tab, setTab] = useState<Tab>('feed')
 
@@ -70,6 +73,7 @@ export function HomeTabs({
               >
                 <Icon className="h-4 w-4" />
                 {label}
+                {value === 'saved' && <CountBadge count={savedCount} onAccent={active} />}
               </button>
             )
           })}

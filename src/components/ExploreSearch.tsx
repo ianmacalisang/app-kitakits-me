@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 
 import { searchPosts } from '@/actions/posts'
 import { searchUsers } from '@/actions/users'
@@ -9,7 +9,16 @@ import type { PostCardData, UserCardData } from '@/lib/serialize'
 
 import { EmptyState } from './EmptyState'
 import { ExplorePostCard } from './ExplorePostCard'
-import { CompassIcon, ListIcon, SearchIcon, SparklesIcon, UsersIcon, XIcon } from './icons'
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CompassIcon,
+  ListIcon,
+  SearchIcon,
+  SparklesIcon,
+  UsersIcon,
+  XIcon,
+} from './icons'
 import { LoadSentinel } from './LoadSentinel'
 import { Spinner } from './Spinner'
 import { UserCoverCard } from './UserCoverCard'
@@ -69,18 +78,10 @@ export function ExploreSearch({
   return (
     <div>
       <header className="glass relative mb-4 overflow-hidden rounded-3xl p-4 sm:p-5">
-        {/* Decorative aurora washes + a faint compass watermark */}
+        {/* Graph-paper grid fading toward the bottom-right */}
         <span
           aria-hidden
-          className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-accent-300/25 blur-3xl dark:bg-white/5"
-        />
-        <span
-          aria-hidden
-          className="absolute -bottom-16 left-1/4 h-36 w-36 rounded-full bg-accent-200/30 blur-3xl dark:bg-white/5"
-        />
-        <CompassIcon
-          aria-hidden
-          className="absolute -right-2 top-1/2 h-24 w-24 -translate-y-1/2 rotate-12 text-accent-500/10"
+          className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.05)_1px,transparent_1px)] bg-[size:22px_22px] [mask-image:radial-gradient(ellipse_at_top_left,black_30%,transparent_80%)] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)]"
         />
         <div className="relative flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-500 to-accent-600 text-white shadow-md shadow-accent-600/30">
@@ -160,27 +161,82 @@ export function ExploreSearch({
 }
 
 function PeopleResults({ users, query }: { users: UserCardData[]; query: string }) {
+  // Chevron buttons scroll the rail and hide at the edges (pinned-rail pattern).
+  const railRef = useRef<HTMLUListElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const updateRailEdges = () => {
+    const rail = railRef.current
+    if (!rail) return
+    setCanScrollLeft(rail.scrollLeft > 4)
+    setCanScrollRight(rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 4)
+  }
+
+  useEffect(() => {
+    updateRailEdges()
+    window.addEventListener('resize', updateRailEdges)
+    return () => window.removeEventListener('resize', updateRailEdges)
+  }, [users.length])
+
+  const scrollRail = (dir: 1 | -1) => {
+    railRef.current?.scrollBy({
+      left: dir * railRef.current.clientWidth * 0.85,
+      behavior: 'smooth',
+    })
+  }
+
   return (
     <>
       <p className="mb-2 mt-6 text-xs font-medium text-neutral-400">
         {query ? 'People' : 'Suggested for you'}
       </p>
-      <ul className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        {users.map((user) => (
-          <UserCoverCard key={user.id} user={user} />
-        ))}
-        {users.length === 0 && (
-          <li className="col-span-full">
-            <EmptyState
-              icon={query ? <SearchIcon /> : <UsersIcon />}
-              title={query ? 'No people found' : 'No suggestions yet'}
-              message={
-                query ? `Nothing matches “${query}” — try a different search.` : 'Check back soon.'
-              }
-            />
-          </li>
+      {/* Horizontal snap rail — cards scroll sideways, right edge fades out
+          (same pattern as the pinned-posts rail). */}
+      <div className="relative">
+        <ul
+          ref={railRef}
+          onScroll={updateRailEdges}
+          className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [mask-image:linear-gradient(to_right,black_calc(100%-3rem),transparent)]"
+        >
+          {users.map((user) => (
+            <UserCoverCard key={user.id} user={user} className="w-44 shrink-0 snap-start sm:w-52" />
+          ))}
+          {users.length === 0 && (
+            <li className="w-full">
+              <EmptyState
+                icon={query ? <SearchIcon /> : <UsersIcon />}
+                title={query ? 'No people found' : 'No suggestions yet'}
+                message={
+                  query
+                    ? `Nothing matches “${query}” — try a different search.`
+                    : 'Check back soon.'
+                }
+              />
+            </li>
+          )}
+        </ul>
+        {canScrollLeft && (
+          <button
+            type="button"
+            aria-label="Scroll people left"
+            onClick={() => scrollRail(-1)}
+            className="glass absolute -left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-neutral-600 shadow-md transition-all hover:text-accent-600 active:scale-95"
+          >
+            <ChevronLeftIcon className="h-4 w-4" />
+          </button>
         )}
-      </ul>
+        {canScrollRight && (
+          <button
+            type="button"
+            aria-label="Scroll people right"
+            onClick={() => scrollRail(1)}
+            className="glass absolute -right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-neutral-600 shadow-md transition-all hover:text-accent-600 active:scale-95"
+          >
+            <ChevronRightIcon className="h-4 w-4" />
+          </button>
+        )}
+      </div>
     </>
   )
 }

@@ -21,10 +21,10 @@ import {
   MailboxIcon,
   MonitorIcon,
   MoonIcon,
-  QuoteIcon,
   SearchIcon,
   SettingsIcon,
   SunIcon,
+  TestimonialIcon,
   UsersIcon,
   XIcon,
 } from './icons'
@@ -330,7 +330,7 @@ export function AppNav({
     {
       href: '/testimonials',
       label: 'Testimonials',
-      icon: QuoteIcon,
+      icon: TestimonialIcon,
       badge: badges.pendingTestimonials,
     },
   ]

@@ -72,6 +72,7 @@ export default async function HomePage({
         activityHasMore={activities.hasMore}
         savedPosts={saved.posts}
         savedHasMore={saved.hasMore}
+        savedCount={saved.total}
       />
     </div>
   )

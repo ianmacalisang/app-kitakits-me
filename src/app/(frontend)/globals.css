@@ -573,6 +573,19 @@ html.dark::before {
 .dark .text-accent-600 {
   color: var(--color-accent-400);
 }
+/* Opacity-modified variants — the plain-class remaps above don't cover them */
+.dark .text-accent-700\/80 {
+  color: color-mix(in srgb, var(--color-accent-300) 80%, transparent);
+}
+.dark .text-accent-700\/70 {
+  color: color-mix(in srgb, var(--color-accent-300) 70%, transparent);
+}
+.dark .text-accent-600\/80 {
+  color: color-mix(in srgb, var(--color-accent-400) 80%, transparent);
+}
+.dark .text-accent-600\/50 {
+  color: color-mix(in srgb, var(--color-accent-400) 50%, transparent);
+}
 /* Muted / secondary text — brightened so it stays legible on the dark bg */
 .dark .text-neutral-500 {
   color: var(--color-neutral-400);
