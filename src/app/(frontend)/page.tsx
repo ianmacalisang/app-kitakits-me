@@ -355,7 +355,6 @@ export default async function LandingPage() {
       <section className="mx-auto flex max-w-3xl flex-col items-center px-4 pb-16 pt-12 text-center sm:pt-20">
         <BrandMark size="lg" />
         <p className="mt-6 inline-flex items-center gap-1.5 rounded-full bg-accent-500/10 px-3.5 py-1.5 text-xs font-semibold text-accent-700 ring-1 ring-inset ring-accent-500/20">
-          <SparklesIcon className="h-3.5 w-3.5" />
           {settings.appName} — {settings.heroTagline}
         </p>
         <h1 className="mt-5 max-w-2xl text-balance bg-gradient-to-br from-accent-700 via-accent-600 to-accent-600 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-6xl">
