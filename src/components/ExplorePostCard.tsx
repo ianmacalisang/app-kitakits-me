@@ -9,6 +9,7 @@ import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { BlurImage } from './BlurImage'
+import { CategoryChip } from './CategoryChip'
 import { CommentIcon, LockIcon, PlayIcon, ShareIcon, VideoIcon } from './icons'
 import { LikeButton } from './LikeButton'
 import { PostSheet } from './PostSheet'
@@ -44,19 +45,25 @@ export const ExplorePostCard = memo(function ExplorePostCard({
 
   return (
     <article className="glass group flex flex-col rounded-3xl p-3.5 transition-transform duration-300 hover:-translate-y-0.5">
-      {/* Author header — same shape as PostCard */}
-      <Link href={`/profile/${post.authorUsername}`} className="flex min-w-0 items-center gap-2.5">
-        <Avatar src={post.authorAvatarUrl} name={post.authorName} size="xs" />
-        <div className="min-w-0">
-          <p className="truncate text-[13px] font-semibold leading-tight">{post.authorName}</p>
-          <p className="truncate text-[11px] leading-tight text-neutral-500">
-            @{post.authorUsername} · {formatRelativeTime(post.createdAt)}
-            {post.visibility === 'followers' && (
-              <LockIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
-            )}
-          </p>
-        </div>
-      </Link>
+      {/* Author header — same shape as PostCard, plus the category badge */}
+      <div className="flex items-center gap-2.5">
+        <Link
+          href={`/profile/${post.authorUsername}`}
+          className="flex min-w-0 flex-1 items-center gap-2.5"
+        >
+          <Avatar src={post.authorAvatarUrl} name={post.authorName} size="xs" />
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-semibold leading-tight">{post.authorName}</p>
+            <p className="truncate text-[11px] leading-tight text-neutral-500">
+              @{post.authorUsername} · {formatRelativeTime(post.createdAt)}
+              {post.visibility === 'followers' && (
+                <LockIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
+              )}
+            </p>
+          </div>
+        </Link>
+        {post.category && <CategoryChip category={post.category} className="shrink-0" />}
+      </div>
 
       {snippet && (
         <button type="button" onClick={openPost} className="mt-2 block w-full text-left">
