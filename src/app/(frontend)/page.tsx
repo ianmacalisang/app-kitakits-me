@@ -34,6 +34,9 @@ type Feature = {
   description: string
   // Tiny wireframe mock of the feature's UI — decorative, rendered aria-hidden.
   preview: React.ReactNode
+  // Featured cards span two columns with a taller preview — the headline
+  // feature (feed) up top, testimonials closing the grid.
+  featured?: boolean
 }
 
 // Shared building blocks for the previews: soft neutral bars read as text,
@@ -54,9 +57,10 @@ const MiniRow = ({ children }: { children: React.ReactNode }) => (
 const FEATURES: Feature[] = [
   {
     icon: HomeIcon,
-    title: 'A feed that respects you',
+    featured: true,
+    title: 'Feed na may respeto sa’yo',
     description:
-      'Chronological posts from people you actually follow. Nothing decides what deserves your attention — you do.',
+      'Chronological posts mula sa mga fina-follow mo talaga. Walang nagdedecide kung ano ang dapat mong makita — ikaw lang.',
     preview: (
       <div className="flex flex-col gap-1.5">
         <div className="rounded-lg border border-neutral-200/60 bg-white/70 p-2">
@@ -87,9 +91,9 @@ const FEATURES: Feature[] = [
   },
   {
     icon: MailboxIcon,
-    title: 'Mail, not DMs',
+    title: 'Mail, hindi DMs',
     description:
-      'Rich, thoughtful messages with attachments — closer to a letter than a chat bubble.',
+      'Rich, thoughtful na messages na may attachments — parang sulat, hindi chat bubble.',
     preview: (
       <div className="flex flex-col gap-1.5">
         <MiniRow>
@@ -120,9 +124,9 @@ const FEATURES: Feature[] = [
   },
   {
     icon: CompassIcon,
-    title: 'Find your people',
+    title: 'Hanapin ang tropa mo',
     description:
-      'Search and explore real posts and profiles across the community — nothing promoted, nothing boosted.',
+      'Mag-search at mag-explore ng totoong posts at profiles sa community — walang promoted, walang boosted.',
     preview: (
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-1.5 rounded-full border border-neutral-200/60 bg-white/70 px-2.5 py-1.5">
@@ -144,9 +148,9 @@ const FEATURES: Feature[] = [
   },
   {
     icon: UserIcon,
-    title: 'A profile that is yours',
+    title: 'Profile na sa’yo talaga',
     description:
-      'Avatar, cover, bio, links, and a shareable @handle page you can open to the public.',
+      'Avatar, cover, bio, links, at isang shareable na @handle page na pwede mong i-public.',
     preview: (
       <div className="overflow-hidden rounded-lg border border-neutral-200/60 bg-white/70">
         <div className="h-9 bg-gradient-to-r from-accent-400/70 via-accent-400/60 to-accent-400/60" />
@@ -164,37 +168,10 @@ const FEATURES: Feature[] = [
     ),
   },
   {
-    icon: QuoteIcon,
-    title: 'Testimonials are back',
-    description:
-      'Friends write on your profile the old-school way — nothing goes public until you approve it.',
-    preview: (
-      <div className="flex flex-col gap-1.5">
-        <div className="rounded-lg border border-neutral-200/60 bg-white/70 p-2">
-          <QuoteIcon className="h-2.5 w-2.5 text-accent-400" />
-          <div className="mt-1 flex flex-col gap-1">
-            <Bar className="w-full bg-neutral-200" />
-            <Bar className="w-3/4 bg-neutral-200" />
-          </div>
-          <div className="mt-1.5 flex items-center gap-1.5">
-            <Disc className="h-3 w-3 bg-gradient-to-br from-accent-400 to-accent-500" />
-            <Bar className="w-10 bg-neutral-300" />
-          </div>
-        </div>
-        {/* Pending testimonial — waits on the recipient's approval */}
-        <div className="flex items-center justify-between rounded-lg border border-dashed border-neutral-300/70 bg-white/50 px-2 py-1.5">
-          <Bar className="w-16 bg-neutral-200" />
-          <span className="rounded-full bg-accent-500/15 px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-accent-600">
-            Approve
-          </span>
-        </div>
-      </div>
-    ),
-  },
-  {
     icon: LockIcon,
-    title: 'Privacy on your terms',
-    description: 'Go private, post to followers only, and choose who can land in your mailbox.',
+    title: 'Privacy na ikaw ang bahala',
+    description:
+      'Mag-private, post to followers only, at piliin kung sino ang pwedeng mag-mail sa’yo.',
     preview: (
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between rounded-lg border border-neutral-200/60 bg-white/70 px-2.5 py-2">
@@ -222,8 +199,8 @@ const FEATURES: Feature[] = [
   },
   {
     icon: MoonIcon,
-    title: 'Easy on the eyes',
-    description: 'Light, dark, or system — the whole app follows your theme.',
+    title: 'Magaan sa mata',
+    description: 'Light, dark, o system — buong app susunod sa theme mo.',
     preview: (
       <div className="flex flex-col gap-1.5">
         {/* Segmented theme switcher, mirroring the in-app control */}
@@ -252,42 +229,75 @@ const FEATURES: Feature[] = [
       </div>
     ),
   },
+  {
+    icon: QuoteIcon,
+    featured: true,
+    title: 'Bumalik na ang testimonials',
+    description:
+      'Magsusulat ang friends sa profile mo tulad ng dati — walang lalabas hangga’t hindi mo ina-approve.',
+    preview: (
+      <div className="flex flex-col gap-1.5">
+        <div className="rounded-lg border border-neutral-200/60 bg-white/70 p-2">
+          <QuoteIcon className="h-2.5 w-2.5 text-accent-400" />
+          <div className="mt-1 flex flex-col gap-1">
+            <Bar className="w-full bg-neutral-200" />
+            <Bar className="w-3/4 bg-neutral-200" />
+          </div>
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <Disc className="h-3 w-3 bg-gradient-to-br from-accent-400 to-accent-500" />
+            <Bar className="w-10 bg-neutral-300" />
+          </div>
+        </div>
+        {/* Pending testimonial — waits on the recipient's approval */}
+        <div className="flex items-center justify-between rounded-lg border border-dashed border-neutral-300/70 bg-white/50 px-2 py-1.5">
+          <Bar className="w-16 bg-neutral-200" />
+          <span className="rounded-full bg-accent-500/15 px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-accent-600">
+            Approve
+          </span>
+        </div>
+      </div>
+    ),
+  },
 ]
 
 // The manifesto, split into the "before" and "after" columns.
 const LEFT_BEHIND = [
-  'Algorithmic feeds that decide what you see',
-  'Metrics that turn friends into an audience',
-  'A persona you have to build and perform',
-  'Ads and trackers between every post',
+  'Algorithmic feeds na nagdedecide kung ano ang makikita mo',
+  'Metrics na ginagawang audience ang mga kaibigan mo',
+  'Persona na kailangan mong i-build at i-perform',
+  'Ads at trackers sa pagitan ng bawat post',
 ]
 
 const YOU_GET = [
-  'A chronological feed of people you actually follow',
-  'Real mail and real conversations, not engagement bait',
-  'A profile that is yours — public only if you want it',
-  'Testimonials from friends, on your profile once you approve',
-  'Privacy controls on every post and message',
+  'Chronological feed ng mga taong fina-follow mo talaga',
+  'Totoong mail at totoong conversations, hindi engagement bait',
+  'Profile na sa’yo — public lang kung gusto mo',
+  'Testimonials mula sa tropa — lalabas lang kapag in-approve mo',
+  'Privacy controls sa bawat post at message',
 ]
 
 const STEPS: { title: string; description: string }[] = [
   {
-    title: 'Create your account',
-    description: "Pick a name and a handle — you're in within a minute.",
+    title: 'Gumawa ng account',
+    description: 'Pumili ng name at handle — isang minuto lang, kasama ka na.',
   },
   {
-    title: 'Make it yours',
-    description: 'Add an avatar, a cover photo, and a bio. Set a theme while you are at it.',
+    title: 'Gawing sa’yo',
+    description: 'Lagyan ng avatar, cover photo, at bio. Mag-set na rin ng theme habang andyan ka.',
   },
   {
     title: 'Tambay na',
-    description: 'Post, follow your friends, and let the kwento roll in.',
+    description: 'Mag-post, i-follow ang tropa, at hayaang dumaan ang mga kwento.',
   },
 ]
 
-function FeatureCard({ icon: Icon, title, description, preview }: Feature) {
+function FeatureCard({ icon: Icon, title, description, preview, featured }: Feature) {
   return (
-    <div className="glass group relative overflow-hidden rounded-3xl p-5 transition-all duration-200 hover:-translate-y-1 hover:border-accent-300/60 hover:shadow-xl hover:shadow-accent-600/10">
+    <div
+      className={`glass group relative overflow-hidden rounded-3xl p-5 transition-all duration-200 hover:-translate-y-1 hover:border-accent-300/60 hover:shadow-xl hover:shadow-accent-600/10 ${
+        featured ? 'sm:col-span-2' : ''
+      }`}
+    >
       {/* Soft glow that fades in behind the tile on hover */}
       <span
         className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-accent-400/0 blur-2xl transition-colors duration-300 group-hover:bg-accent-400/20"
@@ -299,7 +309,9 @@ function FeatureCard({ icon: Icon, title, description, preview }: Feature) {
       <h3 className="relative mt-3 text-sm font-semibold text-neutral-800">{title}</h3>
       <p className="relative mt-1 text-sm leading-relaxed text-neutral-500">{description}</p>
       <div
-        className="relative mt-3 h-28 overflow-hidden rounded-xl border border-neutral-200/60 bg-white/50 p-2.5"
+        className={`relative mt-3 overflow-hidden rounded-xl border border-neutral-200/60 bg-white/50 p-2.5 ${
+          featured ? 'h-36' : 'h-28'
+        }`}
         aria-hidden="true"
       >
         {preview}
@@ -347,9 +359,9 @@ export default async function LandingPage() {
           {settings.appName} — {settings.heroTagline}
         </p>
         <h1 className="mt-5 max-w-2xl text-balance bg-gradient-to-br from-accent-700 via-accent-600 to-accent-600 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-6xl">
-          Bringing back what social media{' '}
+          Ang social media na dapat,{' '}
           <span className="relative whitespace-nowrap">
-            should be
+            bumalik na
             <svg
               className="absolute -bottom-1 left-0 w-full text-accent-500/70"
               viewBox="0 0 120 8"
@@ -368,8 +380,8 @@ export default async function LandingPage() {
           !
         </h1>
         <p className="mt-4 max-w-xl text-balance text-lg leading-relaxed text-neutral-600">
-          No algorithms. No character building. Just you and your{' '}
-          <span className="font-semibold text-accent-700">kwento</span>.
+          Walang algorithms. Walang persona. Ikaw at ang{' '}
+          <span className="font-semibold text-accent-700">kwento</span> mo lang.
         </p>
         <p className="mt-2 text-xs italic text-neutral-400">
           kwento — Tagalog for &ldquo;story&rdquo;
@@ -377,7 +389,7 @@ export default async function LandingPage() {
 
         <div className="mt-7 w-full">
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-accent-600">
-            FIND YOUR TROOPS
+            Hanapin ang tropa mo
           </p>
           <LandingUserSearch />
         </div>
@@ -387,17 +399,17 @@ export default async function LandingPage() {
             href="/register"
             className="btn-primary group flex items-center gap-1.5 rounded-full px-7 py-3.5 text-sm"
           >
-            Create your account
+            Gumawa ka na ng account
             <ChevronRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
           <Link
             href="/login"
             className="glass rounded-full px-7 py-3.5 text-sm font-semibold text-neutral-700 transition-transform hover:scale-[1.03] active:scale-[0.98]"
           >
-            I already have an account
+            May account na ako
           </Link>
         </div>
-        <p className="mt-3 text-xs text-neutral-400">Takes less than a minute.</p>
+        <p className="mt-3 text-xs text-neutral-400">Isang minuto lang, promise.</p>
 
         {/* Decorative feed preview — suggests the timeline without a screenshot,
             with floating notification chips for a sense of life */}
@@ -407,19 +419,19 @@ export default async function LandingPage() {
 
           <FloatChip className="-top-6 right-3 flex" rotate="2deg" delay="0.4s">
             <HeartIcon filled className="h-3.5 w-3.5 text-accent-500" />
-            Maria liked your kwento
+            Nag-like si Maria ng kwento mo
           </FloatChip>
           <FloatChip className="-left-7 top-1/3 hidden sm:flex" rotate="-2deg" delay="1.4s">
             <UsersIcon className="h-3.5 w-3.5 text-accent-600" />
-            @jose followed you
+            Nag-follow si @jose sa&apos;yo
           </FloatChip>
           <FloatChip className="-bottom-8 right-5 hidden sm:flex" rotate="1.5deg" delay="2.3s">
             <MailIcon className="h-3.5 w-3.5 text-accent-600" />
-            New mail from Ate Kim
+            May mail ka kay Ate Kim
           </FloatChip>
           <FloatChip className="-bottom-10 left-3 hidden sm:flex" rotate="-1.5deg" delay="3.1s">
             <QuoteIcon className="h-3.5 w-3.5 text-accent-600" />
-            Ana wrote you a testimonial
+            May testimonial ka kay Ana
           </FloatChip>
 
           <article className="glass relative rounded-3xl p-5 text-left">
@@ -461,13 +473,13 @@ export default async function LandingPage() {
       <section className="mx-auto max-w-5xl px-4 pb-16 sm:pb-20">
         <div className="mx-auto max-w-xl text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-accent-600">
-            The promise
+            Ang promise
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
-            Out with the feed fatigue. In with the kwento.
+            Tapos na ang feed fatigue. Balik sa kwento.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-neutral-500">
-            We kept what made social media good and cut what made it exhausting.
+            Kinuha namin ang maganda sa social media at tinanggal ang nakakapagod.
           </p>
         </div>
 
@@ -478,7 +490,7 @@ export default async function LandingPage() {
                 <XIcon className="h-4 w-4" />
               </span>
               <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
-                What we left behind
+                Ang mga iniwan natin
               </h3>
             </div>
             <ul className="mt-3 divide-y divide-black/5">
@@ -497,7 +509,7 @@ export default async function LandingPage() {
                 <SparklesIcon className="h-4 w-4" />
               </span>
               <h3 className="text-xs font-semibold uppercase tracking-widest text-accent-600">
-                What you get on {settings.appName}
+                Ang makukuha mo sa {settings.appName}
               </h3>
             </div>
             <ul className="mt-3 divide-y divide-black/5">
@@ -524,14 +536,14 @@ export default async function LandingPage() {
       <section className="mx-auto max-w-5xl px-4 pb-16 sm:pb-20">
         <div className="mx-auto max-w-xl text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-accent-600">
-            Everything in one place
+            Nasa isang lugar na lahat
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
-            Your own corner of the internet
+            Sarili mong corner ng internet
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-neutral-500">
-            {settings.appName} keeps the good parts of social media — posting, following, messaging
-            — and drops the rest.
+            Kinuha ng {settings.appName} ang mga magagandang parts ng social media — posting,
+            following, messaging — at tinapon na ang iba.
           </p>
         </div>
         <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -544,7 +556,7 @@ export default async function LandingPage() {
             href="/register"
             className="inline-flex items-center gap-1 font-semibold text-accent-700 hover:underline"
           >
-            Create your account and see it all
+            Gumawa ka na ng account para makita mo lahat
             <ChevronRightIcon className="h-3.5 w-3.5" />
           </Link>
         </p>
@@ -554,10 +566,10 @@ export default async function LandingPage() {
       <section className="mx-auto max-w-3xl px-4 pb-16 sm:pb-20">
         <div className="glass rounded-[2rem] px-6 py-10 text-center sm:px-12">
           <p className="text-xs font-semibold uppercase tracking-widest text-accent-600">
-            Claim your handle
+            Claim mo na ang handle mo
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
-            Your corner of the internet starts with an @
+            Ang corner mo sa internet, nagsisimula sa @
           </h2>
 
           {/* Decorative handle pill — looks like the visitor is mid-signup */}
@@ -570,19 +582,19 @@ export default async function LandingPage() {
             <span className="h-5 w-0.5 animate-pulse bg-accent-500" />
             <span className="ml-1.5 flex items-center gap-1 rounded-full bg-accent-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent-600">
               <CheckIcon className="h-3 w-3" />
-              Available
+              Pwede
             </span>
           </div>
 
           <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-neutral-500">
-            Your @handle doubles as a shareable profile page — public if you want it. Grab the good
-            one before it goes.
+            Ang @handle mo ay shareable profile page na rin — public kung gusto mo. Kuhanin mo na
+            ang maganda bago ka maunahan.
           </p>
           <Link
             href="/register"
             className="btn-primary mt-6 inline-block rounded-full px-7 py-3 text-sm"
           >
-            Claim yours
+            Claim mo na
           </Link>
         </div>
       </section>
@@ -591,10 +603,10 @@ export default async function LandingPage() {
       <section className="mx-auto max-w-4xl px-4 pb-16 sm:pb-20">
         <div className="mx-auto max-w-xl text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-accent-600">
-            Get started in seconds
+            Mabilisang simula lang
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
-            Three steps and you&apos;re in
+            Tatlong steps, tapos ka na
           </h2>
         </div>
         <ol className="mt-8 grid gap-3 sm:grid-cols-3">
@@ -632,18 +644,18 @@ export default async function LandingPage() {
             Tara, tambay na.
           </h2>
           <p className="relative mx-auto mt-3 max-w-md text-sm leading-relaxed text-accent-50/90">
-            No algorithms. No character building. Just you and your kwento — claim your handle on{' '}
-            {settings.appName} today.
+            Walang algorithms. Walang persona. Ikaw at ang kwento mo lang — claim mo na ang handle
+            mo sa {settings.appName} ngayon.
           </p>
           <Link
             href="/register"
             className="relative mt-7 inline-flex items-center gap-1.5 rounded-full bg-white px-8 py-3.5 text-sm font-bold text-accent-700 shadow-lg transition-all hover:scale-[1.03] hover:shadow-xl active:scale-[0.98]"
           >
-            Create your account — it&apos;s free
+            Gumawa ka na — libre lang
             <ChevronRightIcon className="h-4 w-4" />
           </Link>
           <p className="relative mt-5 text-xs text-accent-100/80">
-            Already have an account?{' '}
+            May account ka na?{' '}
             <Link
               href="/login"
               className="font-semibold text-white underline-offset-2 hover:underline"
