@@ -269,6 +269,7 @@ export interface Post {
   id: number;
   author: number | User;
   visibility?: ('public' | 'followers') | null;
+  category?: ('kwento' | 'tanong' | 'feels' | 'food' | 'gala' | 'music' | 'memes' | 'rant' | 'nsfw' | 'random') | null;
   content?: string | null;
   image?: (number | Media)[] | null;
   video?: (number | null) | Video;
@@ -701,6 +702,7 @@ export interface MediaSelect<T extends boolean = true> {
 export interface PostsSelect<T extends boolean = true> {
   author?: T;
   visibility?: T;
+  category?: T;
   content?: T;
   image?: T;
   video?: T;

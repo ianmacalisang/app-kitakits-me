@@ -4,11 +4,13 @@ import { Upload } from 'tus-js-client'
 
 import { updatePost } from '@/actions/posts'
 import { createVideoUpload, discardVideo, markVideoUploaded } from '@/actions/videos'
+import type { PostCategory } from '@/lib/categories'
 import { toCdnUrl } from '@/lib/cdn'
 import { compressImage } from '@/lib/image'
 import type { PostVideoData } from '@/lib/serialize'
 
 import { BlurImage } from './BlurImage'
+import { CategoryPicker } from './CategoryPicker'
 import { ImageIcon, VideoIcon, XIcon } from './icons'
 import { Spinner } from './Spinner'
 
@@ -26,6 +28,7 @@ export function PostEditForm({
   postId,
   initialContent,
   initialVisibility = 'public',
+  initialCategory = null,
   images: initialImages,
   video: initialVideo,
   onDoneAction,
@@ -33,6 +36,7 @@ export function PostEditForm({
   postId: number
   initialContent: string
   initialVisibility?: 'public' | 'followers'
+  initialCategory?: PostCategory | null
   images: { id: number; url: string }[]
   video?: PostVideoData
   onDoneAction: () => void
@@ -40,6 +44,7 @@ export function PostEditForm({
   const router = useRouter()
   const [content, setContent] = useState(initialContent)
   const [visibility, setVisibility] = useState<'public' | 'followers'>(initialVisibility)
+  const [category, setCategory] = useState<PostCategory | null>(initialCategory)
   const [keptIds, setKeptIds] = useState<number[]>(initialImages.map((i) => i.id))
   const [keepVideo, setKeepVideo] = useState(true)
   const [video, setVideo] = useState<PickedVideo | null>(null)
@@ -190,6 +195,7 @@ export function PostEditForm({
     const formData = new FormData()
     formData.set('content', content)
     formData.set('visibility', visibility)
+    formData.set('category', category ?? '')
     for (const id of keptIds) formData.append('keepImage', String(id))
     for (const item of newImages) formData.append('image', item.file)
     const videoId = video?.videoId ?? (initialVideo && keepVideo ? initialVideo.id : null)
@@ -231,6 +237,10 @@ export function PostEditForm({
         placeholder="What's on your mind?"
         className="w-full resize-none rounded-2xl border border-neutral-200/60 bg-white/60 p-3 text-[15px] leading-relaxed outline-none backdrop-blur-sm transition-all focus:border-accent-400 focus:bg-white/80 focus:ring-4 focus:ring-accent-500/10"
       />
+
+      <div className="mt-3">
+        <CategoryPicker value={category} onChange={setCategory} />
+      </div>
 
       {/* Attached video — kept unless removed */}
       {initialVideo && keepVideo && (

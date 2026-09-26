@@ -7,3 +7,11 @@ export interface PostSaveToggledDetail {
   postId: number
   saved: boolean
 }
+
+// Lightweight toast hints — any client component can fire one and the
+// ToastHost mounted in the app layout renders it.
+export const TOAST_EVENT = 'kitakits:toast'
+
+export function toast(message: string) {
+  window.dispatchEvent(new CustomEvent<{ message: string }>(TOAST_EVENT, { detail: { message } }))
+}

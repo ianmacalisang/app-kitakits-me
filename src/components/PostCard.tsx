@@ -10,6 +10,7 @@ import type { PostCardData } from '@/lib/serialize'
 import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
+import { CategoryChip } from './CategoryChip'
 import { CommentsSheet } from './CommentsSheet'
 import { CommentIcon, LockIcon, PinIcon, TrashIcon } from './icons'
 import { LikeButton } from './LikeButton'
@@ -141,6 +142,7 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
           </div>
         </Link>
         <div className="flex shrink-0 items-center gap-3">
+          {post.category && <CategoryChip category={post.category} />}
           {post.canEdit ? (
             <div className="flex items-center gap-2 text-xs">
               {!post.sharedPost && (
@@ -343,6 +345,7 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
                   postId={post.id}
                   initialContent={post.content ?? ''}
                   initialVisibility={post.visibility}
+                  initialCategory={post.category}
                   images={post.images}
                   video={post.video}
                   onDoneAction={closeEdit}

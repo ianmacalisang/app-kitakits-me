@@ -7,6 +7,7 @@ import type { PostCardData } from '@/lib/serialize'
 import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
+import { CategoryChip } from './CategoryChip'
 import { CommentsSheet } from './CommentsSheet'
 import { CommentIcon, LockIcon } from './icons'
 import { LikeButton } from './LikeButton'
@@ -27,6 +28,12 @@ export function ReelPost({ post }: { post: PostCardData }) {
 
       {/* Legibility scrim behind the caption + rail */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+
+      {/* Category badge — beside the volume button (top-left); solid so it
+          stays readable over the video */}
+      {post.category && (
+        <CategoryChip category={post.category} solid className="absolute left-[52px] top-[19px]" />
+      )}
 
       {/* Right-side action rail — like / comment / share / save */}
       <div className="absolute bottom-16 right-2.5 flex flex-col items-center gap-4 text-sm">

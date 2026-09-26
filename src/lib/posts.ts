@@ -2,6 +2,7 @@ import type { Where } from 'payload'
 
 import type { Media, Post, User, Video } from '@/payload-types'
 
+import { isPostCategory, type PostCategory } from './categories'
 import { getPayloadClient } from './payload'
 import {
   avatarUrl,
@@ -29,6 +30,17 @@ export function mediaFilterClauses(mediaFilter?: MediaFilter): Where[] {
     default:
       return []
   }
+}
+
+// Where-clauses restricting a feed to one post category. 'random' also
+// matches posts with no category set — the serializer presents uncategorized
+// posts as Random, so the filter must treat them the same way.
+export function categoryFilterClauses(category?: PostCategory | 'all'): Where[] {
+  if (!category || !isPostCategory(category)) return []
+  if (category === 'random') {
+    return [{ or: [{ category: { equals: 'random' } }, { category: { exists: false } }] }]
+  }
+  return [{ category: { equals: category } }]
 }
 
 // Posts the viewer has saved, most recently saved first — powers the home

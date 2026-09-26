@@ -19,6 +19,7 @@ import { Avatar } from './Avatar'
 import { EmptyState } from './EmptyState'
 import { ComposeIcon, QuoteIcon, TrashIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
+import { TestimonialQuote } from './TestimonialQuote'
 
 export function TestimonialForm({
   initial = '',
@@ -166,10 +167,7 @@ export function TestimonialsPanel({
     startMoreTransition(async () => {
       const next = page + 1
       const result = await getTestimonials(recipientId, next)
-      setItems((prev) => [
-        ...prev,
-        ...result.items.filter((t) => !prev.some((p) => p.id === t.id)),
-      ])
+      setItems((prev) => [...prev, ...result.items.filter((t) => !prev.some((p) => p.id === t.id))])
       setPage(next)
       setHasMore(result.hasMore)
     })
@@ -224,9 +222,9 @@ export function TestimonialsPanel({
             </div>
           ) : (
             <>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">
-                {mine.content}
-              </p>
+              <div className="mt-2.5">
+                <TestimonialQuote content={mine.content} />
+              </div>
               <div className="mt-3 flex items-center gap-2">
                 <button
                   type="button"
@@ -260,9 +258,7 @@ export function TestimonialsPanel({
         <div className="glass rounded-3xl p-4">
           {writing ? (
             <>
-              <p className="mb-2 text-sm font-semibold">
-                Write a testimonial for {recipientName}
-              </p>
+              <p className="mb-2 text-sm font-semibold">Write a testimonial for {recipientName}</p>
               <TestimonialForm
                 submitLabel="Submit"
                 onSubmitAction={(content) => createTestimonial(recipientId, content)}
@@ -330,7 +326,8 @@ export function TestimonialsPanel({
         <ul className="flex flex-col gap-3">
           {items.map((t) => (
             <li key={t.id} className="glass rounded-3xl p-4">
-              <div className="flex items-center gap-2.5">
+              <TestimonialQuote content={t.content} />
+              <div className="mt-3.5 flex items-center gap-2.5">
                 <Link href={profileHref(t.authorUsername)} className="shrink-0">
                   <Avatar src={t.authorAvatarUrl} name={t.authorName} size="sm" />
                 </Link>
@@ -339,7 +336,7 @@ export function TestimonialsPanel({
                     href={profileHref(t.authorUsername)}
                     className="block truncate text-sm font-semibold hover:underline"
                   >
-                    {t.authorName}
+                    — {t.authorName}
                   </Link>
                   <p className="truncate text-xs text-neutral-500">
                     @{t.authorUsername} · {formatRelativeTime(t.createdAt)}
@@ -362,9 +359,6 @@ export function TestimonialsPanel({
                   </button>
                 )}
               </div>
-              <p className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">
-                {t.content}
-              </p>
             </li>
           ))}
         </ul>

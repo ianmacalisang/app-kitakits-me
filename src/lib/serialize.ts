@@ -13,6 +13,7 @@ import type {
 } from '@/payload-types'
 
 import { streamHostname } from './bunny'
+import { type PostCategory, isPostCategory } from './categories'
 import { toCdnUrl } from './cdn'
 
 const isObj = (value: unknown): value is Record<string, unknown> =>
@@ -111,6 +112,7 @@ export interface PostCardData {
   savedByMe: boolean
   saveCount: number
   pinned: boolean
+  category: PostCategory | null
   canEdit: boolean
   canShare: boolean
   commentsDisabled: boolean
@@ -173,6 +175,7 @@ export function toPostCardData(
     savedByMe,
     saveCount,
     pinned: Boolean(post.pinned),
+    category: isPostCategory(post.category) ? post.category : 'random',
     canEdit: viewer !== null && author.id === viewer.id,
     viewerAuthenticated: viewer !== null,
     // Reposts target the embedded original when present; your own posts and

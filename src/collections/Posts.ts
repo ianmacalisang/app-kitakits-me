@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { canReadPosts, isAdminField, isAuthenticated, isOwner } from '../access'
+import { POST_CATEGORIES } from '../lib/categories'
 import { deletePostDependents } from '../hooks/deletePostDependents'
 import { deletePostMedia, deleteRemovedPostMedia } from '../hooks/deletePostMedia'
 import { deletePostVideo, deleteRemovedPostVideo } from '../hooks/deletePostVideo'
@@ -61,6 +62,13 @@ export const Posts: CollectionConfig = {
         { label: 'Followers only', value: 'followers' },
       ],
       defaultValue: 'public',
+      index: true,
+    },
+    {
+      name: 'category',
+      type: 'select',
+      options: POST_CATEGORIES.map((c) => ({ label: c.label, value: c.value })),
+      defaultValue: 'random',
       index: true,
     },
     {

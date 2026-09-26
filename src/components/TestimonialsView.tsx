@@ -21,6 +21,7 @@ import { EmptyState } from './EmptyState'
 import { CheckIcon, ComposeIcon, QuoteIcon, TrashIcon, XIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
 import { StatusBadge, TestimonialForm } from './TestimonialsPanel'
+import { TestimonialQuote } from './TestimonialQuote'
 
 type Tab = 'review' | 'profile' | 'written'
 
@@ -166,9 +167,9 @@ export function TestimonialsView({
                     </p>
                   </div>
                 </div>
-                <p className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">
-                  {t.content}
-                </p>
+                <div className="mt-2.5">
+                  <TestimonialQuote content={t.content} />
+                </div>
                 <div className="mt-3 flex items-center gap-2">
                   <button
                     type="button"
@@ -226,9 +227,9 @@ export function TestimonialsView({
                     </span>
                   )}
                 </div>
-                <p className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">
-                  {t.content}
-                </p>
+                <div className="mt-2.5">
+                  <TestimonialQuote content={t.content} />
+                </div>
                 <div className="mt-3 flex items-center gap-2">
                   {t.status === 'rejected' && (
                     <button
@@ -308,9 +309,9 @@ export function TestimonialsView({
                   </div>
                 ) : (
                   <>
-                    <p className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">
-                      {t.content}
-                    </p>
+                    <div className="mt-2.5">
+                      <TestimonialQuote content={t.content} />
+                    </div>
                     <div className="mt-3 flex items-center gap-2">
                       <button
                         type="button"

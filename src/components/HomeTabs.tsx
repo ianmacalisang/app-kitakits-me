@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
+import type { PostCategory } from '@/lib/categories'
 import type { ActivityData, MediaFilter, PostCardData } from '@/lib/serialize'
 
 import { ActivitiesView } from './ActivitiesView'
@@ -31,6 +32,7 @@ export function HomeTabs({
   feedPosts,
   feedHasMore,
   initialMediaFilter = 'all',
+  initialCategory = 'all',
   activityItems,
   activityHasMore,
   savedPosts,
@@ -40,6 +42,7 @@ export function HomeTabs({
   feedPosts: PostCardData[]
   feedHasMore: boolean
   initialMediaFilter?: MediaFilter
+  initialCategory?: PostCategory | 'all'
   activityItems: ActivityData[]
   activityHasMore: boolean
   savedPosts: PostCardData[]
@@ -87,6 +90,7 @@ export function HomeTabs({
           feed="following"
           filterable
           initialMediaFilter={initialMediaFilter}
+          initialCategory={initialCategory}
           emptyIcon={<UsersIcon />}
           emptyTitle="Your feed is empty"
           emptyMessage="Follow people on the Explore page to see their posts."

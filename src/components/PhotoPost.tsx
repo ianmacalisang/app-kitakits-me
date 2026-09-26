@@ -8,6 +8,7 @@ import type { PostCardData } from '@/lib/serialize'
 import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
+import { CategoryChip } from './CategoryChip'
 import { BlurImage } from './BlurImage'
 import { CommentsSheet } from './CommentsSheet'
 import { ChevronLeftIcon, ChevronRightIcon, CommentIcon, LockIcon } from './icons'
@@ -54,6 +55,7 @@ export const PhotoPost = memo(function PhotoPost({ post }: { post: PostCardData 
             </p>
           </div>
         </Link>
+        {post.category && <CategoryChip category={post.category} className="ml-auto shrink-0" />}
       </div>
 
       {/* Full-bleed media — single image or IG-style swipe carousel */}

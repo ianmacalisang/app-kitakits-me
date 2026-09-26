@@ -3,16 +3,26 @@
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 
 import { getPost, loadMorePosts } from '@/actions/posts'
+import {
+  CATEGORY_TINTS,
+  POST_CATEGORIES,
+  type PostCategory,
+  isPostCategory,
+  postCategory,
+} from '@/lib/categories'
 import { POST_SAVE_TOGGLED, type PostSaveToggledDetail } from '@/lib/events'
 import type { MediaFilter, PostCardData } from '@/lib/serialize'
 
+import { CATEGORY_ICONS } from './CategoryChip'
 import { EmptyState } from './EmptyState'
-import { CheckIcon, ChevronDownIcon, ImageIcon, ListIcon, VideoIcon } from './icons'
+import { CheckIcon, ChevronDownIcon, FilterIcon, ImageIcon, ListIcon, VideoIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
 import { PhotoPost } from './PhotoPost'
 import { PostCard } from './PostCard'
 import { ReelPost } from './ReelPost'
 import { Spinner } from './Spinner'
+
+type CategoryFilter = PostCategory | 'all'
 
 const MEDIA_FILTERS: {
   value: MediaFilter
@@ -37,6 +47,7 @@ export function Feed({
   feed,
   filterable = false,
   initialMediaFilter = 'all',
+  initialCategory = 'all',
 }: {
   initialPosts: PostCardData[]
   initialHasMore: boolean
@@ -51,6 +62,8 @@ export function Feed({
   // Server-applied media filter — the page reads ?media= so the first paint
   // is already filtered (no client flash of the All layout).
   initialMediaFilter?: MediaFilter
+  // Same, for ?category= — the page filters by post category server-side.
+  initialCategory?: CategoryFilter
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [hasMore, setHasMore] = useState(initialHasMore)
@@ -58,8 +71,11 @@ export function Feed({
   const [pending, startTransition] = useTransition()
   const [prevInitial, setPrevInitial] = useState(initialPosts)
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>(initialMediaFilter)
+  const [category, setCategory] = useState<CategoryFilter>(initialCategory)
   const [filterOpen, setFilterOpen] = useState(false)
+  const [categoryOpen, setCategoryOpen] = useState(false)
   const filterRef = useRef<HTMLDivElement>(null)
+  const categoryRef = useRef<HTMLDivElement>(null)
   const filterRestoredRef = useRef(false)
   const [resetNonce, setResetNonce] = useState(0)
 
@@ -71,10 +87,21 @@ export function Feed({
     return MEDIA_FILTERS.some((f) => f.value === v) ? (v as MediaFilter) : 'all'
   }
 
+  const urlCategory = (): CategoryFilter => {
+    const v = new URLSearchParams(window.location.search).get('category')
+    return isPostCategory(v) ? v : 'all'
+  }
+
   const refetchPageOne = useCallback(
-    (next: MediaFilter) => {
+    (nextMedia: MediaFilter, nextCategory: CategoryFilter) => {
       startTransition(async () => {
-        const result = await loadMorePosts({ page: 1, authorId, feed, mediaFilter: next })
+        const result = await loadMorePosts({
+          page: 1,
+          authorId,
+          feed,
+          mediaFilter: nextMedia,
+          category: nextCategory,
+        })
         setPosts(result.posts)
         setHasMore(result.hasMore)
         setPage(1)
@@ -86,33 +113,38 @@ export function Feed({
   useEffect(() => {
     if (!filterable || filterRestoredRef.current) return
     filterRestoredRef.current = true
-    const next = urlMediaFilter()
-    if (next === initialMediaFilter) return
+    const nextMedia = urlMediaFilter()
+    const nextCategory = urlCategory()
+    if (nextMedia === initialMediaFilter && nextCategory === initialCategory) return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing state with the URL param read on mount
-    setMediaFilter(next)
-    refetchPageOne(next)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only URL restoration; initialMediaFilter is the SSR baseline
+    setMediaFilter(nextMedia)
+    setCategory(nextCategory)
+    refetchPageOne(nextMedia, nextCategory)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only URL restoration; SSR values are the baseline
   }, [filterable, refetchPageOne])
 
   // After a server refresh resets the list to the unfiltered first page,
   // re-apply the URL filter instead of silently dropping it.
   useEffect(() => {
     if (!filterable || resetNonce === 0) return
-    const next = urlMediaFilter()
+    const nextMedia = urlMediaFilter()
+    const nextCategory = urlCategory()
     // eslint-disable-next-line react-hooks/set-state-in-effect -- re-syncing state with the URL param after a server refresh
-    setMediaFilter(next)
-    if (next !== 'all') refetchPageOne(next)
+    setMediaFilter(nextMedia)
+    setCategory(nextCategory)
+    if (nextMedia !== 'all' || nextCategory !== 'all') refetchPageOne(nextMedia, nextCategory)
   }, [resetNonce, filterable, refetchPageOne])
 
-  // Close the filter dropdown on outside click (same pattern as AppNav).
+  // Close the filter dropdowns on outside click (same pattern as AppNav).
   useEffect(() => {
-    if (!filterOpen) return
+    if (!filterOpen && !categoryOpen) return
     const close = (e: MouseEvent) => {
       if (!filterRef.current?.contains(e.target as Node)) setFilterOpen(false)
+      if (!categoryRef.current?.contains(e.target as Node)) setCategoryOpen(false)
     }
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
-  }, [filterOpen])
+  }, [filterOpen, categoryOpen])
 
   // When the server data changes (e.g. after router.refresh()), reconcile: if the
   // refreshed first page matches what we already show, swap in the fresh page but
@@ -137,7 +169,7 @@ export function Feed({
     if (pending) return
     startTransition(async () => {
       const next = page + 1
-      const result = await loadMorePosts({ page: next, authorId, feed, mediaFilter })
+      const result = await loadMorePosts({ page: next, authorId, feed, mediaFilter, category })
       setPosts((prev) => {
         const seen = new Set(prev.map((p) => p.id))
         return [...prev, ...result.posts.filter((p) => !seen.has(p.id))]
@@ -145,7 +177,7 @@ export function Feed({
       setHasMore(result.hasMore)
       setPage(next)
     })
-  }, [pending, page, authorId, feed, mediaFilter])
+  }, [pending, page, authorId, feed, mediaFilter, category])
 
   // Switching filters refetches page 1 with the new media constraint and
   // resets infinite-scroll state.
@@ -158,13 +190,104 @@ export function Feed({
     const query = params.toString()
     window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`)
     setPosts([]) // clear the view — a loader shows while the refetch runs
-    refetchPageOne(next)
+    refetchPageOne(next, category)
+  }
+
+  // Category chips — same URL-persist + refetch flow as the media filter.
+  const applyCategory = (next: CategoryFilter) => {
+    if (next === category || pending) return
+    setCategory(next)
+    const params = new URLSearchParams(window.location.search)
+    if (next === 'all') params.delete('category')
+    else params.set('category', next)
+    const query = params.toString()
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`)
+    setPosts([])
+    refetchPageOne(mediaFilter, next)
   }
 
   const activeFilter = MEDIA_FILTERS.find((f) => f.value === mediaFilter) ?? MEDIA_FILTERS[0]
   const ActiveFilterIcon = activeFilter.icon
+  const activeCategory = category === 'all' ? undefined : postCategory(category)
+  const ActiveCategoryIcon = activeCategory ? CATEGORY_ICONS[activeCategory.icon] : FilterIcon
   const filterBar = filterable ? (
-    <div className="mb-3 flex justify-end">
+    <div className="mb-3 flex items-center justify-between gap-2">
+      {/* Category dropdown — left side of the media filter. */}
+      <div className="relative" ref={categoryRef}>
+        <button
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={categoryOpen}
+          onClick={() => setCategoryOpen((open) => !open)}
+          className="glass flex items-center gap-1.5 rounded-full py-1.5 pl-3 pr-2.5 text-xs font-semibold text-neutral-600 transition-all hover:text-neutral-800 active:scale-[0.97]"
+        >
+          <ActiveCategoryIcon
+            className={`h-3.5 w-3.5 ${
+              activeCategory ? CATEGORY_TINTS[activeCategory.tint].icon : 'text-accent-600'
+            }`}
+          />
+          {activeCategory?.label ?? 'Category'}
+          <ChevronDownIcon
+            className={`h-3.5 w-3.5 text-neutral-400 transition-transform duration-200 ${
+              categoryOpen ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
+        {categoryOpen && (
+          <div
+            role="listbox"
+            aria-label="Filter posts by category"
+            className="glass-pop motion-safe:animate-menu-pop absolute left-0 top-full z-20 mt-2 w-48 origin-top-left rounded-2xl p-1.5"
+          >
+            <p className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+              Category
+            </p>
+            <button
+              type="button"
+              role="option"
+              aria-selected={category === 'all'}
+              onClick={() => {
+                setCategoryOpen(false)
+                applyCategory('all')
+              }}
+              className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition-colors ${
+                category === 'all'
+                  ? 'bg-accent-500/10 text-accent-700'
+                  : 'text-neutral-600 hover:bg-white/70'
+              }`}
+            >
+              <FilterIcon className="h-4 w-4 shrink-0 text-neutral-500" />
+              <span className="min-w-0 flex-1">All</span>
+              {category === 'all' && <CheckIcon className="h-3.5 w-3.5 shrink-0" />}
+            </button>
+            {POST_CATEGORIES.map((c) => {
+              const active = category === c.value
+              const Icon = CATEGORY_ICONS[c.icon]
+              return (
+                <button
+                  key={c.value}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => {
+                    setCategoryOpen(false)
+                    applyCategory(c.value)
+                  }}
+                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition-colors ${
+                    active
+                      ? 'bg-accent-500/10 text-accent-700'
+                      : 'text-neutral-600 hover:bg-white/70'
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 shrink-0 ${CATEGORY_TINTS[c.tint].icon}`} />
+                  <span className="min-w-0 flex-1">{c.label}</span>
+                  {active && <CheckIcon className="h-3.5 w-3.5 shrink-0" />}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
       <div className="relative" ref={filterRef}>
         <button
           type="button"

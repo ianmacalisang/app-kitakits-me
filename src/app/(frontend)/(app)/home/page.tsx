@@ -3,8 +3,15 @@ import { redirect } from 'next/navigation'
 import { HomeTabs } from '@/components/HomeTabs'
 import { getFollowingActivities } from '@/lib/activities'
 import { getCurrentUser } from '@/lib/auth'
+import { isPostCategory, type PostCategory } from '@/lib/categories'
 import { getPayloadClient } from '@/lib/payload'
-import { FEED_PAGE_SIZE, getSavedPosts, hydratePosts, mediaFilterClauses } from '@/lib/posts'
+import {
+  FEED_PAGE_SIZE,
+  categoryFilterClauses,
+  getSavedPosts,
+  hydratePosts,
+  mediaFilterClauses,
+} from '@/lib/posts'
 import { type MediaFilter, relId } from '@/lib/serialize'
 import type { Post } from '@/payload-types'
 
@@ -15,16 +22,17 @@ const MEDIA_FILTERS = new Set<MediaFilter>(['all', 'media', 'images', 'videos'])
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ media?: string }>
+  searchParams: Promise<{ media?: string; category?: string }>
 }) {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  // ?media=images|videos persists the feed filter across refreshes — apply
-  // it server-side so the first paint is already filtered.
-  const raw = (await searchParams).media
+  // ?media=images|videos and ?category=x persist the feed filters across
+  // refreshes — apply them server-side so the first paint is already filtered.
+  const { media: rawMedia, category: rawCategory } = await searchParams
   const mediaFilter: MediaFilter =
-    raw && MEDIA_FILTERS.has(raw as MediaFilter) ? (raw as MediaFilter) : 'all'
+    rawMedia && MEDIA_FILTERS.has(rawMedia as MediaFilter) ? (rawMedia as MediaFilter) : 'all'
+  const categoryFilter: PostCategory | 'all' = isPostCategory(rawCategory) ? rawCategory : 'all'
 
   const payload = await getPayloadClient()
 
@@ -47,7 +55,13 @@ export default async function HomePage({
       ? Promise.resolve({ docs: [] as Post[], hasNextPage: false })
       : payload.find({
           collection: 'posts',
-          where: { and: [{ author: { in: authorIds } }, ...mediaFilterClauses(mediaFilter)] },
+          where: {
+            and: [
+              { author: { in: authorIds } },
+              ...mediaFilterClauses(mediaFilter),
+              ...categoryFilterClauses(categoryFilter),
+            ],
+          },
           sort: '-createdAt',
           page: 1,
           limit: FEED_PAGE_SIZE,
@@ -68,6 +82,7 @@ export default async function HomePage({
         feedPosts={cards}
         feedHasMore={posts.hasNextPage}
         initialMediaFilter={mediaFilter}
+        initialCategory={categoryFilter}
         activityItems={activities.items}
         activityHasMore={activities.hasMore}
         savedPosts={saved.posts}

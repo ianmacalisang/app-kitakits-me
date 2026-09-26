@@ -7,9 +7,12 @@ import { Upload } from 'tus-js-client'
 
 import { createPost } from '@/actions/posts'
 import { createVideoUpload, discardVideo, markVideoUploaded } from '@/actions/videos'
+import { type PostCategory } from '@/lib/categories'
+import { toast } from '@/lib/events'
 import { compressImage } from '@/lib/image'
 
 import { Avatar } from './Avatar'
+import { CategoryPicker } from './CategoryPicker'
 import { BlurImage } from './BlurImage'
 import { ChevronDownIcon, EyeIcon, ImageIcon, PlusIcon, UserIcon, VideoIcon, XIcon } from './icons'
 import { Spinner } from './Spinner'
@@ -46,6 +49,7 @@ export const CreatePost = memo(function CreatePost({
   const [images, setImages] = useState<{ file: File; url: string }[]>([])
   const [video, setVideo] = useState<PickedVideo | null>(null)
   const [visibility, setVisibility] = useState<'public' | 'followers'>('public')
+  const [category, setCategory] = useState<PostCategory | null>('random')
   const [audienceOpen, setAudienceOpen] = useState(false)
   const [pending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
@@ -214,6 +218,8 @@ export const CreatePost = memo(function CreatePost({
         setContent('')
         setError(null)
         setVisibility('public')
+        setCategory('random')
+        toast('Posted!')
         router.refresh()
         close()
       }
@@ -332,6 +338,10 @@ export const CreatePost = memo(function CreatePost({
                       placeholder={`Share a kwento, ${name.split(' ')[0]}…`}
                       className="field-sizing-content mt-2 min-h-[96px] w-full resize-none bg-transparent text-[15px] leading-relaxed outline-none placeholder:text-neutral-400"
                     />
+
+                    <div className="mt-2">
+                      <CategoryPicker value={category} onChange={setCategory} />
+                    </div>
                   </div>
                 </div>
 
@@ -394,6 +404,7 @@ export const CreatePost = memo(function CreatePost({
 
                 {/* Bottom toolbar */}
                 <input type="hidden" name="visibility" value={visibility} />
+                <input type="hidden" name="category" value={category ?? ''} />
                 {video && !video.uploading && video.videoId !== null && (
                   <input type="hidden" name="video" value={video.videoId} />
                 )}

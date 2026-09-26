@@ -466,3 +466,70 @@ export const TestimonialIcon = (props: IconProps) => (
     <path d="M14 12.5a2 2 0 0 0 2-2V8.5h-2" />
   </svg>
 )
+
+// Category icons
+export const BookIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+)
+
+export const QuestionIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+    <path d="M12 17h.01" />
+  </svg>
+)
+
+export const UtensilsIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+    <path d="M7 2v20" />
+    <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
+  </svg>
+)
+
+export const CarIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+    <circle cx="7" cy="17" r="2" />
+    <path d="M9 17h6" />
+    <circle cx="17" cy="17" r="2" />
+  </svg>
+)
+
+export const MusicIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <path d="M9 18V5l12-2v13" />
+    <circle cx="6" cy="18" r="3" />
+    <circle cx="18" cy="16" r="3" />
+  </svg>
+)
+
+export const LaughIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M18 13a6 6 0 0 1-6 5 6 6 0 0 1-6-5h12Z" />
+    <line x1="9" x2="9.01" y1="9" y2="9" />
+    <line x1="15" x2="15.01" y1="9" y2="9" />
+  </svg>
+)
+
+export const MegaphoneIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <path d="m3 11 18-5v12L3 14v-3z" />
+    <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+  </svg>
+)
+
+export const ShuffleIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <path d="m18 14 4 4-4 4" />
+    <path d="m18 2 4 4-4 4" />
+    <path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22" />
+    <path d="M2 6h1.972a4 4 0 0 1 3.6 2.2" />
+    <path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45" />
+  </svg>
+)

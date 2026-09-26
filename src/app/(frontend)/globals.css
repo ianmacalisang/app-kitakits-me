@@ -344,6 +344,22 @@ body::after {
   }
 }
 
+/* Toast hint — rise + fade in from below the dock */
+@utility animate-toast-in {
+  animation: toast-in 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* Dropdown pop — subtle scale + fade anchored to the trigger */
 @utility animate-menu-pop {
   animation: menu-pop 0.16s cubic-bezier(0.32, 0.72, 0, 1) both;
