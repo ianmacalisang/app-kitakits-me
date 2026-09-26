@@ -23,8 +23,8 @@ const typeIcon = {
 
 const typeColor = {
   like: 'bg-rose-500 text-white',
-  comment: 'bg-emerald-500 text-white',
-  follow: 'bg-teal-500 text-white',
+  comment: 'bg-accent-500 text-white',
+  follow: 'bg-accent-500 text-white',
 }
 
 // "Maria liked Juan's post" — actor and target names in semibold, the verb plain.
@@ -307,7 +307,7 @@ const PostActivityStack = memo(function PostActivityStack({
               key={activity.id}
               onClick={() => onOpenAction(activity)}
               disabled={pending}
-              className={`group flex w-full items-center gap-3 rounded-2xl px-3.5 text-left transition-colors hover:bg-emerald-50/40 disabled:opacity-60 ${
+              className={`group flex w-full items-center gap-3 rounded-2xl px-3.5 text-left transition-colors hover:bg-accent-50/40 disabled:opacity-60 ${
                 i === 0 ? 'pb-1.5 pt-[18px]' : 'py-1.5'
               }`}
             >
@@ -327,7 +327,7 @@ const PostActivityStack = memo(function PostActivityStack({
                   <ActivityText activity={activity} />
                 </span>
                 {activity.commentSnippet && (
-                  <span className="mt-1 line-clamp-2 block rounded-lg border-l-2 border-emerald-400/50 bg-black/5 py-1 pl-2 pr-2.5 text-xs italic text-neutral-600">
+                  <span className="mt-1 line-clamp-2 block rounded-lg border-l-2 border-accent-400/50 bg-black/5 py-1 pl-2 pr-2.5 text-xs italic text-neutral-600">
                     &ldquo;{activity.commentSnippet}&rdquo;
                   </span>
                 )}
@@ -336,7 +336,7 @@ const PostActivityStack = memo(function PostActivityStack({
                 </span>
               </span>
 
-              <ChevronRightIcon className="h-4 w-4 shrink-0 text-neutral-300 transition-colors group-hover:text-emerald-500" />
+              <ChevronRightIcon className="h-4 w-4 shrink-0 text-neutral-300 transition-colors group-hover:text-accent-500" />
             </button>
           ))}
         </div>
@@ -367,7 +367,7 @@ const ActivityItem = memo(function ActivityItem({
         <button
           onClick={() => onOpenAction(activity)}
           disabled={pending}
-          className="glass group flex w-full items-center gap-3 rounded-2xl p-3.5 text-left transition-all hover:bg-emerald-50/40 disabled:opacity-60"
+          className="glass group flex w-full items-center gap-3 rounded-2xl p-3.5 text-left transition-all hover:bg-accent-50/40 disabled:opacity-60"
         >
           <Avatar src={activity.actorAvatarUrl} name={activity.actorName} />
 
@@ -376,7 +376,7 @@ const ActivityItem = memo(function ActivityItem({
               <ActivityText activity={activity} />
             </span>
             {activity.commentSnippet ? (
-              <span className="mt-1.5 line-clamp-2 block rounded-lg border-l-2 border-emerald-400/50 bg-black/5 py-1.5 pl-2.5 pr-3 text-xs italic text-neutral-600">
+              <span className="mt-1.5 line-clamp-2 block rounded-lg border-l-2 border-accent-400/50 bg-black/5 py-1.5 pl-2.5 pr-3 text-xs italic text-neutral-600">
                 &ldquo;{activity.commentSnippet}&rdquo;
               </span>
             ) : activity.postSnippet ? (
@@ -396,7 +396,7 @@ const ActivityItem = memo(function ActivityItem({
               <Avatar src={activity.targetAvatarUrl} name={activity.targetName} size="sm" />
             </span>
           ) : (
-            <ChevronRightIcon className="h-4 w-4 shrink-0 text-neutral-300 transition-colors group-hover:text-emerald-500" />
+            <ChevronRightIcon className="h-4 w-4 shrink-0 text-neutral-300 transition-colors group-hover:text-accent-500" />
           )}
         </button>
       </div>

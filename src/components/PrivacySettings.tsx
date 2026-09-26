@@ -108,7 +108,7 @@ export function PrivacySettings({
             </p>
             {publicProfile && (
               <div className="mt-2 flex items-center gap-2">
-                <code className="truncate rounded-lg bg-emerald-500/10 px-2 py-1 text-[11px] font-medium text-emerald-700">
+                <code className="truncate rounded-lg bg-accent-500/10 px-2 py-1 text-[11px] font-medium text-accent-700">
                   /@{username}
                 </code>
                 <button
@@ -178,7 +178,7 @@ function Toggle({
       onClick={onToggleAction}
       disabled={disabled}
       className={`relative h-8 w-[52px] shrink-0 rounded-full transition-colors duration-200 disabled:opacity-50 ${
-        on ? 'bg-emerald-500' : 'bg-neutral-300'
+        on ? 'bg-accent-500' : 'bg-neutral-300'
       }`}
     >
       <span

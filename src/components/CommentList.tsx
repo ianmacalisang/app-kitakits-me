@@ -87,7 +87,7 @@ const CommentItem = memo(function CommentItem({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               maxLength={1000}
-              className="w-full rounded-xl border border-neutral-200/60 bg-white/60 px-3 py-1.5 text-sm outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
+              className="w-full rounded-xl border border-neutral-200/60 bg-white/60 px-3 py-1.5 text-sm outline-none focus:border-accent-400 focus:ring-4 focus:ring-accent-500/10"
             />
             <button
               onClick={save}

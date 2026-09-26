@@ -11,11 +11,11 @@ export default function NotFound() {
     <div className="glass relative flex flex-col items-center overflow-hidden rounded-3xl px-6 py-12 text-center">
       {/* Same 4—0—4 motif as the public 404, sized down for the feed column */}
       <div className="flex items-center justify-center gap-1.5" aria-hidden="true">
-        <span className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 bg-clip-text text-6xl font-bold leading-none text-transparent sm:text-7xl">
+        <span className="bg-gradient-to-br from-accent-600 via-accent-500 to-accent-500 bg-clip-text text-6xl font-bold leading-none text-transparent sm:text-7xl">
           4
         </span>
-        <span className="h-12 w-12 rounded-full border-4 border-dashed border-emerald-400/70 motion-safe:animate-float sm:h-14 sm:w-14" />
-        <span className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 bg-clip-text text-6xl font-bold leading-none text-transparent sm:text-7xl">
+        <span className="h-12 w-12 rounded-full border-4 border-dashed border-accent-400/70 motion-safe:animate-float sm:h-14 sm:w-14" />
+        <span className="bg-gradient-to-br from-accent-600 via-accent-500 to-accent-500 bg-clip-text text-6xl font-bold leading-none text-transparent sm:text-7xl">
           4
         </span>
       </div>
@@ -47,14 +47,14 @@ export default function NotFound() {
       <div className="mt-6 flex items-center justify-center gap-1.5 text-xs font-medium">
         <Link
           href="/explore"
-          className="inline-flex items-center gap-1.5 rounded-full bg-black/[0.04] px-3 py-1.5 text-neutral-600 transition-colors hover:bg-emerald-500/15 hover:text-emerald-600"
+          className="inline-flex items-center gap-1.5 rounded-full bg-black/[0.04] px-3 py-1.5 text-neutral-600 transition-colors hover:bg-accent-500/15 hover:text-accent-600"
         >
           <CompassIcon className="h-3.5 w-3.5" />
           Explore
         </Link>
         <Link
           href="/mailbox"
-          className="inline-flex items-center gap-1.5 rounded-full bg-black/[0.04] px-3 py-1.5 text-neutral-600 transition-colors hover:bg-emerald-500/15 hover:text-emerald-600"
+          className="inline-flex items-center gap-1.5 rounded-full bg-black/[0.04] px-3 py-1.5 text-neutral-600 transition-colors hover:bg-accent-500/15 hover:text-accent-600"
         >
           <MailboxIcon className="h-3.5 w-3.5" />
           Mailbox

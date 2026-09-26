@@ -83,7 +83,7 @@ export function MailEditor({
   const btn = (active?: boolean) =>
     `flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
       active
-        ? 'bg-emerald-500/15 text-emerald-600'
+        ? 'bg-accent-500/15 text-accent-600'
         : 'text-neutral-500 hover:bg-black/5 hover:text-neutral-800'
     }`
 
@@ -196,7 +196,7 @@ export function MailEditor({
           <button
             type="button"
             onClick={applyLink}
-            className="text-xs font-semibold text-emerald-600 transition-colors hover:text-emerald-700"
+            className="text-xs font-semibold text-accent-600 transition-colors hover:text-accent-700"
           >
             Apply
           </button>

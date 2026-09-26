@@ -37,6 +37,10 @@ export function mediaUrl(media: Media | number | null | undefined) {
   return toCdnUrl((media as Media).url)
 }
 
+// Feed media filter — 'all' shows everything, 'media' requires at least one
+// image or video attachment, 'images'/'videos' require that specific kind.
+export type MediaFilter = 'all' | 'media' | 'images' | 'videos'
+
 export interface Paged<T> {
   items: T[]
   hasMore: boolean
@@ -61,7 +65,7 @@ export function toVideoData(video: Video): PostVideoData {
     status:
       video.status === 'ready' ? 'ready' : video.status === 'failed' ? 'failed' : 'processing',
     hlsUrl: host ? `${host}/${bunnyVideoId}/playlist.m3u8` : '',
-    thumbnailUrl: host ? `${host}/${bunnyVideoId}/thumbnail.jpg` : '',
+    thumbnailUrl: host ? `${host}/${bunnyVideoId}/thumbnail_3.jpg` : '',
     duration: video.duration ?? null,
     aspectRatio: width && height ? width / height : null,
     playCount: video.playCount ?? 0,

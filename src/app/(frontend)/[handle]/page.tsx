@@ -158,7 +158,7 @@ export default async function PublicProfilePage({
               {cover ? (
                 <BlurImage src={cover} alt="" className="h-full w-full object-cover" />
               ) : (
-                <div className="h-full w-full bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-700" />
+                <div className="h-full w-full bg-gradient-to-br from-accent-500 via-accent-500 to-accent-700" />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
             </div>
@@ -171,7 +171,7 @@ export default async function PublicProfilePage({
                   <Avatar src={avatar} name={profileUser.name} size="xl" />
                 </span>
                 {isSelf ? (
-                  <span className="mb-1 rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-500/20">
+                  <span className="mb-1 rounded-full bg-accent-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-accent-700 ring-1 ring-inset ring-accent-500/20">
                     Public preview
                   </span>
                 ) : (
@@ -206,7 +206,7 @@ export default async function PublicProfilePage({
                     }
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-500/20 transition-colors hover:bg-emerald-500/20"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-accent-500/10 px-2.5 py-1 text-xs font-semibold text-accent-700 ring-1 ring-inset ring-accent-500/20 transition-colors hover:bg-accent-500/20"
                   >
                     <LinkIcon className="h-3.5 w-3.5" />
                     {profileUser.website.replace(/^https?:\/\//, '')}
@@ -256,7 +256,7 @@ export default async function PublicProfilePage({
           <p className="mt-8 text-center text-xs text-neutral-400">
             <Link
               href="/register"
-              className="font-medium text-emerald-700/80 hover:text-emerald-700 hover:underline"
+              className="font-medium text-accent-700/80 hover:text-accent-700 hover:underline"
             >
               Create your own profile
             </Link>{' '}

@@ -25,7 +25,7 @@ export const UserCoverCard = memo(function UserCoverCard({
       <Link
         href={href}
         aria-label={user.name}
-        className="block h-20 bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-700 sm:h-24"
+        className="block h-20 bg-gradient-to-br from-accent-500 via-accent-500 to-accent-700 sm:h-24"
       >
         {cover ? <BlurImage src={cover} alt="" className="h-full w-full object-cover" /> : null}
       </Link>

@@ -44,7 +44,7 @@ function ExpandableText({ content, className }: { content: string; className?: s
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="font-medium text-emerald-600 transition-colors hover:text-emerald-700"
+              className="font-medium text-accent-600 transition-colors hover:text-accent-700"
             >
               {expanded ? 'See less' : 'See more'}
             </button>
@@ -168,7 +168,7 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
                   aria-pressed={post.pinned}
                   title={post.pinned ? 'Unpin post' : 'Pin post'}
                   className={`flex items-center transition-colors disabled:opacity-50 ${
-                    post.pinned ? 'text-emerald-600' : 'text-neutral-500 hover:text-emerald-600'
+                    post.pinned ? 'text-accent-600' : 'text-neutral-500 hover:text-accent-600'
                   }`}
                 >
                   <PinIcon className="h-4 w-4" filled={post.pinned} />
@@ -188,7 +188,7 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
 
       {post.sharedPost ? (
         // Share card — the original post embedded read-only.
-        <div className="mt-3 rounded-2xl border border-emerald-900/10 bg-emerald-50/50 p-3">
+        <div className="mt-3 rounded-2xl border border-accent-900/10 bg-accent-50/50 p-3">
           <Link
             href={`/profile/${post.sharedPost.authorUsername}`}
             className="flex min-w-0 items-center gap-2"
@@ -312,7 +312,7 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
         createPortal(
           <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4">
             <div
-              className={`absolute inset-0 bg-emerald-950/40 backdrop-blur-sm ${
+              className={`absolute inset-0 bg-accent-950/40 backdrop-blur-sm ${
                 editClosing ? 'motion-safe:animate-fade-out' : 'motion-safe:animate-fade-in'
               }`}
               onClick={closeEdit}
@@ -358,7 +358,7 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
         createPortal(
           <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4">
             <div
-              className={`absolute inset-0 bg-emerald-950/40 backdrop-blur-sm ${
+              className={`absolute inset-0 bg-accent-950/40 backdrop-blur-sm ${
                 deleteClosing ? 'motion-safe:animate-fade-out' : 'motion-safe:animate-fade-in'
               }`}
               onClick={closeDelete}

@@ -13,11 +13,14 @@ export function ShareButton({
   initialShared,
   initialCount,
   authenticated = true,
+  onDark = false,
 }: {
   postId: number
   initialShared: boolean
   initialCount: number
   authenticated?: boolean
+  // Renders legibly over dark media (reels overlay rail).
+  onDark?: boolean
 }) {
   const router = useRouter()
   const [shared, setShared] = useState(initialShared)
@@ -52,7 +55,13 @@ export function ShareButton({
         onClick={handleClick}
         disabled={pending}
         className={`flex items-center gap-1.5 text-sm transition-colors ${
-          shared ? 'text-emerald-500' : 'text-neutral-500 hover:text-emerald-500'
+          shared
+            ? onDark
+              ? 'text-accent-400'
+              : 'text-accent-500'
+            : onDark
+              ? 'text-white/85 hover:text-accent-300'
+              : 'text-neutral-500 hover:text-accent-500'
         }`}
         aria-label={shared ? 'Undo repost' : 'Repost'}
         aria-pressed={shared}

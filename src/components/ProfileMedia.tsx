@@ -104,11 +104,11 @@ export function ProfileMedia({
         {cover ? (
           <BlurImage src={toCdnUrl(cover)} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-700" />
+          <div className="h-full w-full bg-gradient-to-br from-accent-500 via-accent-500 to-accent-700" />
         )}
         {/* Scrim — keeps overlaid text readable */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/5 to-black/70" />
-        {dragging && <div className="absolute inset-0 bg-emerald-500/30" />}
+        {dragging && <div className="absolute inset-0 bg-accent-500/30" />}
       </div>
 
       {isSelf && (

@@ -229,7 +229,7 @@ export function PostEditForm({
         maxLength={2000}
         autoFocus
         placeholder="What's on your mind?"
-        className="w-full resize-none rounded-2xl border border-neutral-200/60 bg-white/60 p-3 text-[15px] leading-relaxed outline-none backdrop-blur-sm transition-all focus:border-emerald-400 focus:bg-white/80 focus:ring-4 focus:ring-emerald-500/10"
+        className="w-full resize-none rounded-2xl border border-neutral-200/60 bg-white/60 p-3 text-[15px] leading-relaxed outline-none backdrop-blur-sm transition-all focus:border-accent-400 focus:bg-white/80 focus:ring-4 focus:ring-accent-500/10"
       />
 
       {/* Attached video — kept unless removed */}

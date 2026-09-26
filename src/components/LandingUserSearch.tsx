@@ -116,7 +116,7 @@ export function LandingUserSearch() {
           active >= 0 && results[active] ? `landing-search-option-${results[active].id}` : undefined
         }
         autoComplete="off"
-        className="glass-input h-14 w-full rounded-full py-0 pl-13 pr-12 text-base shadow-lg shadow-emerald-600/5"
+        className="glass-input h-14 w-full rounded-full py-0 pl-13 pr-12 text-base shadow-lg shadow-accent-600/5"
       />
       <span className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center">
         {pending ? (

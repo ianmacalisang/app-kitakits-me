@@ -6,11 +6,26 @@
   --font-sans:
     var(--font-poppins), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
+
+  /* Brand accent — charcoal scale matching the logo's dark tile. accent-500 is
+     the core brand shade (buttons/links with white text); 50–300 are light
+     tints, 600–950 deepen toward near-black. */
+  --color-accent-50: #fafafa;
+  --color-accent-100: #f4f4f4;
+  --color-accent-200: #e5e5e5;
+  --color-accent-300: #d4d4d4;
+  --color-accent-400: #a3a3a3;
+  --color-accent-500: #404040;
+  --color-accent-600: #2b2b2b;
+  --color-accent-700: #212121;
+  --color-accent-800: #1a1a1a;
+  --color-accent-900: #141414;
+  --color-accent-950: #0d0d0d;
 }
 
 html {
   -webkit-font-smoothing: antialiased;
-  background-color: #edf5ef;
+  background-color: #f4f4f4;
 }
 
 * {
@@ -30,19 +45,19 @@ body {
   -webkit-background-clip: text;
 }
 
-/* Ambient aurora — layered green light blobs that slowly drift behind the app */
+/* Ambient aurora — layered silver light blobs that slowly drift behind the app */
 body::before {
   content: '';
   position: fixed;
   inset: -15%;
   z-index: -2;
   background:
-    radial-gradient(38% 42% at 12% 8%, rgba(110, 231, 183, 0.55), transparent 70%),
-    radial-gradient(34% 40% at 88% 10%, rgba(94, 234, 212, 0.5), transparent 70%),
-    radial-gradient(42% 46% at 85% 90%, rgba(163, 230, 53, 0.34), transparent 70%),
-    radial-gradient(40% 44% at 8% 88%, rgba(52, 211, 153, 0.42), transparent 70%),
-    radial-gradient(30% 30% at 62% 58%, rgba(167, 243, 208, 0.4), transparent 75%),
-    radial-gradient(55% 55% at 50% 40%, rgba(220, 252, 231, 0.5), transparent 75%);
+    radial-gradient(38% 42% at 12% 8%, rgba(170, 175, 180, 0.5), transparent 70%),
+    radial-gradient(34% 40% at 88% 10%, rgba(185, 190, 195, 0.5), transparent 70%),
+    radial-gradient(42% 46% at 85% 90%, rgba(150, 155, 160, 0.3), transparent 70%),
+    radial-gradient(40% 44% at 8% 88%, rgba(155, 160, 165, 0.4), transparent 70%),
+    radial-gradient(30% 30% at 62% 58%, rgba(215, 218, 220, 0.4), transparent 75%),
+    radial-gradient(55% 55% at 50% 40%, rgba(232, 234, 235, 0.5), transparent 75%);
 }
 
 /* Second aurora layer — larger, slower orbs drifting the opposite way, so the
@@ -53,10 +68,10 @@ html::before {
   inset: -20%;
   z-index: -3;
   background:
-    radial-gradient(46% 50% at 25% 18%, rgba(125, 211, 252, 0.18), transparent 72%),
-    radial-gradient(50% 48% at 78% 25%, rgba(134, 239, 172, 0.3), transparent 72%),
-    radial-gradient(48% 52% at 60% 88%, rgba(45, 212, 191, 0.26), transparent 72%),
-    radial-gradient(40% 42% at 10% 70%, rgba(190, 242, 100, 0.16), transparent 70%);
+    radial-gradient(46% 50% at 25% 18%, rgba(195, 200, 205, 0.18), transparent 72%),
+    radial-gradient(50% 48% at 78% 25%, rgba(185, 190, 193, 0.3), transparent 72%),
+    radial-gradient(48% 52% at 60% 88%, rgba(170, 175, 180, 0.25), transparent 72%),
+    radial-gradient(40% 42% at 10% 70%, rgba(200, 202, 205, 0.16), transparent 70%);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -96,11 +111,11 @@ body::after {
   pointer-events: none;
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E"),
-    radial-gradient(135% 110% at 50% 42%, transparent 58%, rgba(6, 78, 59, 0.09) 100%);
+    radial-gradient(135% 110% at 50% 42%, transparent 58%, rgba(0, 0, 0, 0.09) 100%);
 }
 
 ::selection {
-  @apply bg-emerald-200;
+  @apply bg-accent-200;
 }
 
 /* Rich text — mail composer + rendered mail bodies (Tailwind preflight strips
@@ -121,7 +136,7 @@ body::after {
   text-decoration: line-through;
 }
 .mail-richtext :where(a) {
-  color: var(--color-emerald-600);
+  color: var(--color-accent-600);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -145,7 +160,7 @@ body::after {
   margin-top: 0.25em;
 }
 .mail-richtext :where(blockquote) {
-  border-left: 3px solid var(--color-emerald-300);
+  border-left: 3px solid var(--color-accent-300);
   padding-left: 0.75rem;
   margin: 0.5em 0;
   color: var(--color-neutral-600);
@@ -190,7 +205,7 @@ body::after {
 @layer base {
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(6, 95, 70, 0.25) transparent;
+    scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
   }
 }
 
@@ -209,8 +224,8 @@ body::after {
   @apply border border-white/60 bg-white/75 backdrop-blur-xl backdrop-saturate-150;
   box-shadow:
     inset 0 1px 0 0 rgb(255 255 255 / 0.8),
-    0 12px 32px -12px rgb(6 78 59 / 0.18),
-    0 2px 8px -4px rgb(6 78 59 / 0.08);
+    0 12px 32px -12px rgb(0 0 0 / 0.16),
+    0 2px 8px -4px rgb(0 0 0 / 0.08);
 
   /* No backdrop-filter support — fall back to a solid surface for readability */
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -223,8 +238,8 @@ body::after {
   @apply border border-white/50 bg-white backdrop-blur-2xl backdrop-saturate-150;
   box-shadow:
     inset 0 1px 0 0 rgb(255 255 255 / 0.7),
-    0 12px 32px -12px rgb(6 78 59 / 0.2),
-    0 2px 8px -4px rgb(6 78 59 / 0.1);
+    0 12px 32px -12px rgb(0 0 0 / 0.18),
+    0 2px 8px -4px rgb(0 0 0 / 0.08);
 
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     background-color: var(--color-white);
@@ -233,17 +248,17 @@ body::after {
 
 /* iOS-style filled input on glass surfaces */
 @utility glass-input {
-  @apply w-full rounded-xl border border-neutral-200/60 bg-white/70 px-4 py-2 text-sm outline-none backdrop-blur-sm transition-all placeholder:text-neutral-400 focus:border-emerald-400 focus:bg-white/90 focus:ring-4 focus:ring-emerald-500/10;
+  @apply w-full rounded-xl border border-neutral-200/60 bg-white/70 px-4 py-2 text-sm outline-none backdrop-blur-sm transition-all placeholder:text-neutral-400 focus:border-accent-400 focus:bg-white/90 focus:ring-4 focus:ring-accent-500/10;
 }
 
-/* Primary action — emerald-to-teal gradient pill */
+/* Primary action — charcoal gradient pill matching the logo tile */
 @utility btn-primary {
-  @apply bg-gradient-to-br from-emerald-500 to-teal-600 font-semibold text-white shadow-md shadow-emerald-600/30 transition-all hover:shadow-lg hover:shadow-emerald-600/35 hover:brightness-105 active:scale-[0.98] disabled:opacity-50;
+  @apply bg-gradient-to-br from-accent-600 to-accent-900 font-semibold text-white shadow-md shadow-accent-900/30 transition-all hover:shadow-lg hover:shadow-accent-900/35 hover:brightness-125 active:scale-[0.98] disabled:opacity-50;
 }
 
 /* Soft accent chip — circular icon button */
 @utility btn-accent-soft {
-  @apply bg-emerald-500/10 text-emerald-600 transition-colors hover:bg-emerald-500/20;
+  @apply bg-accent-500/10 text-accent-600 transition-colors hover:bg-accent-500/20;
 }
 
 /* iOS-style sheet/dialog + backdrop animations */
@@ -413,7 +428,7 @@ body::after {
   }
 }
 
-/* Video processing placeholder — soft emerald glow breathing behind the icon */
+/* Video processing placeholder — soft accent glow breathing behind the icon */
 @utility animate-processing-glow {
   animation: processing-glow 3s ease-in-out infinite;
 }
@@ -451,31 +466,31 @@ body::after {
    light-styled components stay legible without per-component changes.
 ------------------------------------------------------------------- */
 html.dark {
-  background-color: #0a120d;
+  background-color: #0a0a0a;
 }
 
 .dark body {
   color: var(--color-neutral-100);
 }
 
-/* Aurora dimmed to deep emerald glows — slightly boosted so the atmosphere
+/* Aurora dimmed to faint gray glows — slightly boosted so the atmosphere
    stays perceptible against the very dark background */
 .dark body::before {
   background:
-    radial-gradient(38% 42% at 12% 8%, rgba(16, 185, 129, 0.22), transparent 70%),
-    radial-gradient(34% 40% at 88% 10%, rgba(45, 212, 191, 0.17), transparent 70%),
-    radial-gradient(42% 46% at 85% 90%, rgba(101, 163, 13, 0.13), transparent 70%),
-    radial-gradient(40% 44% at 8% 88%, rgba(5, 150, 105, 0.19), transparent 70%),
-    radial-gradient(30% 30% at 62% 58%, rgba(52, 211, 153, 0.12), transparent 75%),
-    radial-gradient(55% 55% at 50% 40%, rgba(6, 95, 70, 0.38), transparent 75%);
+    radial-gradient(38% 42% at 12% 8%, rgba(150, 150, 150, 0.16), transparent 70%),
+    radial-gradient(34% 40% at 88% 10%, rgba(160, 160, 160, 0.13), transparent 70%),
+    radial-gradient(42% 46% at 85% 90%, rgba(120, 120, 120, 0.1), transparent 70%),
+    radial-gradient(40% 44% at 8% 88%, rgba(140, 140, 140, 0.15), transparent 70%),
+    radial-gradient(30% 30% at 62% 58%, rgba(150, 150, 150, 0.09), transparent 75%),
+    radial-gradient(55% 55% at 50% 40%, rgba(45, 45, 45, 0.45), transparent 75%);
 }
 
 html.dark::before {
   background:
-    radial-gradient(46% 50% at 25% 18%, rgba(56, 189, 248, 0.07), transparent 72%),
-    radial-gradient(50% 48% at 78% 25%, rgba(52, 211, 153, 0.13), transparent 72%),
-    radial-gradient(48% 52% at 60% 88%, rgba(45, 212, 191, 0.11), transparent 72%),
-    radial-gradient(40% 42% at 10% 70%, rgba(132, 204, 22, 0.06), transparent 70%);
+    radial-gradient(46% 50% at 25% 18%, rgba(150, 160, 170, 0.07), transparent 72%),
+    radial-gradient(50% 48% at 78% 25%, rgba(150, 150, 150, 0.12), transparent 72%),
+    radial-gradient(48% 52% at 60% 88%, rgba(140, 140, 140, 0.1), transparent 72%),
+    radial-gradient(40% 42% at 10% 70%, rgba(120, 120, 120, 0.06), transparent 70%);
 }
 
 /* Same grain, stronger vignette for dark surfaces */
@@ -488,7 +503,7 @@ html.dark::before {
 /* Frosted surfaces go dark */
 .dark .glass {
   border-color: rgb(255 255 255 / 0.1);
-  background-color: rgb(10 16 12 / 0.72);
+  background-color: rgb(10 10 10 / 0.72);
   box-shadow:
     inset 0 1px 0 0 rgb(255 255 255 / 0.06),
     0 12px 32px -12px rgb(0 0 0 / 0.65),
@@ -497,7 +512,7 @@ html.dark::before {
 
 .dark .glass-pop {
   border-color: rgb(255 255 255 / 0.1);
-  background-color: #0a120d;
+  background-color: #0a0a0a;
   box-shadow:
     inset 0 1px 0 0 rgb(255 255 255 / 0.05),
     0 12px 32px -12px rgb(0 0 0 / 0.7),
@@ -506,7 +521,7 @@ html.dark::before {
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .dark .glass-pop {
-    background-color: #0a120d;
+    background-color: #0a0a0a;
   }
 }
 
@@ -521,22 +536,22 @@ html.dark::before {
 }
 
 .dark .glass-input:focus {
-  border-color: var(--color-emerald-500);
+  border-color: var(--color-accent-400);
   background-color: rgb(255 255 255 / 0.1);
-  box-shadow: 0 0 0 4px rgb(16 185 129 / 0.15);
+  box-shadow: 0 0 0 4px rgb(255 255 255 / 0.12);
 }
 
 .dark .btn-accent-soft {
-  background-color: rgb(16 185 129 / 0.15);
-  color: var(--color-emerald-300);
+  background-color: rgb(255 255 255 / 0.12);
+  color: var(--color-accent-300);
 }
 
 .dark .btn-accent-soft:hover {
-  background-color: rgb(16 185 129 / 0.25);
+  background-color: rgb(255 255 255 / 0.2);
 }
 
 .dark ::selection {
-  background-color: var(--color-emerald-800);
+  background-color: var(--color-accent-600);
 }
 
 /* Palette remap — text shades brighten, translucent white surfaces dim */
@@ -552,11 +567,11 @@ html.dark::before {
 .dark .text-neutral-600 {
   color: var(--color-neutral-300);
 }
-.dark .text-emerald-700 {
-  color: var(--color-emerald-300);
+.dark .text-accent-700 {
+  color: var(--color-accent-300);
 }
-.dark .text-emerald-600 {
-  color: var(--color-emerald-400);
+.dark .text-accent-600 {
+  color: var(--color-accent-400);
 }
 /* Muted / secondary text — brightened so it stays legible on the dark bg */
 .dark .text-neutral-500 {
@@ -623,14 +638,14 @@ html.dark::before {
 .dark .hover\:bg-black\/10:hover {
   background-color: rgb(255 255 255 / 0.14);
 }
-.dark .hover\:bg-emerald-50\/40:hover {
-  background-color: rgb(16 185 129 / 0.12);
+.dark .hover\:bg-accent-50\/40:hover {
+  background-color: rgb(255 255 255 / 0.1);
 }
-.dark .hover\:bg-emerald-500\/15:hover {
-  background-color: rgb(16 185 129 / 0.15);
+.dark .hover\:bg-accent-500\/15:hover {
+  background-color: rgb(255 255 255 / 0.14);
 }
-.dark .hover\:bg-emerald-500\/20:hover {
-  background-color: rgb(16 185 129 / 0.2);
+.dark .hover\:bg-accent-500\/20:hover {
+  background-color: rgb(255 255 255 / 0.18);
 }
 
 /* Hover text — keep interactive elements legible when the pointer lands on them */
@@ -640,16 +655,16 @@ html.dark::before {
 .dark .hover\:text-neutral-700:hover {
   color: var(--color-neutral-200);
 }
-.dark .hover\:text-emerald-600:hover {
-  color: var(--color-emerald-400);
+.dark .hover\:text-accent-600:hover {
+  color: var(--color-accent-400);
 }
 
-/* Embedded share card — light emerald tint is too bright on dark surfaces */
-.dark .bg-emerald-50\/50 {
-  background-color: rgb(16 185 129 / 0.08);
+/* Embedded share card — light accent tint is too bright on dark surfaces */
+.dark .bg-accent-50\/50 {
+  background-color: rgb(255 255 255 / 0.07);
 }
-.dark .border-emerald-900\/10 {
-  border-color: rgb(16 185 129 / 0.18);
+.dark .border-accent-900\/10 {
+  border-color: rgb(255 255 255 / 0.16);
 }
 
 /* Wireframe/neutral fills used in template previews and empty states */
@@ -668,17 +683,17 @@ html.dark::before {
   background-color: rgb(255 255 255 / 0.18);
 }
 
-/* Scrollbar — slightly brighter emerald so it's visible on the dark bg */
+/* Scrollbar — lighter gray so it's visible on the dark bg */
 .dark * {
-  scrollbar-color: rgba(16, 185, 129, 0.35) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
 
 /* Mail rich text — code, blockquote, hr, and links need dark-aware colours */
 .dark .mail-richtext :where(a) {
-  color: var(--color-emerald-400);
+  color: var(--color-accent-400);
 }
 .dark .mail-richtext :where(blockquote) {
-  border-left-color: var(--color-emerald-700);
+  border-left-color: var(--color-accent-700);
   color: var(--color-neutral-400);
 }
 .dark .mail-richtext :where(code),

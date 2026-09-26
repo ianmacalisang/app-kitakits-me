@@ -26,7 +26,7 @@ export const ABOUT_TEMPLATES: AboutTemplate[] = [
     id: 'intro',
     name: 'Simple Intro',
     description: 'A friendly hello, a short bio, and your links.',
-    tint: 'from-emerald-100/90 to-teal-50/70',
+    tint: 'from-accent-100/90 to-accent-50/70',
     blocks: [
       {
         type: 'section',

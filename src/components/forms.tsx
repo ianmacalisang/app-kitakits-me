@@ -31,7 +31,7 @@ const errorClass =
   'rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-600'
 
 const successClass =
-  'rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700'
+  'rounded-xl border border-accent-500/25 bg-accent-500/10 px-3 py-2 text-sm text-accent-700'
 
 const hintClass = 'mt-1.5 text-xs'
 
@@ -123,7 +123,7 @@ export function LoginForm() {
       <div className="-mt-1 text-right">
         <Link
           href="/forgot-password"
-          className="text-xs font-medium text-emerald-700 hover:underline"
+          className="text-xs font-medium text-accent-700 hover:underline"
         >
           Forgot password?
         </Link>
@@ -139,7 +139,7 @@ export function LoginForm() {
       </button>
       <p className="text-center text-sm text-neutral-500">
         No account?{' '}
-        <Link href="/register" className="font-medium text-emerald-700 hover:underline">
+        <Link href="/register" className="font-medium text-accent-700 hover:underline">
           Register
         </Link>
       </p>
@@ -158,7 +158,7 @@ export function ForgotPasswordForm() {
           the spam folder.
         </p>
         <p className="text-center text-sm text-neutral-500">
-          <Link href="/login" className="font-medium text-emerald-700 hover:underline">
+          <Link href="/login" className="font-medium text-accent-700 hover:underline">
             Back to log in
           </Link>
         </p>
@@ -197,7 +197,7 @@ export function ForgotPasswordForm() {
       </button>
       <p className="text-center text-sm text-neutral-500">
         Remembered it?{' '}
-        <Link href="/login" className="font-medium text-emerald-700 hover:underline">
+        <Link href="/login" className="font-medium text-accent-700 hover:underline">
           Log in
         </Link>
       </p>
@@ -236,7 +236,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
         invalid={confirmMismatch}
         hint={
           confirm.length > 0 ? (
-            <p className={`${hintClass} ${confirmMismatch ? 'text-red-600' : 'text-emerald-600'}`}>
+            <p className={`${hintClass} ${confirmMismatch ? 'text-red-600' : 'text-accent-600'}`}>
               {confirmMismatch ? 'Passwords do not match.' : 'Passwords match.'}
             </p>
           ) : undefined
@@ -253,7 +253,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
       </button>
       <p className="text-center text-sm text-neutral-500">
         Remembered it?{' '}
-        <Link href="/login" className="font-medium text-emerald-700 hover:underline">
+        <Link href="/login" className="font-medium text-accent-700 hover:underline">
           Log in
         </Link>
       </p>
@@ -303,7 +303,7 @@ export function RegisterForm() {
 
   const usernameHintClass =
     usernameStatus === 'available'
-      ? 'text-emerald-600'
+      ? 'text-accent-600'
       : usernameStatus === 'taken' || usernameStatus === 'invalid'
         ? 'text-red-600'
         : 'text-neutral-400'
@@ -408,7 +408,7 @@ export function RegisterForm() {
         invalid={confirmMismatch}
         hint={
           confirm.length > 0 ? (
-            <p className={`${hintClass} ${confirmMismatch ? 'text-red-600' : 'text-emerald-600'}`}>
+            <p className={`${hintClass} ${confirmMismatch ? 'text-red-600' : 'text-accent-600'}`}>
               {confirmMismatch ? 'Passwords do not match.' : 'Passwords match.'}
             </p>
           ) : undefined
@@ -425,7 +425,7 @@ export function RegisterForm() {
       </button>
       <p className="text-center text-sm text-neutral-500">
         Already have an account?{' '}
-        <Link href="/login" className="font-medium text-emerald-700 hover:underline">
+        <Link href="/login" className="font-medium text-accent-700 hover:underline">
           Log in
         </Link>
       </p>
@@ -491,13 +491,13 @@ export function CoverField({ coverUrl }: { coverUrl?: string }) {
           setFile(e.dataTransfer.files?.[0])
         }}
         className={`group relative aspect-[3/1] w-full cursor-pointer overflow-hidden rounded-2xl ring-2 transition ${
-          dragging ? 'ring-emerald-400' : 'ring-transparent hover:ring-white/60'
+          dragging ? 'ring-accent-400' : 'ring-transparent hover:ring-white/60'
         }`}
       >
         {src ? (
           <BlurImage src={src} alt="Cover preview" className="h-full w-full object-cover" />
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-emerald-200/80 via-teal-200/70 to-lime-200/70" />
+          <div className="h-full w-full bg-gradient-to-br from-accent-200/80 via-accent-200/70 to-accent-200/70" />
         )}
 
         <div
@@ -641,7 +641,7 @@ export function EditProfileForm({
         />
       </div>
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      {state.success && <p className="text-sm text-emerald-600">Profile updated.</p>}
+      {state.success && <p className="text-sm text-accent-600">Profile updated.</p>}
       <button type="submit" disabled={pending} className={submitClass}>
         {pending ? 'Saving…' : 'Save profile'}
       </button>
@@ -680,7 +680,7 @@ export function ChangePasswordForm() {
         />
       </div>
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      {state.success && <p className="text-sm text-emerald-600">Password updated.</p>}
+      {state.success && <p className="text-sm text-accent-600">Password updated.</p>}
       <button type="submit" disabled={pending} className={submitClass}>
         {pending ? 'Updating…' : 'Change password'}
       </button>

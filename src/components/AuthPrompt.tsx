@@ -40,7 +40,7 @@ export function AuthPrompt({ open, onCloseAction }: { open: boolean; onCloseActi
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
       <div
-        className={`absolute inset-0 bg-emerald-950/40 backdrop-blur-sm ${
+        className={`absolute inset-0 bg-accent-950/40 backdrop-blur-sm ${
           closing ? 'motion-safe:animate-fade-out' : 'motion-safe:animate-fade-in'
         }`}
         onClick={close}

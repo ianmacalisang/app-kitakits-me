@@ -262,7 +262,7 @@ export function MailboxView({
             {/* Sliding gradient thumb — same pattern as HomeTabs */}
             <span
               aria-hidden
-              className={`absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md shadow-emerald-600/30 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out ${BOX_THUMB[box]}`}
+              className={`absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-full bg-gradient-to-br from-accent-500 to-accent-600 shadow-md shadow-accent-600/30 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out ${BOX_THUMB[box]}`}
             />
             {(['inbox', 'sent', 'drafts'] as const).map((value) => (
               <button
@@ -358,7 +358,7 @@ const MailRow = memo(function MailRow({
             </span>
             <span
               className={`shrink-0 text-xs ${
-                thread.unread ? 'font-semibold text-emerald-600' : 'text-neutral-500'
+                thread.unread ? 'font-semibold text-accent-600' : 'text-neutral-500'
               }`}
             >
               {thread.lastMessageAt ? formatRelativeTime(thread.lastMessageAt) : ''}
@@ -376,7 +376,7 @@ const MailRow = memo(function MailRow({
             {thread.snippet}
           </span>
         </span>
-        {thread.unread && <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />}
+        {thread.unread && <span className="h-2 w-2 shrink-0 rounded-full bg-accent-500" />}
       </button>
     </li>
   )

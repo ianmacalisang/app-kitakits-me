@@ -239,7 +239,7 @@ export const CreatePost = memo(function CreatePost({
         createPortal(
           <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4">
             <div
-              className={`absolute inset-0 bg-emerald-950/40 backdrop-blur-sm ${
+              className={`absolute inset-0 bg-accent-950/40 backdrop-blur-sm ${
                 closing ? 'motion-safe:animate-fade-out' : 'motion-safe:animate-fade-in'
               }`}
               onClick={close}
@@ -289,7 +289,7 @@ export const CreatePost = memo(function CreatePost({
                       <button
                         type="button"
                         onClick={() => setAudienceOpen((v) => !v)}
-                        className="flex items-center gap-1 rounded-full bg-emerald-500/10 py-1 pl-2.5 pr-2 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-500/20"
+                        className="flex items-center gap-1 rounded-full bg-accent-500/10 py-1 pl-2.5 pr-2 text-xs font-medium text-accent-700 transition-colors hover:bg-accent-500/20"
                       >
                         {visibility === 'public' ? (
                           <EyeIcon className="h-3.5 w-3.5" />
@@ -314,7 +314,7 @@ export const CreatePost = memo(function CreatePost({
                               <Icon className="h-4 w-4 text-neutral-500" />
                               {label}
                               {visibility === value && (
-                                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent-500" />
                               )}
                             </button>
                           ))}

@@ -4,8 +4,8 @@ import { redirect } from 'next/navigation'
 
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
-import { FEED_PAGE_SIZE, getSavedPosts, hydratePosts } from '@/lib/posts'
-import { type Paged, type PostCardData, mediaUrl, relId } from '@/lib/serialize'
+import { FEED_PAGE_SIZE, getSavedPosts, hydratePosts, mediaFilterClauses } from '@/lib/posts'
+import { type MediaFilter, type Paged, type PostCardData, mediaUrl, relId } from '@/lib/serialize'
 import type { Media, User } from '@/payload-types'
 
 import type { FormState } from './auth'
@@ -440,11 +440,13 @@ export async function loadMorePosts(options: {
   page: number
   authorId?: number
   feed?: 'following' | 'saved'
+  mediaFilter?: MediaFilter
 }): Promise<FeedPage> {
   const user = await getCurrentUser()
 
   const payload = await getPayloadClient()
-  const { page, authorId, feed } = options
+  const { page, authorId, feed, mediaFilter } = options
+  const mediaClauses = mediaFilterClauses(mediaFilter)
 
   // Signed-out readers only arrive here from public profiles — serve the
   // author's public posts with the same limits anonymous canReadPosts applies.
@@ -469,7 +471,7 @@ export async function loadMorePosts(options: {
 
   let where
   if (authorId) {
-    where = { author: { equals: authorId } }
+    where = { and: [{ author: { equals: authorId } }, ...mediaClauses] }
   } else if (feed === 'saved') {
     return getSavedPosts(user, page)
   } else {
@@ -485,7 +487,7 @@ export async function loadMorePosts(options: {
       typeof follow.following === 'object' ? follow.following.id : follow.following,
     )
     if (authorIds.length === 0) return { posts: [], hasMore: false }
-    where = { author: { in: authorIds } }
+    where = { and: [{ author: { in: authorIds } }, ...mediaClauses] }
   }
 
   const result = await payload.find({

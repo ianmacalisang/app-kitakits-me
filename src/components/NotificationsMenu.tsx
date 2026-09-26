@@ -80,7 +80,7 @@ export function NotificationsMenu({ unreadCount }: { unreadCount: number }) {
         title="Notifications"
         aria-expanded={open}
         className={`glass relative flex h-14 w-14 items-center justify-center rounded-full transition-colors ${
-          open ? 'text-emerald-600' : 'text-neutral-700 hover:text-emerald-600'
+          open ? 'text-accent-600' : 'text-neutral-700 hover:text-accent-600'
         }`}
       >
         <span className="relative">
@@ -111,7 +111,7 @@ export function NotificationsMenu({ unreadCount }: { unreadCount: number }) {
                   <button
                     onClick={markAll}
                     disabled={pending}
-                    className="text-sm font-medium text-emerald-600 transition-colors hover:text-emerald-700 disabled:opacity-50"
+                    className="text-sm font-medium text-accent-600 transition-colors hover:text-accent-700 disabled:opacity-50"
                   >
                     Mark all as read
                   </button>

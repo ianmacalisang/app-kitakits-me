@@ -23,7 +23,7 @@ export const Avatar = memo(function Avatar({
   size?: keyof typeof sizes
 }) {
   const url = toCdnUrl(src)
-  const classes = `${sizes[size]} shrink-0 rounded-full bg-emerald-100/80 object-cover ring-1 ring-emerald-900/10`
+  const classes = `${sizes[size]} shrink-0 rounded-full bg-accent-100/80 object-cover ring-1 ring-accent-900/10`
 
   if (url) {
     return <BlurImage src={url} alt={name} className={classes} />
@@ -31,7 +31,7 @@ export const Avatar = memo(function Avatar({
 
   return (
     <div
-      className={`${classes} flex items-center justify-center font-semibold text-emerald-700`}
+      className={`${classes} flex items-center justify-center font-semibold text-accent-700`}
       aria-hidden
     >
       {name.charAt(0).toUpperCase()}

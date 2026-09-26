@@ -218,7 +218,7 @@ export function ComposeMail({
   return createPortal(
     <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4">
       <div
-        className={`absolute inset-0 bg-emerald-950/40 backdrop-blur-sm ${
+        className={`absolute inset-0 bg-accent-950/40 backdrop-blur-sm ${
           closing ? 'motion-safe:animate-fade-out' : 'motion-safe:animate-fade-in'
         }`}
         onClick={close}
@@ -263,14 +263,14 @@ export function ComposeMail({
               {recipient ? (
                 <>
                   <input type="hidden" name="to" value={recipient.username} />
-                  <span className="my-1.5 flex min-w-0 items-center gap-1.5 rounded-full bg-emerald-500/10 py-1 pl-1 pr-1.5 text-sm font-medium text-emerald-800">
+                  <span className="my-1.5 flex min-w-0 items-center gap-1.5 rounded-full bg-accent-500/10 py-1 pl-1 pr-1.5 text-sm font-medium text-accent-800">
                     <Avatar src={recipient.avatarUrl} name={recipient.name} size="xs" />
                     <span className="max-w-36 truncate">@{recipient.username}</span>
                     <button
                       type="button"
                       aria-label="Remove recipient"
                       onClick={removeRecipient}
-                      className="rounded-full p-0.5 text-emerald-700/70 transition-colors hover:bg-emerald-500/20 hover:text-emerald-900"
+                      className="rounded-full p-0.5 text-accent-700/70 transition-colors hover:bg-accent-500/20 hover:text-accent-900"
                     >
                       <XIcon className="h-3 w-3" />
                     </button>
@@ -359,7 +359,7 @@ export function ComposeMail({
               {files.map((file, i) => (
                 <li
                   key={`${file.name}-${i}`}
-                  className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 py-1 pl-2.5 pr-1.5 text-xs font-medium text-emerald-800"
+                  className="flex items-center gap-1.5 rounded-full bg-accent-500/10 py-1 pl-2.5 pr-1.5 text-xs font-medium text-accent-800"
                 >
                   <PaperclipIcon className="h-3 w-3 shrink-0" />
                   <span className="max-w-40 truncate">{file.name}</span>
@@ -367,7 +367,7 @@ export function ComposeMail({
                     type="button"
                     aria-label={`Remove ${file.name}`}
                     onClick={() => setFiles(files.filter((_, j) => j !== i))}
-                    className="rounded-full p-0.5 text-emerald-700/70 transition-colors hover:bg-emerald-500/20 hover:text-emerald-900"
+                    className="rounded-full p-0.5 text-accent-700/70 transition-colors hover:bg-accent-500/20 hover:text-accent-900"
                   >
                     <XIcon className="h-3 w-3" />
                   </button>
@@ -397,7 +397,7 @@ export function ComposeMail({
                 onClick={() => fileInputRef.current?.click()}
                 aria-label="Attach files"
                 title="Attach files"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-emerald-500/10 hover:text-emerald-600"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-accent-500/10 hover:text-accent-600"
               >
                 <PaperclipIcon className="h-4 w-4" />
               </button>
@@ -417,7 +417,7 @@ export function ComposeMail({
               type="button"
               onClick={() => void saveNow()}
               disabled={!hasContent || saving}
-              className="text-sm font-medium text-emerald-600 transition-colors hover:text-emerald-700 disabled:opacity-50"
+              className="text-sm font-medium text-accent-600 transition-colors hover:text-accent-700 disabled:opacity-50"
             >
               {saving ? 'Saving…' : draftId ? 'Draft saved' : 'Save draft'}
             </button>

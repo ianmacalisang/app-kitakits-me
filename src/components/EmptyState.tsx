@@ -34,7 +34,7 @@ export function EmptyState({
     >
       {icon && (
         <span
-          className={`flex items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 [&_svg]:shrink-0 ${
+          className={`flex items-center justify-center rounded-full bg-accent-500/10 text-accent-600 [&_svg]:shrink-0 ${
             compact ? 'h-10 w-10 [&_svg]:h-5 [&_svg]:w-5' : 'h-14 w-14 [&_svg]:h-7 [&_svg]:w-7'
           }`}
         >

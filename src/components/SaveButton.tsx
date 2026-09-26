@@ -13,11 +13,14 @@ export function SaveButton({
   initialSaved,
   initialCount,
   authenticated = true,
+  onDark = false,
 }: {
   postId: number
   initialSaved: boolean
   initialCount: number
   authenticated?: boolean
+  // Renders legibly over dark media (reels overlay rail).
+  onDark?: boolean
 }) {
   const [saved, setSaved] = useState(initialSaved)
   const [count, setCount] = useState(initialCount)
@@ -51,7 +54,13 @@ export function SaveButton({
         onClick={handleClick}
         disabled={pending}
         className={`flex items-center gap-1.5 text-sm transition-colors ${
-          saved ? 'text-emerald-600' : 'text-neutral-500 hover:text-emerald-600'
+          saved
+            ? onDark
+              ? 'text-accent-400'
+              : 'text-accent-600'
+            : onDark
+              ? 'text-white/85 hover:text-accent-300'
+              : 'text-neutral-500 hover:text-accent-600'
         }`}
         aria-label={saved ? 'Remove from saved' : 'Save post'}
         aria-pressed={saved}

@@ -50,7 +50,7 @@ export function ConnectionsPanel({
             onClick={() => select(value)}
             className={`-mb-px flex-1 border-b-2 px-2 pb-2.5 pt-1 text-sm font-medium capitalize transition-colors ${
               kind === value
-                ? 'border-emerald-600 text-neutral-900'
+                ? 'border-accent-600 text-neutral-900'
                 : 'border-transparent text-neutral-500 hover:text-neutral-700'
             }`}
           >

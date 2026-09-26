@@ -245,7 +245,7 @@ export function MailThreadView({
               {files.map((file, i) => (
                 <li
                   key={`${file.name}-${i}`}
-                  className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 py-1 pl-2.5 pr-1.5 text-xs font-medium text-emerald-800"
+                  className="flex items-center gap-1.5 rounded-full bg-accent-500/10 py-1 pl-2.5 pr-1.5 text-xs font-medium text-accent-800"
                 >
                   <PaperclipIcon className="h-3 w-3 shrink-0" />
                   <span className="max-w-40 truncate">{file.name}</span>
@@ -253,7 +253,7 @@ export function MailThreadView({
                     type="button"
                     aria-label={`Remove ${file.name}`}
                     onClick={() => setFiles(files.filter((_, j) => j !== i))}
-                    className="rounded-full p-0.5 text-emerald-700/70 transition-colors hover:bg-emerald-500/20 hover:text-emerald-900"
+                    className="rounded-full p-0.5 text-accent-700/70 transition-colors hover:bg-accent-500/20 hover:text-accent-900"
                   >
                     <XIcon className="h-3 w-3" />
                   </button>
@@ -268,7 +268,7 @@ export function MailThreadView({
               onClick={() => fileInputRef.current?.click()}
               aria-label="Attach files"
               title="Attach files"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-emerald-500/10 hover:text-emerald-600"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-accent-500/10 hover:text-accent-600"
             >
               <PaperclipIcon className="h-4 w-4" />
             </button>

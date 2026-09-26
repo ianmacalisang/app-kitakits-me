@@ -118,7 +118,7 @@ export function ProfileTabs({
               thumb's own width (width set inline since tab count varies). */}
           <span
             aria-hidden
-            className="absolute inset-y-1 left-1 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md shadow-emerald-600/30 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
+            className="absolute inset-y-1 left-1 rounded-full bg-gradient-to-br from-accent-500 to-accent-600 shadow-md shadow-accent-600/30 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
             style={{
               width: `calc(${100 / tabs.length}% - 0.125rem)`,
               transform: `translateX(${activeIndex * 100}%)`,
@@ -163,14 +163,14 @@ export function ProfileTabs({
             {pinnedPosts.length > 0 && (
               <section>
                 <h2 className="mb-3 flex items-center gap-2 px-1">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-600/30">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-accent-500 to-accent-600 text-white shadow-md shadow-accent-600/30">
                     <PinIcon className="h-3 w-3" filled />
                   </span>
-                  <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700/70">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-accent-700/70">
                     Pinned posts
                   </span>
                   {pinnedPosts.length > 1 && (
-                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                    <span className="rounded-full bg-accent-500/10 px-2 py-0.5 text-[11px] font-semibold text-accent-700">
                       {pinnedPosts.length}
                     </span>
                   )}
@@ -189,7 +189,7 @@ export function ProfileTabs({
                       {pinnedPosts.map((post) => (
                         <div
                           key={post.id}
-                          className="w-[85%] max-w-sm shrink-0 snap-start rounded-3xl ring-1 ring-emerald-500/20 [&>article]:h-full"
+                          className="w-[85%] max-w-sm shrink-0 snap-start rounded-3xl ring-1 ring-accent-500/20 [&>article]:h-full"
                         >
                           <PostCard post={post} />
                         </div>
@@ -200,7 +200,7 @@ export function ProfileTabs({
                         type="button"
                         aria-label="Scroll pinned posts left"
                         onClick={() => scrollRail(-1)}
-                        className="glass absolute -left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-neutral-600 shadow-md transition-all hover:text-emerald-600 active:scale-95"
+                        className="glass absolute -left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-neutral-600 shadow-md transition-all hover:text-accent-600 active:scale-95"
                       >
                         <ChevronLeftIcon className="h-4 w-4" />
                       </button>
@@ -210,7 +210,7 @@ export function ProfileTabs({
                         type="button"
                         aria-label="Scroll pinned posts right"
                         onClick={() => scrollRail(1)}
-                        className="glass absolute -right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-neutral-600 shadow-md transition-all hover:text-emerald-600 active:scale-95"
+                        className="glass absolute -right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-neutral-600 shadow-md transition-all hover:text-accent-600 active:scale-95"
                       >
                         <ChevronRightIcon className="h-4 w-4" />
                       </button>

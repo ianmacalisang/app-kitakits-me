@@ -1,9 +1,12 @@
+import type { Where } from 'payload'
+
 import type { Media, Post, User, Video } from '@/payload-types'
 
 import { getPayloadClient } from './payload'
 import {
   avatarUrl,
   type EmbeddedPostData,
+  type MediaFilter,
   mediaUrl,
   type PostCardData,
   relId,
@@ -12,6 +15,21 @@ import {
 } from './serialize'
 
 export const FEED_PAGE_SIZE = 20
+
+// Where-clauses restricting a feed to posts carrying media — powers the
+// feed filter dropdown ('all' adds nothing, 'media' accepts either kind).
+export function mediaFilterClauses(mediaFilter?: MediaFilter): Where[] {
+  switch (mediaFilter) {
+    case 'images':
+      return [{ image: { exists: true } }]
+    case 'videos':
+      return [{ video: { exists: true } }]
+    case 'media':
+      return [{ or: [{ image: { exists: true } }, { video: { exists: true } }] }]
+    default:
+      return []
+  }
+}
 
 // Posts the viewer has saved, most recently saved first — powers the home
 // "Saved" tab. Saves are paginated first, then the posts are fetched in one

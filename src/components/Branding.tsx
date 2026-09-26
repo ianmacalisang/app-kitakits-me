@@ -37,7 +37,7 @@ export function BrandMark({ size = 'sm' }: { size?: keyof typeof markSizes }) {
 
   return (
     <span
-      className={`${classes} flex items-center justify-center bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 font-bold text-white shadow-md shadow-emerald-500/30`}
+      className={`${classes} flex items-center justify-center bg-gradient-to-br from-accent-500 via-accent-600 to-accent-800 font-bold text-white shadow-md shadow-accent-900/30`}
       aria-hidden
     >
       {appName.charAt(0).toUpperCase()}

@@ -30,10 +30,10 @@ export function ShareProfileButton({ username, name }: { username: string; name:
       onClick={share}
       aria-label={copied ? 'Profile link copied' : 'Share profile'}
       title={copied ? 'Copied!' : 'Share profile'}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/5 bg-white/60 text-neutral-500 transition-all duration-200 hover:border-emerald-300/60 hover:bg-white/80 hover:text-emerald-600 active:scale-95"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/5 bg-white/60 text-neutral-500 transition-all duration-200 hover:border-accent-300/60 hover:bg-white/80 hover:text-accent-600 active:scale-95"
     >
       {copied ? (
-        <CheckIcon className="h-4 w-4 text-emerald-600" />
+        <CheckIcon className="h-4 w-4 text-accent-600" />
       ) : (
         <ShareIcon className="h-4 w-4" />
       )}

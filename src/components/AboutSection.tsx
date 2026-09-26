@@ -137,7 +137,7 @@ const BlockHeader = ({
 }) => (
   <div className="flex flex-col gap-2.5">
     <div className="flex items-center gap-3">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-700 ring-1 ring-inset ring-emerald-500/15">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-500/10 text-accent-700 ring-1 ring-inset ring-accent-500/15">
         <Icon className="h-3.5 w-3.5" />
       </span>
       <h3
@@ -150,7 +150,7 @@ const BlockHeader = ({
     </div>
     <span
       aria-hidden
-      className="block h-px bg-gradient-to-r from-emerald-500/50 via-emerald-300/15 to-transparent"
+      className="block h-px bg-gradient-to-r from-accent-500/50 via-accent-300/15 to-transparent"
     />
   </div>
 )
@@ -166,9 +166,9 @@ const LinkRow = ({ label, url }: { label: string; url: string }) => {
       href={linkHref(url)}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-center gap-3.5 rounded-2xl border border-black/5 bg-white/60 px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300/60 hover:bg-white/80 hover:shadow-lg hover:shadow-emerald-600/10 active:scale-[0.99]"
+      className="group flex items-center gap-3.5 rounded-2xl border border-black/5 bg-white/60 px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-300/60 hover:bg-white/80 hover:shadow-lg hover:shadow-accent-600/10 active:scale-[0.99]"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-bold uppercase text-emerald-700 shadow-sm ring-1 ring-black/10">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-bold uppercase text-accent-700 shadow-sm ring-1 ring-black/10">
         {host ? host[0] : <LinkIcon className="h-4 w-4" />}
       </span>
       <span className="min-w-0 flex-1">
@@ -177,7 +177,7 @@ const LinkRow = ({ label, url }: { label: string; url: string }) => {
         </span>
         {host && label && <span className="block truncate text-xs text-neutral-400">{host}</span>}
       </span>
-      <ArrowUpRightIcon className="h-4 w-4 shrink-0 text-neutral-300 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-emerald-600" />
+      <ArrowUpRightIcon className="h-4 w-4 shrink-0 text-neutral-300 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent-600" />
     </a>
   )
 }
@@ -185,9 +185,9 @@ const LinkRow = ({ label, url }: { label: string; url: string }) => {
 // Hairline between sections — fades out at both edges with a subtle center dot.
 const SectionDivider = () => (
   <div aria-hidden className="flex items-center gap-3">
-    <span className="h-px flex-1 bg-gradient-to-r from-transparent via-emerald-600/15 to-transparent" />
-    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400/25" />
-    <span className="h-px flex-1 bg-gradient-to-l from-transparent via-emerald-600/15 to-transparent" />
+    <span className="h-px flex-1 bg-gradient-to-r from-transparent via-accent-600/15 to-transparent" />
+    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-400/25" />
+    <span className="h-px flex-1 bg-gradient-to-l from-transparent via-accent-600/15 to-transparent" />
   </div>
 )
 
@@ -229,7 +229,7 @@ const AboutBlock = ({
                 <li key={i} className="flex items-start gap-3.5 py-3.5 first:pt-0 last:pb-0">
                   <span
                     aria-hidden
-                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-700"
+                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-500/10 text-accent-700"
                   >
                     <CheckIcon className="h-3 w-3" />
                   </span>
@@ -255,7 +255,7 @@ const AboutBlock = ({
                 >
                   <span
                     aria-hidden
-                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/70"
+                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-500/70"
                   />
                   {item.title}
                 </li>
@@ -305,7 +305,7 @@ const AboutBlock = ({
       }
       return (
         <figure className="flex flex-col gap-3.5 py-6">
-          <span className="flex w-fit items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-500/20">
+          <span className="flex w-fit items-center gap-1.5 rounded-full bg-accent-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-accent-700 ring-1 ring-inset ring-accent-500/20">
             <CodeIcon className="h-3 w-3" />
             {embed.provider}
           </span>
@@ -339,11 +339,11 @@ const AboutBlocks = memo(function AboutBlocks({ blocks }: { blocks: AboutBlockDa
       {/* Accent bar + soft ambient tint across the top of the card */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[3px] bg-gradient-to-r from-emerald-500 via-teal-400/70 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[3px] bg-gradient-to-r from-accent-500 via-accent-400/70 to-transparent"
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-emerald-500/[0.06] to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-accent-500/[0.06] to-transparent"
       />
       <div className="relative flex flex-col px-7 pb-6 sm:px-10">
         {blocks.map((block, index) => (
@@ -389,7 +389,7 @@ const TemplatePreview = memo(function TemplatePreview({ blocks }: { blocks: Abou
             return (
               <div key={i} className="flex flex-wrap gap-1">
                 {b.items.slice(0, 4).map((_, ii) => (
-                  <div key={ii} className="h-2.5 w-10 rounded-full bg-emerald-300/70" />
+                  <div key={ii} className="h-2.5 w-10 rounded-full bg-accent-300/70" />
                 ))}
               </div>
             )
@@ -406,9 +406,9 @@ const TemplatePreview = memo(function TemplatePreview({ blocks }: { blocks: Abou
             return (
               <div
                 key={i}
-                className="flex h-9 items-center justify-center rounded-lg bg-emerald-100/80"
+                className="flex h-9 items-center justify-center rounded-lg bg-accent-100/80"
               >
-                <CodeIcon className="h-3.5 w-3.5 text-emerald-500" />
+                <CodeIcon className="h-3.5 w-3.5 text-accent-500" />
               </div>
             )
         }
@@ -433,7 +433,7 @@ const EmptyAboutArt = memo(function EmptyAboutArt() {
       className="pointer-events-none flex w-full max-w-[230px] flex-col gap-2.5 rounded-2xl bg-white/70 p-4 ring-1 ring-black/5"
     >
       <div className="flex items-center gap-2">
-        <div className="h-7 w-7 shrink-0 rounded-full bg-emerald-200/80" />
+        <div className="h-7 w-7 shrink-0 rounded-full bg-accent-200/80" />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="h-1.5 w-2/3 rounded-full bg-neutral-300/80" />
           <div className={`h-1 w-1/2 ${line}`} />
@@ -442,9 +442,9 @@ const EmptyAboutArt = memo(function EmptyAboutArt() {
       <div className={`h-1 w-full ${line}`} />
       <div className={`h-1 w-4/5 ${line}`} />
       <div className="flex gap-1.5">
-        <div className="h-2.5 w-12 rounded-full bg-emerald-300/70" />
-        <div className="h-2.5 w-10 rounded-full bg-emerald-300/70" />
-        <div className="h-2.5 w-14 rounded-full bg-emerald-300/70" />
+        <div className="h-2.5 w-12 rounded-full bg-accent-300/70" />
+        <div className="h-2.5 w-10 rounded-full bg-accent-300/70" />
+        <div className="h-2.5 w-14 rounded-full bg-accent-300/70" />
       </div>
       <div className="flex h-10 items-center justify-center rounded-lg bg-neutral-200/70">
         <ImageIcon className="h-4 w-4 text-neutral-400" />
@@ -632,7 +632,7 @@ export function AboutEditor({
   // expands into an inline block-type picker for that slot.
   const insertRow = (at: number) =>
     pickerAt === at ? (
-      <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-emerald-400/50 bg-emerald-50/50 px-3 py-3">
+      <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-accent-400/50 bg-accent-50/50 px-3 py-3">
         {BLOCK_TYPES.map(({ type, label, icon: Icon }) => (
           <button
             key={type}
@@ -641,7 +641,7 @@ export function AboutEditor({
               add(type, at)
               setPickerAt(null)
             }}
-            className="flex items-center gap-1.5 rounded-full bg-emerald-500 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-transform hover:scale-105 hover:bg-emerald-600"
+            className="flex items-center gap-1.5 rounded-full bg-accent-500 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-transform hover:scale-105 hover:bg-accent-600"
           >
             <Icon className="h-4 w-4" /> {label}
           </button>
@@ -663,17 +663,17 @@ export function AboutEditor({
         title="Insert block here"
         className="group/insert flex w-full items-center gap-2 py-0.5"
       >
-        <span className="h-px flex-1 border-t border-dashed border-neutral-300 transition-colors group-hover/insert:border-emerald-400" />
-        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-neutral-300 bg-white/70 text-neutral-400 transition-all group-hover/insert:border-emerald-500 group-hover/insert:bg-emerald-500 group-hover/insert:text-white">
+        <span className="h-px flex-1 border-t border-dashed border-neutral-300 transition-colors group-hover/insert:border-accent-400" />
+        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-neutral-300 bg-white/70 text-neutral-400 transition-all group-hover/insert:border-accent-500 group-hover/insert:bg-accent-500 group-hover/insert:text-white">
           <PlusIcon className="h-3.5 w-3.5" />
         </span>
-        <span className="h-px flex-1 border-t border-dashed border-neutral-300 transition-colors group-hover/insert:border-emerald-400" />
+        <span className="h-px flex-1 border-t border-dashed border-neutral-300 transition-colors group-hover/insert:border-accent-400" />
       </button>
     )
 
   const dropIndicator = (at: number) =>
     dropIdx === at && dragIdx !== null && dragIdx !== at && dragIdx + 1 !== at ? (
-      <div className="h-1 rounded-full bg-emerald-400/80" />
+      <div className="h-1 rounded-full bg-accent-400/80" />
     ) : null
 
   return (
@@ -704,7 +704,7 @@ export function AboutEditor({
                 key={t.id}
                 type="button"
                 onClick={() => applyTemplate(t.blocks)}
-                className="group relative flex flex-col overflow-hidden rounded-2xl border border-black/5 bg-white/60 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300/70 hover:shadow-lg hover:shadow-emerald-600/10"
+                className="group relative flex flex-col overflow-hidden rounded-2xl border border-black/5 bg-white/60 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-300/70 hover:shadow-lg hover:shadow-accent-600/10"
               >
                 <div className={`bg-gradient-to-br p-3 ${t.tint}`}>
                   <TemplatePreview blocks={t.blocks} />
@@ -713,7 +713,7 @@ export function AboutEditor({
                   <p className="text-sm font-semibold">{t.name}</p>
                   <p className="text-xs leading-relaxed text-neutral-500">{t.description}</p>
                 </div>
-                <span className="absolute right-3 top-3 rounded-full bg-emerald-500 px-2.5 py-1 text-[11px] font-semibold text-white opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100">
+                <span className="absolute right-3 top-3 rounded-full bg-accent-500 px-2.5 py-1 text-[11px] font-semibold text-white opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100">
                   Use template
                 </span>
               </button>
@@ -723,7 +723,7 @@ export function AboutEditor({
             <button
               type="button"
               onClick={() => setShowGallery(false)}
-              className="group flex min-h-[180px] flex-col items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-neutral-300/70 bg-white/30 p-4 text-neutral-400 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/70 hover:bg-emerald-50/40 hover:text-emerald-600"
+              className="group flex min-h-[180px] flex-col items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-neutral-300/70 bg-white/30 p-4 text-neutral-400 transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-400/70 hover:bg-accent-50/40 hover:text-accent-600"
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-current transition-transform group-hover:scale-110">
                 <PlusIcon className="h-5 w-5" />
@@ -758,7 +758,7 @@ export function AboutEditor({
       ) : (
         <>
           {draft.length === 0 ? (
-            <div className="glass flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-emerald-300/40 p-10 text-center">
+            <div className="glass flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-accent-300/40 p-10 text-center">
               <p className="text-sm font-medium text-neutral-600">Start building your about page</p>
               <div className="flex flex-wrap justify-center gap-2">
                 {BLOCK_TYPES.map(({ type, label, icon: Icon }) => (
@@ -792,7 +792,7 @@ export function AboutEditor({
                       endDrag()
                     }}
                     className={`rounded-2xl border bg-white/50 transition ${
-                      dragIdx === i ? 'border-emerald-300/60 opacity-50' : 'border-black/5'
+                      dragIdx === i ? 'border-accent-300/60 opacity-50' : 'border-black/5'
                     }`}
                   >
                     {/* Block header — drag handle, collapse toggle, controls */}
@@ -815,7 +815,7 @@ export function AboutEditor({
                         onClick={() => setCollapsed((c) => ({ ...c, [block.key]: !c[block.key] }))}
                         className="flex min-w-0 flex-1 items-center gap-2 text-left"
                       >
-                        <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                        <span className="shrink-0 rounded-full bg-accent-500/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-accent-700">
                           {blockLabel(block.type)}
                         </span>
                         {collapsed[block.key] && (
@@ -1207,8 +1207,8 @@ export function AboutEditor({
               />
 
               {/* Prominent add-block card at the end of the page */}
-              <div className="mt-1 flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-emerald-400/50 bg-emerald-50/40 px-4 py-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700/70">
+              <div className="mt-1 flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-accent-400/50 bg-accent-50/40 px-4 py-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-accent-700/70">
                   Add a block
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
@@ -1245,7 +1245,7 @@ export function AboutEditor({
             }}
             className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
               showGallery
-                ? 'bg-emerald-500 text-white'
+                ? 'bg-accent-500 text-white'
                 : 'bg-black/5 text-neutral-600 hover:bg-black/10'
             }`}
           >
@@ -1257,7 +1257,7 @@ export function AboutEditor({
             onClick={() => setPreviewMode((v) => !v)}
             className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
               previewMode
-                ? 'bg-emerald-500 text-white'
+                ? 'bg-accent-500 text-white'
                 : 'bg-black/5 text-neutral-600 hover:bg-black/10'
             }`}
           >
@@ -1333,7 +1333,7 @@ export function AboutSection({
           </>
         ) : (
           <>
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600/50 ring-1 ring-inset ring-emerald-500/10">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-500/10 text-accent-600/50 ring-1 ring-inset ring-accent-500/10">
               <UserIcon className="h-6 w-6" />
             </span>
             <div className="flex flex-col gap-1.5">

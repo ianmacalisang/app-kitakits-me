@@ -38,7 +38,7 @@ export function CommentForm({
           onChange={(e) => setContent(e.target.value)}
           placeholder="Write a comment…"
           maxLength={1000}
-          className="w-full rounded-full border border-neutral-200/60 bg-white/60 px-4 py-2 text-sm outline-none backdrop-blur-sm transition-all placeholder:text-neutral-400 focus:border-emerald-400 focus:bg-white/80 focus:ring-4 focus:ring-emerald-500/10"
+          className="w-full rounded-full border border-neutral-200/60 bg-white/60 px-4 py-2 text-sm outline-none backdrop-blur-sm transition-all placeholder:text-neutral-400 focus:border-accent-400 focus:bg-white/80 focus:ring-4 focus:ring-accent-500/10"
         />
         <button
           type="submit"

@@ -32,8 +32,8 @@ const typeText = {
 
 const typeColor = {
   like: 'bg-rose-500 text-white',
-  comment: 'bg-emerald-500 text-white',
-  follow: 'bg-teal-500 text-white',
+  comment: 'bg-accent-500 text-white',
+  follow: 'bg-accent-500 text-white',
 }
 
 const sectionLabel = 'mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400'
@@ -172,7 +172,7 @@ export function NotificationsView({
     <button
       onClick={markAll}
       disabled={pending}
-      className="text-sm font-medium text-emerald-600 transition-colors hover:text-emerald-700 disabled:opacity-50"
+      className="text-sm font-medium text-accent-600 transition-colors hover:text-accent-700 disabled:opacity-50"
     >
       Mark all as read
     </button>
@@ -300,7 +300,7 @@ const NotificationItem = memo(function NotificationItem({
             @{notification.actorUsername} · {formatRelativeTime(notification.createdAt)}
           </span>
         </span>
-        {!notification.read && <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />}
+        {!notification.read && <span className="h-2 w-2 shrink-0 rounded-full bg-accent-500" />}
       </button>
     </li>
   )
@@ -327,7 +327,7 @@ const NotificationStack = memo(function NotificationStack({
         hasUnread ? 'glass' : 'border-transparent'
       }`}
     >
-      {hasUnread && <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-emerald-500" />}
+      {hasUnread && <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-accent-500" />}
       <div className="flex flex-col py-1">
         {items.map((notification) => (
           <button

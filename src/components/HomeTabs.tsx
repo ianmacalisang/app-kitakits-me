@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
-import type { ActivityData, PostCardData } from '@/lib/serialize'
+import type { ActivityData, MediaFilter, PostCardData } from '@/lib/serialize'
 
 import { ActivitiesView } from './ActivitiesView'
 import { Feed } from './Feed'
@@ -29,6 +29,7 @@ const THUMB_POSITION: Record<Tab, string> = {
 export function HomeTabs({
   feedPosts,
   feedHasMore,
+  initialMediaFilter = 'all',
   activityItems,
   activityHasMore,
   savedPosts,
@@ -36,6 +37,7 @@ export function HomeTabs({
 }: {
   feedPosts: PostCardData[]
   feedHasMore: boolean
+  initialMediaFilter?: MediaFilter
   activityItems: ActivityData[]
   activityHasMore: boolean
   savedPosts: PostCardData[]
@@ -51,7 +53,7 @@ export function HomeTabs({
               full-width translate lands exactly on the next tab. */}
           <span
             aria-hidden
-            className={`absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md shadow-emerald-600/30 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out ${THUMB_POSITION[tab]}`}
+            className={`absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-full bg-gradient-to-br from-accent-500 to-accent-600 shadow-md shadow-accent-600/30 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out ${THUMB_POSITION[tab]}`}
           />
           {TABS.map(({ value, label, icon: Icon }) => {
             const active = tab === value
@@ -79,6 +81,8 @@ export function HomeTabs({
           initialPosts={feedPosts}
           initialHasMore={feedHasMore}
           feed="following"
+          filterable
+          initialMediaFilter={initialMediaFilter}
           emptyIcon={<UsersIcon />}
           emptyTitle="Your feed is empty"
           emptyMessage="Follow people on the Explore page to see their posts."

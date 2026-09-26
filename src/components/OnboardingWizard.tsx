@@ -64,7 +64,7 @@ const THEME_OPTIONS: {
     label: 'Light',
     description: 'Bright & airy',
     icon: SunIcon,
-    preview: 'bg-gradient-to-br from-white via-emerald-50 to-teal-100 ring-1 ring-black/10',
+    preview: 'bg-gradient-to-br from-white via-accent-50 to-accent-100 ring-1 ring-black/10',
     iconColor: 'text-amber-500',
   },
   {
@@ -72,8 +72,8 @@ const THEME_OPTIONS: {
     label: 'Dark',
     description: 'Easy on the eyes',
     icon: MoonIcon,
-    preview: 'bg-gradient-to-br from-neutral-900 via-emerald-950 to-teal-950 ring-1 ring-white/10',
-    iconColor: 'text-emerald-300',
+    preview: 'bg-gradient-to-br from-neutral-900 via-accent-950 to-accent-950 ring-1 ring-white/10',
+    iconColor: 'text-accent-300',
   },
   {
     value: 'system',
@@ -81,7 +81,7 @@ const THEME_OPTIONS: {
     description: 'Matches device',
     icon: MonitorIcon,
     preview:
-      'bg-gradient-to-r from-white from-50% via-emerald-950 via-50% to-neutral-900 ring-1 ring-black/10',
+      'bg-gradient-to-r from-white from-50% via-accent-950 via-50% to-neutral-900 ring-1 ring-black/10',
     iconColor: 'text-neutral-500',
   },
 ]
@@ -248,8 +248,8 @@ export function OnboardingWizard({
             <span
               key={i}
               className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                i <= step ? 'bg-emerald-500' : 'bg-black/10'
-              } ${i === step ? 'shadow-[0_0_10px_rgba(16,185,129,0.45)]' : ''}`}
+                i <= step ? 'bg-accent-500' : 'bg-black/10'
+              } ${i === step ? 'shadow-[0_0_10px_rgba(64,64,64,0.45)]' : ''}`}
             />
           ))}
         </div>
@@ -386,7 +386,7 @@ export function OnboardingWizard({
                       aria-pressed={theme === value}
                       className={`flex flex-col items-center gap-2.5 rounded-2xl p-3.5 transition ${
                         theme === value
-                          ? 'bg-emerald-500/10 ring-2 ring-emerald-500/60'
+                          ? 'bg-accent-500/10 ring-2 ring-accent-500/60'
                           : 'bg-white/40 ring-1 ring-transparent hover:bg-white/60'
                       }`}
                     >
@@ -446,7 +446,7 @@ export function OnboardingWizard({
                       <button
                         type="button"
                         onClick={toggleAll}
-                        className="text-xs font-medium text-emerald-700 hover:underline"
+                        className="text-xs font-medium text-accent-700 hover:underline"
                       >
                         {allSelected ? 'Clear all' : 'Select all'}
                       </button>
@@ -499,7 +499,7 @@ export function OnboardingWizard({
                               aria-pressed={isSelected}
                               className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition ${
                                 isSelected
-                                  ? 'bg-emerald-500/10 ring-1 ring-emerald-500/40'
+                                  ? 'bg-accent-500/10 ring-1 ring-accent-500/40'
                                   : 'bg-white/40 hover:bg-white/60'
                               }`}
                             >
@@ -507,7 +507,7 @@ export function OnboardingWizard({
                               <span
                                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
                                   isSelected
-                                    ? 'scale-100 border-emerald-500 bg-emerald-500 text-white'
+                                    ? 'scale-100 border-accent-500 bg-accent-500 text-white'
                                     : 'scale-90 border-neutral-300 text-transparent'
                                 }`}
                               >

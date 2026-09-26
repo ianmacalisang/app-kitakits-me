@@ -97,7 +97,7 @@ export function PublicMailButton({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="btn-primary mb-0.5 flex shrink-0 items-center gap-2 rounded-full px-5 py-2.5 pl-3.5 text-sm font-semibold shadow-md shadow-emerald-900/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98]"
+          className="btn-primary mb-0.5 flex shrink-0 items-center gap-2 rounded-full px-5 py-2.5 pl-3.5 text-sm font-semibold shadow-md shadow-accent-900/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98]"
         >
           <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/30">
             {/* Sonar ripple — same pulse as the floating mail button */}
@@ -118,7 +118,7 @@ export function PublicMailButton({
             type="button"
             onClick={() => setOpen(true)}
             aria-label={`Send ${recipientName} an email`}
-            className="btn-primary group/mail pointer-events-auto flex items-center justify-center gap-2.5 rounded-full py-2.5 pl-3 pr-5 text-[15px] font-semibold shadow-xl shadow-emerald-900/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl active:translate-y-0 active:scale-[0.98]"
+            className="btn-primary group/mail pointer-events-auto flex items-center justify-center gap-2.5 rounded-full py-2.5 pl-3 pr-5 text-[15px] font-semibold shadow-xl shadow-accent-900/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl active:translate-y-0 active:scale-[0.98]"
           >
             <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/30">
               {/* Ambient sonar ring — slow ripple to draw the eye */}
@@ -137,7 +137,7 @@ export function PublicMailButton({
         createPortal(
           <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4">
             <div
-              className={`absolute inset-0 bg-emerald-950/40 backdrop-blur-sm ${
+              className={`absolute inset-0 bg-accent-950/40 backdrop-blur-sm ${
                 closing ? 'motion-safe:animate-fade-out' : 'motion-safe:animate-fade-in'
               }`}
               onClick={close}
@@ -154,7 +154,7 @@ export function PublicMailButton({
 
               {sent ? (
                 <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
-                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-500/10 text-accent-600">
                     <MailboxIcon className="h-7 w-7" />
                   </span>
                   <p className="text-sm font-semibold text-neutral-700">Mail sent</p>
@@ -198,7 +198,7 @@ export function PublicMailButton({
                   {/* To — fixed to the profile owner */}
                   <div className="flex items-center gap-3 border-b border-black/5">
                     <span className="w-14 shrink-0 py-2.5 text-sm text-neutral-500">To</span>
-                    <span className="my-1.5 flex min-w-0 items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-800">
+                    <span className="my-1.5 flex min-w-0 items-center gap-1.5 rounded-full bg-accent-500/10 px-3 py-1 text-sm font-medium text-accent-800">
                       @{username}
                     </span>
                   </div>

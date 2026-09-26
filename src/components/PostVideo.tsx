@@ -37,7 +37,15 @@ const fmtTime = (s: number) => {
 // processing placeholder polls getVideoStatus until the HLS playlist is
 // ready. Playback prefers MSE/hls.js (identical everywhere) and falls back
 // to native HLS where MSE doesn't exist (iOS/WKWebView).
-export const PostVideo = memo(function PostVideo({ video }: { video: PostVideoData }) {
+export const PostVideo = memo(function PostVideo({
+  video,
+  variant = 'card',
+}: {
+  video: PostVideoData
+  // 'reel' fills its parent edge-to-edge (object-cover, minimal chrome) for
+  // the reels-style Videos feed; 'card' is the standard in-post player.
+  variant?: 'card' | 'reel'
+}) {
   const [data, setData] = useState(video)
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -101,13 +109,20 @@ export const PostVideo = memo(function PostVideo({ video }: { video: PostVideoDa
       if (Hls.isSupported()) {
         hls = new Hls()
         hls.on(Hls.Events.ERROR, (_event, details) => {
+          // hls.js emits non-fatal errors as part of normal recovery
+          // (seek holes, retryable network hiccups) — keep them at debug
+          // level and only surface the ones it can't recover from.
+          if (!details.fatal) {
+            console.debug('[PostVideo] hls.js:', details.details)
+            return
+          }
           console.error(
-            '[PostVideo] hls.js error:',
+            '[PostVideo] fatal hls.js error:',
             details.type,
             details.details,
             details.response,
           )
-          if (details.fatal) setData((d) => ({ ...d, status: 'failed' }))
+          setData((d) => ({ ...d, status: 'failed' }))
         })
         hls.loadSource(src)
         hls.attachMedia(el)
@@ -199,13 +214,55 @@ export const PostVideo = memo(function PostVideo({ video }: { video: PostVideoDa
   }
 
   const ready = data.status === 'ready'
+  const reel = variant === 'reel'
+
+  const seekBar = (
+    <div
+      role="slider"
+      aria-label="Seek"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(duration)}
+      aria-valuenow={Math.round(currentTime)}
+      className="group/seek relative flex h-4 cursor-pointer items-center"
+      onPointerDown={(e) => {
+        seekingRef.current = true
+        e.currentTarget.setPointerCapture(e.pointerId)
+        seek(e)
+      }}
+      onPointerMove={(e) => {
+        if (seekingRef.current) seek(e)
+      }}
+      onPointerUp={() => {
+        seekingRef.current = false
+      }}
+    >
+      <div
+        className={`w-full overflow-hidden rounded-full bg-white/30 transition-all group-hover/seek:h-2 ${
+          reel ? 'h-1.5' : 'h-1'
+        }`}
+      >
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-accent-400 to-accent-300 shadow-[0_0_6px_rgba(255,255,255,0.35)]"
+          style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+        />
+      </div>
+      <div
+        className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 rounded-full bg-accent-300 opacity-0 shadow transition-opacity group-hover/seek:opacity-100"
+        style={{ left: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+      />
+    </div>
+  )
 
   return (
     <div
       ref={containerRef}
       onPointerMove={() => setShowControls(true)}
-      className={`relative mt-3 w-full overflow-hidden border border-black/5 bg-neutral-950 ${
-        fullscreen ? 'h-full rounded-none' : 'h-[260px] rounded-2xl sm:h-[420px]'
+      className={`overflow-hidden bg-neutral-950 ${
+        reel
+          ? 'absolute inset-0 h-full w-full'
+          : `relative mt-3 w-full border border-black/5 ${
+              fullscreen ? 'h-full rounded-none' : 'h-[260px] rounded-2xl sm:h-[420px]'
+            }`
       } ${ready && playing && !showControls ? 'cursor-none' : ''}`}
     >
       {/* Blurred thumbnail backdrop — fills the letterbox space for portrait
@@ -216,6 +273,14 @@ export const PostVideo = memo(function PostVideo({ video }: { video: PostVideoDa
           src={data.thumbnailUrl}
           alt=""
           aria-hidden
+          // Very short clips may have fewer than 3 generated thumbnails —
+          // fall back to Bunny's default thumbnail rather than showing nothing.
+          onError={(e) => {
+            const el = e.currentTarget
+            if (!el.src.endsWith('/thumbnail.jpg')) {
+              el.src = data.thumbnailUrl.replace('thumbnail_3.jpg', 'thumbnail.jpg')
+            }
+          }}
           className="absolute inset-0 h-full w-full scale-125 object-cover opacity-50 blur-2xl"
         />
       )}
@@ -269,94 +334,82 @@ export const PostVideo = memo(function PostVideo({ video }: { video: PostVideoDa
             )
           )}
 
-          {/* Bottom control bar — gradient scrim + seek + transport */}
-          <div
-            className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pb-2.5 pt-8 transition-opacity duration-200 ${
-              showControls || !playing ? 'opacity-100' : 'pointer-events-none opacity-0'
-            }`}
-          >
-            {/* Seek bar */}
-            <div
-              role="slider"
-              aria-label="Seek"
-              aria-valuemin={0}
-              aria-valuemax={Math.round(duration)}
-              aria-valuenow={Math.round(currentTime)}
-              className="group/seek relative flex h-4 cursor-pointer items-center"
-              onPointerDown={(e) => {
-                seekingRef.current = true
-                e.currentTarget.setPointerCapture(e.pointerId)
-                seek(e)
-              }}
-              onPointerMove={(e) => {
-                if (seekingRef.current) seek(e)
-              }}
-              onPointerUp={() => {
-                seekingRef.current = false
-              }}
-            >
-              <div className="h-1 w-full overflow-hidden rounded-full bg-white/25 transition-all group-hover/seek:h-1.5">
-                <div
-                  className="h-full rounded-full bg-emerald-400"
-                  style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-                />
+          {/* Reel mode: slim always-visible progress bar + mute toggle —
+              transport controls live in the card player only. */}
+          {reel ? (
+            <>
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-3 pb-1.5 pt-6">
+                {seekBar}
               </div>
-              <div
-                className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 rounded-full bg-emerald-300 opacity-0 shadow transition-opacity group-hover/seek:opacity-100"
-                style={{ left: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-              />
-            </div>
-
-            <div className="mt-0.5 flex items-center gap-2 text-white">
-              <button
-                type="button"
-                onClick={togglePlay}
-                aria-label={playing ? 'Pause' : 'Play'}
-                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/15"
-              >
-                {playing ? (
-                  <PauseIcon className="h-4.5 w-4.5" />
-                ) : (
-                  <PlayIcon className="h-4.5 w-4.5" />
-                )}
-              </button>
               <button
                 type="button"
                 onClick={toggleMute}
                 aria-label={muted ? 'Unmute' : 'Mute'}
-                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/15"
+                className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
               >
-                {muted ? (
-                  <VolumeXIcon className="h-4.5 w-4.5" />
-                ) : (
-                  <VolumeIcon className="h-4.5 w-4.5" />
-                )}
+                {muted ? <VolumeXIcon className="h-4 w-4" /> : <VolumeIcon className="h-4 w-4" />}
               </button>
-              <span className="text-[11px] font-medium tabular-nums text-white/85">
-                {fmtTime(currentTime)} / {fmtTime(duration)}
-              </span>
-              <button
-                type="button"
-                onClick={toggleFullscreen}
-                aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-                className="ml-auto flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/15"
-              >
-                {fullscreen ? (
-                  <MinimizeIcon className="h-4.5 w-4.5" />
-                ) : (
-                  <MaximizeIcon className="h-4.5 w-4.5" />
-                )}
-              </button>
+            </>
+          ) : (
+            /* Bottom control bar — gradient scrim + seek + transport */
+            <div
+              className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pb-2.5 pt-8 transition-opacity duration-200 ${
+                showControls || !playing ? 'opacity-100' : 'pointer-events-none opacity-0'
+              }`}
+            >
+              {seekBar}
+
+              <div className="mt-0.5 flex items-center gap-2 text-white">
+                <button
+                  type="button"
+                  onClick={togglePlay}
+                  aria-label={playing ? 'Pause' : 'Play'}
+                  className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/15"
+                >
+                  {playing ? (
+                    <PauseIcon className="h-4.5 w-4.5" />
+                  ) : (
+                    <PlayIcon className="h-4.5 w-4.5" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleMute}
+                  aria-label={muted ? 'Unmute' : 'Mute'}
+                  className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/15"
+                >
+                  {muted ? (
+                    <VolumeXIcon className="h-4.5 w-4.5" />
+                  ) : (
+                    <VolumeIcon className="h-4.5 w-4.5" />
+                  )}
+                </button>
+                <span className="text-[11px] font-medium tabular-nums text-white/85">
+                  {fmtTime(currentTime)} / {fmtTime(duration)}
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                  className="ml-auto flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/15"
+                >
+                  {fullscreen ? (
+                    <MinimizeIcon className="h-4.5 w-4.5" />
+                  ) : (
+                    <MaximizeIcon className="h-4.5 w-4.5" />
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </>
       ) : data.status === 'processing' ? (
         <div className="relative flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden">
-          {/* Breathing emerald wash behind the icon */}
-          <div className="absolute -inset-10 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.22),rgba(13,148,136,0.1)_45%,transparent_70%)] motion-safe:animate-processing-glow" />
+          {/* Breathing accent wash behind the icon */}
+          <div className="absolute -inset-10 bg-[radial-gradient(ellipse_at_center,rgba(64,64,64,0.22),rgba(20,20,20,0.1)_45%,transparent_70%)] motion-safe:animate-processing-glow" />
 
           <span className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur-md">
-            <VideoIcon className="h-6 w-6 text-emerald-300" />
+            <VideoIcon className="h-6 w-6 text-accent-300" />
           </span>
           <div className="relative flex flex-col items-center gap-0.5 px-4 text-center">
             <span className="text-[13px] font-medium text-white">Processing video…</span>
@@ -367,7 +420,7 @@ export const PostVideo = memo(function PostVideo({ video }: { video: PostVideoDa
 
           {/* Indeterminate sweep — Bunny doesn't report encode progress */}
           <div className="absolute inset-x-0 bottom-0 h-1 bg-white/10">
-            <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 motion-safe:animate-processing-sweep" />
+            <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-accent-400 to-accent-400 motion-safe:animate-processing-sweep" />
           </div>
         </div>
       ) : (
@@ -377,9 +430,9 @@ export const PostVideo = memo(function PostVideo({ video }: { video: PostVideoDa
         </div>
       )}
       {ready && data.playCount > 0 && (
-        <span className="pointer-events-none absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+        <span className="pointer-events-none absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
           <PlayIcon className="h-3 w-3" />
-          {data.playCount} {data.playCount === 1 ? 'play' : 'plays'}
+          {data.playCount}
         </span>
       )}
     </div>

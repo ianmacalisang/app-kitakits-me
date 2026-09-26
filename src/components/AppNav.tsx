@@ -290,6 +290,28 @@ export function AppNav({
     { href: `/profile/${username}`, label: 'Profile', icon: UserIcon },
   ]
 
+  // Sliding pill — measure the active dock link so the indicator glides
+  // between items instead of blinking on each one independently.
+  const dockRef = useRef<HTMLElement>(null)
+  const [thumb, setThumb] = useState<{ left: number; width: number } | null>(null)
+  const activeIndex = links.findIndex((l) => l.href === pathname)
+
+  useEffect(() => {
+    const nav = dockRef.current
+    if (!nav) return
+    const measure = () => {
+      const el = nav.querySelectorAll<HTMLElement>('[data-dock-link]')[activeIndex]
+      setThumb(el ? { left: el.offsetLeft, width: el.offsetWidth } : null)
+    }
+    measure()
+    // Labels appear at lg (changing widths) and the dock width tracks the
+    // viewport — re-measure whenever the nav or a link resizes.
+    const ro = new ResizeObserver(measure)
+    ro.observe(nav)
+    nav.querySelectorAll('[data-dock-link]').forEach((a) => ro.observe(a))
+    return () => ro.disconnect()
+  }, [activeIndex])
+
   const handleLogout = () => {
     setMenuOpen(false)
     startTransition(async () => {
@@ -421,7 +443,18 @@ export function AppNav({
       </div>
 
       {/* Floating bottom dock — matches the content column width */}
-      <nav className="glass fixed inset-x-4 bottom-5 z-30 mx-auto flex max-w-3xl items-center rounded-full px-3 py-1.5">
+      <nav
+        ref={dockRef}
+        className="glass fixed inset-x-4 bottom-5 z-30 mx-auto flex max-w-3xl items-center rounded-full px-3 py-1.5"
+      >
+        {/* Sliding pill — fills the active item's slot, glides on navigation */}
+        <span
+          aria-hidden
+          className={`absolute inset-y-1 rounded-full bg-accent-700 shadow-md shadow-accent-900/25 motion-safe:transition-all motion-safe:duration-300 motion-safe:ease-out dark:bg-accent-200 dark:shadow-none ${
+            thumb ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{ left: thumb?.left ?? 0, width: thumb?.width ?? 0 }}
+        />
         <div className="flex flex-1 justify-around">
           {links.slice(0, 2).map(({ href, label, icon: Icon }) => (
             <DockLink key={href} href={href} label={label} active={pathname === href}>
@@ -459,10 +492,14 @@ function DockLink({
     <Link
       href={href}
       prefetch
+      data-dock-link
       aria-label={label}
       title={label}
-      className={`flex items-center justify-center gap-2 rounded-full p-2 transition-all lg:px-4 ${
-        active ? 'text-emerald-600' : 'text-neutral-700 hover:text-emerald-600'
+      aria-current={active ? 'page' : undefined}
+      className={`relative flex items-center justify-center gap-2 rounded-full p-2 transition-colors lg:px-4 ${
+        active
+          ? 'text-white dark:text-accent-900'
+          : 'text-neutral-600 hover:bg-black/5 hover:text-neutral-900'
       }`}
     >
       <span className="relative">

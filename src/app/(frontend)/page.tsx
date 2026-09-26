@@ -60,7 +60,7 @@ const FEATURES: Feature[] = [
       <div className="flex flex-col gap-1.5">
         <div className="rounded-lg border border-neutral-200/60 bg-white/70 p-2">
           <div className="flex items-center gap-1.5">
-            <Disc className="h-4 w-4 bg-gradient-to-br from-emerald-400 to-teal-500" />
+            <Disc className="h-4 w-4 bg-gradient-to-br from-accent-400 to-accent-500" />
             <Bar className="w-12 bg-neutral-300" />
             <Bar className="ml-auto w-5 bg-neutral-200" />
           </div>
@@ -69,14 +69,14 @@ const FEATURES: Feature[] = [
             <Bar className="w-2/3 bg-neutral-200" />
           </div>
           <div className="mt-1.5 flex items-center gap-2 text-neutral-300">
-            <HeartIcon filled className="h-2.5 w-2.5 text-emerald-500" />
+            <HeartIcon filled className="h-2.5 w-2.5 text-accent-500" />
             <CommentIcon className="h-2.5 w-2.5" />
             <BookmarkIcon className="h-2.5 w-2.5" />
           </div>
         </div>
         <div className="rounded-lg border border-neutral-200/60 bg-white/70 p-2 opacity-60">
           <div className="flex items-center gap-1.5">
-            <Disc className="h-4 w-4 bg-gradient-to-br from-lime-400 to-emerald-500" />
+            <Disc className="h-4 w-4 bg-gradient-to-br from-accent-400 to-accent-500" />
             <Bar className="w-10 bg-neutral-300" />
           </div>
           <Bar className="mt-1.5 w-3/4 bg-neutral-200" />
@@ -92,20 +92,20 @@ const FEATURES: Feature[] = [
     preview: (
       <div className="flex flex-col gap-1.5">
         <MiniRow>
-          <Disc className="h-4 w-4 bg-gradient-to-br from-teal-400 to-emerald-500" />
+          <Disc className="h-4 w-4 bg-gradient-to-br from-accent-400 to-accent-500" />
           <span className="min-w-0 flex-1">
             <Bar className="w-12 bg-neutral-300" />
             <Bar className="mt-1 w-20 bg-neutral-200" />
           </span>
-          <Disc className="h-1.5 w-1.5 bg-emerald-500" />
+          <Disc className="h-1.5 w-1.5 bg-accent-500" />
         </MiniRow>
         <MiniRow>
-          <Disc className="h-4 w-4 bg-gradient-to-br from-emerald-400 to-lime-500" />
+          <Disc className="h-4 w-4 bg-gradient-to-br from-accent-400 to-accent-500" />
           <span className="min-w-0 flex-1">
             <Bar className="w-14 bg-neutral-300" />
             <Bar className="mt-1 w-16 bg-neutral-200" />
           </span>
-          <Disc className="h-1.5 w-1.5 bg-emerald-500" />
+          <Disc className="h-1.5 w-1.5 bg-accent-500" />
         </MiniRow>
         <MiniRow>
           <Disc className="h-4 w-4 bg-neutral-300" />
@@ -129,14 +129,14 @@ const FEATURES: Feature[] = [
           <Bar className="w-16 bg-neutral-200" />
         </div>
         <MiniRow>
-          <Disc className="h-4 w-4 bg-gradient-to-br from-emerald-400 to-teal-500" />
+          <Disc className="h-4 w-4 bg-gradient-to-br from-accent-400 to-accent-500" />
           <Bar className="w-16 bg-neutral-300" />
-          <span className="ml-auto h-3 w-8 rounded-full bg-emerald-500/15" />
+          <span className="ml-auto h-3 w-8 rounded-full bg-accent-500/15" />
         </MiniRow>
         <MiniRow>
-          <Disc className="h-4 w-4 bg-gradient-to-br from-teal-400 to-lime-500" />
+          <Disc className="h-4 w-4 bg-gradient-to-br from-accent-400 to-accent-500" />
           <Bar className="w-12 bg-neutral-300" />
-          <span className="ml-auto h-3 w-8 rounded-full bg-emerald-500/15" />
+          <span className="ml-auto h-3 w-8 rounded-full bg-accent-500/15" />
         </MiniRow>
       </div>
     ),
@@ -148,13 +148,13 @@ const FEATURES: Feature[] = [
       'Avatar, cover, bio, links, and a shareable @handle page you can open to the public.',
     preview: (
       <div className="overflow-hidden rounded-lg border border-neutral-200/60 bg-white/70">
-        <div className="h-9 bg-gradient-to-r from-emerald-400/70 via-teal-400/60 to-lime-400/60" />
+        <div className="h-9 bg-gradient-to-r from-accent-400/70 via-accent-400/60 to-accent-400/60" />
         <div className="px-2.5 pb-2.5">
-          <Disc className="-mt-2.5 h-6 w-6 border-2 border-white bg-gradient-to-br from-emerald-400 to-teal-600" />
+          <Disc className="-mt-2.5 h-6 w-6 border-2 border-white bg-gradient-to-br from-accent-400 to-accent-600" />
           <Bar className="mt-1.5 w-16 bg-neutral-300" />
           <Bar className="mt-1 w-10 bg-neutral-200" />
           <div className="mt-2 flex gap-1">
-            <span className="h-2.5 w-9 rounded-full bg-emerald-500/15" />
+            <span className="h-2.5 w-9 rounded-full bg-accent-500/15" />
             <span className="h-2.5 w-12 rounded-full bg-neutral-200" />
             <span className="h-2.5 w-8 rounded-full bg-neutral-200" />
           </div>
@@ -174,7 +174,7 @@ const FEATURES: Feature[] = [
             <Bar className="mt-1 w-20 bg-neutral-200" />
           </span>
           {/* Toggle on */}
-          <span className="flex h-3.5 w-6 items-center rounded-full bg-emerald-500 px-0.5">
+          <span className="flex h-3.5 w-6 items-center rounded-full bg-accent-500 px-0.5">
             <Disc className="ml-auto h-2.5 w-2.5 bg-white" />
           </span>
         </div>
@@ -200,7 +200,7 @@ const FEATURES: Feature[] = [
         {/* Segmented theme switcher, mirroring the in-app control */}
         <div className="flex rounded-full bg-black/5 p-0.5">
           <span className="flex flex-1 items-center justify-center rounded-full bg-white py-1 shadow-sm">
-            <SunIcon className="h-2.5 w-2.5 text-emerald-600" />
+            <SunIcon className="h-2.5 w-2.5 text-accent-600" />
           </span>
           <span className="flex flex-1 items-center justify-center py-1">
             <MoonIcon className="h-2.5 w-2.5 text-neutral-400" />
@@ -257,13 +257,13 @@ const STEPS: { title: string; description: string }[] = [
 
 function FeatureCard({ icon: Icon, title, description, preview }: Feature) {
   return (
-    <div className="glass group relative overflow-hidden rounded-3xl p-5 transition-all duration-200 hover:-translate-y-1 hover:border-emerald-300/60 hover:shadow-xl hover:shadow-emerald-600/10">
+    <div className="glass group relative overflow-hidden rounded-3xl p-5 transition-all duration-200 hover:-translate-y-1 hover:border-accent-300/60 hover:shadow-xl hover:shadow-accent-600/10">
       {/* Soft glow that fades in behind the tile on hover */}
       <span
-        className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-emerald-400/0 blur-2xl transition-colors duration-300 group-hover:bg-emerald-400/20"
+        className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-accent-400/0 blur-2xl transition-colors duration-300 group-hover:bg-accent-400/20"
         aria-hidden="true"
       />
-      <span className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 ring-1 ring-inset ring-emerald-500/15 transition-all duration-200 group-hover:bg-gradient-to-br group-hover:from-emerald-500 group-hover:to-teal-600 group-hover:text-white group-hover:shadow-md group-hover:shadow-emerald-600/30 group-hover:ring-emerald-500">
+      <span className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-accent-500/10 text-accent-600 ring-1 ring-inset ring-accent-500/15 transition-all duration-200 group-hover:bg-gradient-to-br group-hover:from-accent-500 group-hover:to-accent-600 group-hover:text-white group-hover:shadow-md group-hover:shadow-accent-600/30 group-hover:ring-accent-500">
         <Icon className="h-5 w-5" />
       </span>
       <h3 className="relative mt-3 text-sm font-semibold text-neutral-800">{title}</h3>
@@ -312,16 +312,16 @@ export default async function LandingPage() {
       {/* Hero */}
       <section className="mx-auto flex max-w-3xl flex-col items-center px-4 pb-16 pt-12 text-center sm:pt-20">
         <BrandMark size="lg" />
-        <p className="mt-6 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-500/20">
+        <p className="mt-6 inline-flex items-center gap-1.5 rounded-full bg-accent-500/10 px-3.5 py-1.5 text-xs font-semibold text-accent-700 ring-1 ring-inset ring-accent-500/20">
           <SparklesIcon className="h-3.5 w-3.5" />
           {settings.appName} — {settings.heroTagline}
         </p>
-        <h1 className="mt-5 max-w-2xl text-balance bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-6xl">
+        <h1 className="mt-5 max-w-2xl text-balance bg-gradient-to-br from-accent-700 via-accent-600 to-accent-600 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-6xl">
           Bringing back what social media{' '}
           <span className="relative whitespace-nowrap">
             should be
             <svg
-              className="absolute -bottom-1 left-0 w-full text-emerald-500/70"
+              className="absolute -bottom-1 left-0 w-full text-accent-500/70"
               viewBox="0 0 120 8"
               fill="none"
               preserveAspectRatio="none"
@@ -339,14 +339,14 @@ export default async function LandingPage() {
         </h1>
         <p className="mt-4 max-w-xl text-balance text-lg leading-relaxed text-neutral-600">
           No algorithms. No character building. Just you and your{' '}
-          <span className="font-semibold text-emerald-700">kwento</span>.
+          <span className="font-semibold text-accent-700">kwento</span>.
         </p>
         <p className="mt-2 text-xs italic text-neutral-400">
           kwento — Tagalog for &ldquo;story&rdquo;
         </p>
 
         <div className="mt-7 w-full">
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-emerald-600">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-accent-600">
             FIND YOUR TROOPS
           </p>
           <LandingUserSearch />
@@ -376,21 +376,21 @@ export default async function LandingPage() {
           <div className="glass absolute inset-x-4 -bottom-1 top-4 -rotate-1 rounded-3xl opacity-80" />
 
           <FloatChip className="-top-6 right-3 flex" rotate="2deg" delay="0.4s">
-            <HeartIcon filled className="h-3.5 w-3.5 text-emerald-500" />
+            <HeartIcon filled className="h-3.5 w-3.5 text-accent-500" />
             Maria liked your kwento
           </FloatChip>
           <FloatChip className="-left-7 top-1/3 hidden sm:flex" rotate="-2deg" delay="1.4s">
-            <UsersIcon className="h-3.5 w-3.5 text-emerald-600" />
+            <UsersIcon className="h-3.5 w-3.5 text-accent-600" />
             @jose followed you
           </FloatChip>
           <FloatChip className="-bottom-8 right-5 hidden sm:flex" rotate="1.5deg" delay="2.3s">
-            <MailIcon className="h-3.5 w-3.5 text-emerald-600" />
+            <MailIcon className="h-3.5 w-3.5 text-accent-600" />
             New mail from Ate Kim
           </FloatChip>
 
           <article className="glass relative rounded-3xl p-5 text-left">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 text-sm font-bold text-white">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent-400 to-accent-600 text-sm font-bold text-white">
                 J
               </span>
               <span className="min-w-0">
@@ -405,11 +405,11 @@ export default async function LandingPage() {
             <p className="mt-3 text-sm leading-relaxed text-neutral-700">
               Walang algorithm dito, walang arte — kwento lang. Parang internet dati. Tambay tayo!
             </p>
-            <div className="mt-3 flex h-28 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400/50 via-teal-300/40 to-lime-300/40 text-emerald-700/50">
+            <div className="mt-3 flex h-28 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-400/50 via-accent-300/40 to-accent-300/40 text-accent-700/50">
               <ImageIcon className="h-6 w-6" />
             </div>
             <div className="mt-3 flex items-center gap-4 text-xs font-medium text-neutral-500">
-              <span className="flex items-center gap-1.5 text-emerald-600">
+              <span className="flex items-center gap-1.5 text-accent-600">
                 <HeartIcon filled className="h-4 w-4" /> 24
               </span>
               <span className="flex items-center gap-1.5">
@@ -426,7 +426,7 @@ export default async function LandingPage() {
       {/* The promise — what we left behind vs. what you get */}
       <section className="mx-auto max-w-5xl px-4 pb-16 sm:pb-20">
         <div className="mx-auto max-w-xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent-600">
             The promise
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
@@ -457,19 +457,19 @@ export default async function LandingPage() {
             </ul>
           </div>
 
-          <div className="glass rounded-3xl p-5 ring-2 ring-emerald-500/25 sm:p-6">
+          <div className="glass rounded-3xl p-5 ring-2 ring-accent-500/25 sm:p-6">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-accent-500/15 text-accent-600">
                 <SparklesIcon className="h-4 w-4" />
               </span>
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-accent-600">
                 What you get on {settings.appName}
               </h3>
             </div>
             <ul className="mt-3 divide-y divide-black/5">
               {YOU_GET.map((item) => (
                 <li key={item} className="flex items-start gap-3 py-2.5 text-sm text-neutral-700">
-                  <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-accent-600" />
                   {item}
                 </li>
               ))}
@@ -489,7 +489,7 @@ export default async function LandingPage() {
       {/* Features */}
       <section className="mx-auto max-w-5xl px-4 pb-16 sm:pb-20">
         <div className="mx-auto max-w-xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent-600">
             Everything in one place
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
@@ -508,7 +508,7 @@ export default async function LandingPage() {
         <p className="mt-8 text-center text-sm">
           <Link
             href="/register"
-            className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:underline"
+            className="inline-flex items-center gap-1 font-semibold text-accent-700 hover:underline"
           >
             Create your account and see it all
             <ChevronRightIcon className="h-3.5 w-3.5" />
@@ -519,7 +519,7 @@ export default async function LandingPage() {
       {/* Handle claim — the @handle is the visitor's stake in the community */}
       <section className="mx-auto max-w-3xl px-4 pb-16 sm:pb-20">
         <div className="glass rounded-[2rem] px-6 py-10 text-center sm:px-12">
-          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent-600">
             Claim your handle
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
@@ -533,8 +533,8 @@ export default async function LandingPage() {
           >
             <span className="font-semibold text-neutral-400">@</span>
             <span className="font-semibold text-neutral-800">yourname</span>
-            <span className="h-5 w-0.5 animate-pulse bg-emerald-500" />
-            <span className="ml-1.5 flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-600">
+            <span className="h-5 w-0.5 animate-pulse bg-accent-500" />
+            <span className="ml-1.5 flex items-center gap-1 rounded-full bg-accent-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent-600">
               <CheckIcon className="h-3 w-3" />
               Available
             </span>
@@ -556,7 +556,7 @@ export default async function LandingPage() {
       {/* How it works */}
       <section className="mx-auto max-w-4xl px-4 pb-16 sm:pb-20">
         <div className="mx-auto max-w-xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent-600">
             Get started in seconds
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
@@ -567,14 +567,14 @@ export default async function LandingPage() {
           {STEPS.map((step, i) => (
             <li key={step.title} className="glass overflow-hidden rounded-3xl">
               {/* Progress strip — fills a third further on each step */}
-              <div className="h-1 bg-emerald-500/10" aria-hidden="true">
+              <div className="h-1 bg-accent-500/10" aria-hidden="true">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-400 to-teal-500"
+                  className="h-full bg-gradient-to-r from-accent-400 to-accent-500"
                   style={{ width: `${((i + 1) / STEPS.length) * 100}%` }}
                 />
               </div>
               <div className="p-5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-500/15">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent-500 to-accent-600 text-sm font-bold text-white shadow-md shadow-accent-600/30 ring-4 ring-accent-500/15">
                   {i + 1}
                 </span>
                 <h3 className="mt-3 text-sm font-semibold text-neutral-800">{step.title}</h3>
@@ -589,7 +589,7 @@ export default async function LandingPage() {
 
       {/* Closing CTA — solid gradient card so the ask stands out from the glass */}
       <section className="mx-auto max-w-3xl px-4 pb-20">
-        <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-600 px-6 py-12 text-center shadow-xl shadow-emerald-600/30 sm:px-12">
+        <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-accent-600 via-accent-500 to-accent-600 px-6 py-12 text-center shadow-xl shadow-accent-600/30 sm:px-12">
           <div
             className="absolute -top-28 left-1/2 h-64 w-[36rem] -translate-x-1/2 rounded-full bg-white/20 blur-3xl"
             aria-hidden="true"
@@ -597,18 +597,18 @@ export default async function LandingPage() {
           <h2 className="relative text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Tara, tambay na.
           </h2>
-          <p className="relative mx-auto mt-3 max-w-md text-sm leading-relaxed text-emerald-50/90">
+          <p className="relative mx-auto mt-3 max-w-md text-sm leading-relaxed text-accent-50/90">
             No algorithms. No character building. Just you and your kwento — claim your handle on{' '}
             {settings.appName} today.
           </p>
           <Link
             href="/register"
-            className="relative mt-7 inline-flex items-center gap-1.5 rounded-full bg-white px-8 py-3.5 text-sm font-bold text-emerald-700 shadow-lg transition-all hover:scale-[1.03] hover:shadow-xl active:scale-[0.98]"
+            className="relative mt-7 inline-flex items-center gap-1.5 rounded-full bg-white px-8 py-3.5 text-sm font-bold text-accent-700 shadow-lg transition-all hover:scale-[1.03] hover:shadow-xl active:scale-[0.98]"
           >
             Create your account — it&apos;s free
             <ChevronRightIcon className="h-4 w-4" />
           </Link>
-          <p className="relative mt-5 text-xs text-emerald-100/80">
+          <p className="relative mt-5 text-xs text-accent-100/80">
             Already have an account?{' '}
             <Link
               href="/login"

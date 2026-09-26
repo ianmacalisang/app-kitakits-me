@@ -12,11 +12,14 @@ export function LikeButton({
   initialLiked,
   initialCount,
   authenticated = true,
+  onDark = false,
 }: {
   postId: number
   initialLiked: boolean
   initialCount: number
   authenticated?: boolean
+  // Renders legibly over dark media (reels overlay rail).
+  onDark?: boolean
 }) {
   const [liked, setLiked] = useState(initialLiked)
   const [count, setCount] = useState(initialCount)
@@ -44,7 +47,11 @@ export function LikeButton({
         onClick={handleClick}
         disabled={pending}
         className={`flex items-center gap-1.5 text-sm transition-colors ${
-          liked ? 'text-rose-500' : 'text-neutral-500 hover:text-rose-500'
+          liked
+            ? 'text-rose-500'
+            : onDark
+              ? 'text-white/85 hover:text-rose-400'
+              : 'text-neutral-500 hover:text-rose-500'
         }`}
         aria-label={liked ? 'Unlike' : 'Like'}
         aria-pressed={liked}

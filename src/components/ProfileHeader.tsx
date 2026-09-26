@@ -74,7 +74,7 @@ export function ProfileHeader({
             href={website.startsWith('http') ? website : `https://${website}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 inline-block text-sm font-medium text-emerald-300 hover:text-emerald-200 hover:underline"
+            className="mt-2 inline-block text-sm font-medium text-accent-300 hover:text-accent-200 hover:underline"
           >
             {website.replace(/^https?:\/\//, '')}
           </a>

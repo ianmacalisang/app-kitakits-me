@@ -293,6 +293,12 @@ export const ShareIcon = (props: IconProps) => (
   </svg>
 )
 
+export const FilterIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+  </svg>
+)
+
 export const GripIcon = (props: IconProps) => (
   <svg viewBox="0 0 24 24" {...base} fill="currentColor" stroke="none" {...props}>
     <circle cx="9" cy="6" r="1.5" />
