@@ -80,6 +80,7 @@ export interface Config {
     'mail-drafts': MailDraft;
     'mail-attachments': MailAttachment;
     videos: Video;
+    testimonials: Testimonial;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -100,6 +101,7 @@ export interface Config {
     'mail-drafts': MailDraftsSelect<false> | MailDraftsSelect<true>;
     'mail-attachments': MailAttachmentsSelect<false> | MailAttachmentsSelect<true>;
     videos: VideosSelect<false> | VideosSelect<true>;
+    testimonials: TestimonialsSelect<false> | TestimonialsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -210,6 +212,7 @@ export interface User {
   discoverable?: boolean | null;
   publicProfile?: boolean | null;
   commentPermission?: ('everyone' | 'followers' | 'off') | null;
+  testimonialPermission?: ('everyone' | 'followers' | 'off') | null;
   theme?: ('system' | 'light' | 'dark') | null;
   /**
    * Set when the user finishes the onboarding flow.
@@ -349,10 +352,24 @@ export interface Notification {
   id: number;
   recipient: number | User;
   actor: number | User;
-  type: 'like' | 'comment' | 'follow';
+  type: 'like' | 'comment' | 'follow' | 'testimonial';
   post?: (number | null) | Post;
   comment?: (number | null) | Comment;
+  testimonial?: (number | null) | Testimonial;
   read?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "testimonials".
+ */
+export interface Testimonial {
+  id: number;
+  author: number | User;
+  recipient: number | User;
+  content: string;
+  status?: ('pending' | 'approved' | 'rejected') | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -516,6 +533,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'videos';
         value: number | Video;
+      } | null)
+    | ({
+        relationTo: 'testimonials';
+        value: number | Testimonial;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -630,6 +651,7 @@ export interface UsersSelect<T extends boolean = true> {
   discoverable?: T;
   publicProfile?: T;
   commentPermission?: T;
+  testimonialPermission?: T;
   theme?: T;
   onboardedAt?: T;
   role?: T;
@@ -738,6 +760,7 @@ export interface NotificationsSelect<T extends boolean = true> {
   type?: T;
   post?: T;
   comment?: T;
+  testimonial?: T;
   read?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -823,6 +846,18 @@ export interface VideosSelect<T extends boolean = true> {
   width?: T;
   height?: T;
   playCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "testimonials_select".
+ */
+export interface TestimonialsSelect<T extends boolean = true> {
+  author?: T;
+  recipient?: T;
+  content?: T;
+  status?: T;
   updatedAt?: T;
   createdAt?: T;
 }

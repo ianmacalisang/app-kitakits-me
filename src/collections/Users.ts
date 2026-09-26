@@ -231,6 +231,16 @@ export const Users: CollectionConfig = {
       defaultValue: 'everyone',
     },
     {
+      name: 'testimonialPermission',
+      type: 'select',
+      options: [
+        { label: 'Everyone', value: 'everyone' },
+        { label: 'Followers only', value: 'followers' },
+        { label: 'Off', value: 'off' },
+      ],
+      defaultValue: 'everyone',
+    },
+    {
       name: 'theme',
       type: 'select',
       options: [

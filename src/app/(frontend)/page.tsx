@@ -16,6 +16,7 @@ import {
   MailIcon,
   MonitorIcon,
   MoonIcon,
+  QuoteIcon,
   SearchIcon,
   SparklesIcon,
   SunIcon,
@@ -163,6 +164,34 @@ const FEATURES: Feature[] = [
     ),
   },
   {
+    icon: QuoteIcon,
+    title: 'Testimonials are back',
+    description:
+      'Friends write on your profile the old-school way — nothing goes public until you approve it.',
+    preview: (
+      <div className="flex flex-col gap-1.5">
+        <div className="rounded-lg border border-neutral-200/60 bg-white/70 p-2">
+          <QuoteIcon className="h-2.5 w-2.5 text-accent-400" />
+          <div className="mt-1 flex flex-col gap-1">
+            <Bar className="w-full bg-neutral-200" />
+            <Bar className="w-3/4 bg-neutral-200" />
+          </div>
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <Disc className="h-3 w-3 bg-gradient-to-br from-accent-400 to-accent-500" />
+            <Bar className="w-10 bg-neutral-300" />
+          </div>
+        </div>
+        {/* Pending testimonial — waits on the recipient's approval */}
+        <div className="flex items-center justify-between rounded-lg border border-dashed border-neutral-300/70 bg-white/50 px-2 py-1.5">
+          <Bar className="w-16 bg-neutral-200" />
+          <span className="rounded-full bg-accent-500/15 px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-accent-600">
+            Approve
+          </span>
+        </div>
+      </div>
+    ),
+  },
+  {
     icon: LockIcon,
     title: 'Privacy on your terms',
     description: 'Go private, post to followers only, and choose who can land in your mailbox.',
@@ -237,6 +266,7 @@ const YOU_GET = [
   'A chronological feed of people you actually follow',
   'Real mail and real conversations, not engagement bait',
   'A profile that is yours — public only if you want it',
+  'Testimonials from friends, on your profile once you approve',
   'Privacy controls on every post and message',
 ]
 
@@ -386,6 +416,10 @@ export default async function LandingPage() {
           <FloatChip className="-bottom-8 right-5 hidden sm:flex" rotate="1.5deg" delay="2.3s">
             <MailIcon className="h-3.5 w-3.5 text-accent-600" />
             New mail from Ate Kim
+          </FloatChip>
+          <FloatChip className="-bottom-10 left-3 hidden sm:flex" rotate="-1.5deg" delay="3.1s">
+            <QuoteIcon className="h-3.5 w-3.5 text-accent-600" />
+            Ana wrote you a testimonial
           </FloatChip>
 
           <article className="glass relative rounded-3xl p-5 text-left">

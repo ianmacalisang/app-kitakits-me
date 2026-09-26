@@ -102,6 +102,13 @@ export async function deleteUserData(payload: Payload, userId: number): Promise<
   // were already swept above).
   await payload.delete({ collection: 'comments', where: { author: { equals: userId } } })
 
+  // Testimonials the user wrote or received — their notifications were
+  // swept above since the user is always the actor or recipient.
+  await payload.delete({
+    collection: 'testimonials',
+    where: { or: [{ author: { equals: userId } }, { recipient: { equals: userId } }] },
+  })
+
   // The rest of the user's connections.
   await payload.delete({ collection: 'likes', where: { user: { equals: userId } } })
   await payload.delete({ collection: 'saves', where: { user: { equals: userId } } })

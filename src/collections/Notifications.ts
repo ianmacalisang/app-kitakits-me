@@ -48,7 +48,7 @@ export const Notifications: CollectionConfig = {
     {
       name: 'type',
       type: 'select',
-      options: ['like', 'comment', 'follow'],
+      options: ['like', 'comment', 'follow', 'testimonial'],
       required: true,
       access: {
         update: isAdminField,
@@ -66,6 +66,14 @@ export const Notifications: CollectionConfig = {
       name: 'comment',
       type: 'relationship',
       relationTo: 'comments',
+      access: {
+        update: isAdminField,
+      },
+    },
+    {
+      name: 'testimonial',
+      type: 'relationship',
+      relationTo: 'testimonials',
       access: {
         update: isAdminField,
       },

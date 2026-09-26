@@ -44,11 +44,19 @@ export default async function MailboxPage({
     .filter((t): t is ThreadData => t !== null)
 
   return (
-    <MailboxView
-      threads={threads}
-      initialHasMore={result.hasNextPage}
-      drafts={draftResult.docs.map(toDraftData)}
-      composeTo={to?.trim() || null}
-    />
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-xl font-bold">Mailbox</h1>
+        <p className="mt-1 text-sm text-neutral-500">
+          Private messages between you and other members.
+        </p>
+      </div>
+      <MailboxView
+        threads={threads}
+        initialHasMore={result.hasNextPage}
+        drafts={draftResult.docs.map(toDraftData)}
+        composeTo={to?.trim() || null}
+      />
+    </div>
   )
 }

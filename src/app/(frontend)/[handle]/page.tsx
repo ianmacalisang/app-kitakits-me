@@ -13,7 +13,13 @@ import { ShareProfileButton } from '@/components/ShareProfileButton'
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
 import { FEED_PAGE_SIZE, hydratePosts } from '@/lib/posts'
-import { avatarUrl, coverUrl, toAboutBlocks } from '@/lib/serialize'
+import {
+  avatarUrl,
+  coverUrl,
+  toAboutBlocks,
+  toTestimonialData,
+  type TestimonialData,
+} from '@/lib/serialize'
 import { getSiteSettings } from '@/lib/settings'
 
 // Public profiles live at /@username. The leading '@' in `handle` is what
@@ -84,7 +90,16 @@ export default async function PublicProfilePage({
   const isSelf = viewer?.id === profileUser.id
   const canViewPosts = !profileUser.isPrivate
 
-  const [followers, following, posts, pinned] = await Promise.all([
+  const [
+    followers,
+    following,
+    posts,
+    pinned,
+    testimonials,
+    myTestimonial,
+    viewerFollows,
+    pendingTestimonials,
+  ] = await Promise.all([
     payload.count({
       collection: 'follows',
       where: { following: { equals: profileUser.id } },
@@ -126,7 +141,60 @@ export default async function PublicProfilePage({
           depth: 2,
         })
       : Promise.resolve({ docs: [], hasNextPage: false }),
+    canViewPosts
+      ? payload.find({
+          collection: 'testimonials',
+          where: {
+            and: [{ recipient: { equals: profileUser.id } }, { status: { equals: 'approved' } }],
+          },
+          sort: '-createdAt',
+          limit: 20,
+          depth: 2,
+          ...(viewer ? { user: viewer, overrideAccess: false as const } : {}),
+        })
+      : Promise.resolve({ docs: [], hasNextPage: false }),
+    viewer && !isSelf && canViewPosts
+      ? payload.find({
+          collection: 'testimonials',
+          where: {
+            and: [{ author: { equals: viewer.id } }, { recipient: { equals: profileUser.id } }],
+          },
+          limit: 1,
+          depth: 2,
+          user: viewer,
+          overrideAccess: false,
+        })
+      : Promise.resolve({ docs: [] }),
+    viewer && !isSelf && canViewPosts
+      ? payload.count({
+          collection: 'follows',
+          where: {
+            and: [{ follower: { equals: viewer.id } }, { following: { equals: profileUser.id } }],
+          },
+          user: viewer,
+          overrideAccess: false,
+        })
+      : Promise.resolve({ totalDocs: 0 }),
+    viewer && isSelf
+      ? payload.count({
+          collection: 'testimonials',
+          where: {
+            and: [{ recipient: { equals: viewer.id } }, { status: { equals: 'pending' } }],
+          },
+          user: viewer,
+          overrideAccess: false,
+        })
+      : Promise.resolve({ totalDocs: 0 }),
   ])
+
+  const testimonialPermission = profileUser.testimonialPermission ?? 'everyone'
+  const canWriteTestimonial =
+    Boolean(viewer) &&
+    !isSelf &&
+    testimonialPermission !== 'off' &&
+    (!(testimonialPermission === 'followers' || profileUser.isPrivate) ||
+      viewerFollows.totalDocs > 0 ||
+      viewer?.role === 'admin')
 
   const [cards, pinnedCards] = await Promise.all([
     hydratePosts(posts.docs, viewer),
@@ -235,10 +303,23 @@ export default async function PublicProfilePage({
               pinnedPosts={pinnedCards}
               authorId={profileUser.id}
               about={toAboutBlocks(profileUser)}
-              isSelf={false}
+              isSelf={Boolean(isSelf)}
+              name={profileUser.name}
               username={profileUser.username}
               followerCount={followers.totalDocs}
               followingCount={following.totalDocs}
+              testimonials={{
+                items: testimonials.docs
+                  .map((doc) => toTestimonialData(doc, viewer))
+                  .filter((t): t is TestimonialData => t !== null),
+                hasMore: testimonials.hasNextPage,
+                mine: myTestimonial.docs[0]
+                  ? toTestimonialData(myTestimonial.docs[0], viewer)
+                  : null,
+                canWrite: canWriteTestimonial,
+                viewerAuthenticated: Boolean(viewer),
+                pendingCount: pendingTestimonials.totalDocs,
+              }}
               isPublicPage
             />
           ) : (

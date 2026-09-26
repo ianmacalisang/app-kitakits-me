@@ -21,6 +21,7 @@ export function PrivacySettings({
     discoverable: boolean
     publicProfile: boolean
     commentPermission: Permission
+    testimonialPermission: Permission
   }
   username: string
 }) {
@@ -28,6 +29,9 @@ export function PrivacySettings({
   const [discoverable, setDiscoverable] = useState(initial.discoverable)
   const [publicProfile, setPublicProfile] = useState(initial.publicProfile)
   const [permission, setPermission] = useState<Permission>(initial.commentPermission)
+  const [testimonialPermission, setTestimonialPermission] = useState<Permission>(
+    initial.testimonialPermission,
+  )
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -65,6 +69,13 @@ export function PrivacySettings({
     const prev = permission
     setPermission(next)
     save({ commentPermission: next }, () => setPermission(prev))
+  }
+
+  const chooseTestimonial = (next: Permission) => {
+    if (next === testimonialPermission) return
+    const prev = testimonialPermission
+    setTestimonialPermission(next)
+    save({ testimonialPermission: next }, () => setTestimonialPermission(prev))
   }
 
   return (
@@ -143,6 +154,30 @@ export function PrivacySettings({
                 disabled={pending}
                 className={`flex-1 rounded-full py-1.5 text-xs font-medium transition-all disabled:opacity-50 ${
                   permission === value
+                    ? 'bg-white text-neutral-900 shadow-sm'
+                    : 'text-neutral-500 hover:text-neutral-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-4">
+          <p className="text-sm font-medium">Testimonials</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-neutral-500">
+            Who can write a testimonial on your profile. You always approve them before they show.
+          </p>
+          <div className="mt-3 flex rounded-full bg-black/5 p-1">
+            {PERMISSIONS.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => chooseTestimonial(value)}
+                disabled={pending}
+                className={`flex-1 rounded-full py-1.5 text-xs font-medium transition-all disabled:opacity-50 ${
+                  testimonialPermission === value
                     ? 'bg-white text-neutral-900 shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-700'
                 }`}

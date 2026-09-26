@@ -12,7 +12,7 @@ export default async function AppLayout(props: { children: React.ReactNode }) {
   if (!user) redirect('/login')
 
   const payload = await getPayloadClient()
-  const [fullUser, { unread, unreadMail }] = await Promise.all([
+  const [fullUser, { unread, unreadMail, pendingTestimonials }] = await Promise.all([
     payload.findByID({ collection: 'users', id: user.id, depth: 1 }),
     getCachedNavBadgeCounts(user.id),
   ])
@@ -27,6 +27,7 @@ export default async function AppLayout(props: { children: React.ReactNode }) {
         avatarUrl={avatarUrl(fullUser)}
         unreadCount={unread}
         unreadMailCount={unreadMail}
+        pendingTestimonialCount={pendingTestimonials}
         theme={fullUser.theme ?? 'light'}
       />
       <main>

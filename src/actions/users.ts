@@ -137,6 +137,7 @@ export async function updatePrivacy(data: {
   discoverable?: boolean
   publicProfile?: boolean
   commentPermission?: 'everyone' | 'followers' | 'off'
+  testimonialPermission?: 'everyone' | 'followers' | 'off'
 }): Promise<FormState> {
   const user = await getCurrentUser()
   if (!user) redirect('/login')

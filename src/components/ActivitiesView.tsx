@@ -10,7 +10,14 @@ import { formatRelativeTime } from '@/lib/time'
 import { Avatar } from './Avatar'
 import { CommentsSheet } from './CommentsSheet'
 import { EmptyState } from './EmptyState'
-import { ActivityIcon, ChevronRightIcon, CommentIcon, HeartIcon, UserIcon } from './icons'
+import {
+  ActivityIcon,
+  ChevronRightIcon,
+  CommentIcon,
+  HeartIcon,
+  QuoteIcon,
+  UserIcon,
+} from './icons'
 import { LoadSentinel } from './LoadSentinel'
 import { PostCard } from './PostCard'
 import { PostSheet } from './PostSheet'
@@ -19,12 +26,14 @@ const typeIcon = {
   like: <HeartIcon className="h-3 w-3" filled />,
   comment: <CommentIcon className="h-3 w-3" />,
   follow: <UserIcon className="h-3 w-3" />,
+  testimonial: <QuoteIcon className="h-3 w-3" />,
 }
 
 const typeColor = {
   like: 'bg-rose-500 text-white',
   comment: 'bg-accent-500 text-white',
   follow: 'bg-accent-500 text-white',
+  testimonial: 'bg-violet-500 text-white',
 }
 
 // "Maria liked Juan's post" — actor and target names in semibold, the verb plain.
@@ -63,6 +72,17 @@ const ActivityText = ({ activity }: { activity: ActivityData }) => {
       return (
         <>
           {actor} started following{' '}
+          {activity.targetName ? (
+            <span className="font-semibold">{activity.targetName}</span>
+          ) : (
+            'someone'
+          )}
+        </>
+      )
+    case 'testimonial':
+      return (
+        <>
+          {actor} wrote a testimonial for{' '}
           {activity.targetName ? (
             <span className="font-semibold">{activity.targetName}</span>
           ) : (
@@ -170,7 +190,7 @@ export function ActivitiesView({
 
   const open = useCallback(
     (activity: ActivityData) => {
-      if (activity.type === 'follow') {
+      if (activity.type === 'follow' || activity.type === 'testimonial') {
         if (activity.targetUsername) router.push(`/profile/${activity.targetUsername}`)
       } else if (activity.postId) {
         if (activity.type === 'like') setViewPostId(activity.postId)
@@ -188,7 +208,7 @@ export function ActivitiesView({
       <EmptyState
         icon={<ActivityIcon />}
         title="No activity yet"
-        message="When people you follow like, comment, or follow others, it will show up here."
+        message="When people you follow like, comment, follow others, or write testimonials, it will show up here."
       />
     )
   }
@@ -375,9 +395,9 @@ const ActivityItem = memo(function ActivityItem({
             <span className="block truncate text-sm text-neutral-700">
               <ActivityText activity={activity} />
             </span>
-            {activity.commentSnippet ? (
+            {activity.commentSnippet || activity.testimonialSnippet ? (
               <span className="mt-1.5 line-clamp-2 block rounded-lg border-l-2 border-accent-400/50 bg-black/5 py-1.5 pl-2.5 pr-3 text-xs italic text-neutral-600">
-                &ldquo;{activity.commentSnippet}&rdquo;
+                &ldquo;{activity.commentSnippet ?? activity.testimonialSnippet}&rdquo;
               </span>
             ) : activity.postSnippet ? (
               <span className="mt-1.5 line-clamp-2 block rounded-lg bg-black/5 px-2.5 py-1.5 text-xs text-neutral-500">
@@ -389,9 +409,10 @@ const ActivityItem = memo(function ActivityItem({
             </span>
           </span>
 
-          {/* Trailing cue — the followed user's avatar on follow rows, a chevron
-              on post rows (they open a sheet). */}
-          {activity.type === 'follow' && activity.targetName ? (
+          {/* Trailing cue — the target user's avatar on follow/testimonial
+              rows, a chevron on post rows (they open a sheet). */}
+          {(activity.type === 'follow' || activity.type === 'testimonial') &&
+          activity.targetName ? (
             <span className="shrink-0 transition-transform group-hover:scale-105">
               <Avatar src={activity.targetAvatarUrl} name={activity.targetName} size="sm" />
             </span>

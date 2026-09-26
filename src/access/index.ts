@@ -151,6 +151,100 @@ export const canLike: Access = async ({ req, data }) => {
   return isAuthorOrFollower(req, author.id)
 }
 
+const relIdOf = (value: unknown): number | null => {
+  if (typeof value === 'number') return value
+  if (typeof value === 'string') return Number(value)
+  if (typeof value === 'object' && value !== null) {
+    return Number((value as { id: number | string }).id)
+  }
+  return null
+}
+
+// Writing a testimonial is gated by the recipient's testimonialPermission —
+// 'off' blocks everyone, and 'followers' (or a private account) requires the
+// writer to follow the recipient, matching the comment rules.
+export const canWriteTestimonial: Access = async ({ req, data }) => {
+  const user = req.user
+  if (!user) return false
+  if (user.role === 'admin') return true
+
+  const recipientId = relIdOf(data?.recipient)
+  if (!recipientId || recipientId === user.id) return false
+
+  const recipient = await req.payload.findByID({
+    collection: 'users',
+    id: recipientId,
+    depth: 0,
+    req,
+  })
+  if (!recipient) return false
+
+  const permission = recipient.testimonialPermission ?? 'everyone'
+  if (permission === 'off') return false
+  if (permission !== 'followers' && !recipient.isPrivate) return true
+  return isAuthorOrFollower(req, recipient.id)
+}
+
+// Approved testimonials follow the recipient's profile visibility (private
+// profiles only show to followers); pending/rejected ones stay between the
+// author and recipient. Anonymous readers only ever see approved testimonials
+// on public, non-private profiles.
+export const canReadTestimonials: Access = async ({ req }) => {
+  const user = req.user
+  if (user?.role === 'admin') return true
+
+  const anonymousConstraint: Where = {
+    and: [
+      { status: { equals: 'approved' } },
+      { 'recipient.isPrivate': { not_equals: true } },
+      { 'recipient.publicProfile': { equals: true } },
+    ],
+  }
+  if (!user) return anonymousConstraint
+
+  const allowed = [user.id, ...(await followedIds(req))]
+  const approvedVisible: Where = {
+    and: [
+      { status: { equals: 'approved' } },
+      { or: [{ 'recipient.isPrivate': { not_equals: true } }, { recipient: { in: allowed } }] },
+    ],
+  }
+  const constraints: Where[] = [
+    { author: { equals: user.id } },
+    { recipient: { equals: user.id } },
+    approvedVisible,
+  ]
+  return { or: constraints }
+}
+
+// Both parties can reach the document (edit content / change status / remove
+// it); field-level access decides which fields each party may touch.
+export const isTestimonialParty: Access = ({ req }) => {
+  const user = req.user
+  if (!user) return false
+  if (user.role === 'admin') return true
+  const constraint: Where = {
+    or: [{ author: { equals: user.id } }, { recipient: { equals: user.id } }],
+  }
+  return constraint
+}
+
+// Only the testimonial's author (or an admin) may edit its content.
+export const isTestimonialAuthorField: FieldAccess = ({ req, doc }) => {
+  const user = req.user
+  if (!user) return false
+  if (user.role === 'admin') return true
+  return relIdOf(doc?.author) === user.id
+}
+
+// Only the recipient (or an admin) may approve/reject a testimonial.
+export const isTestimonialRecipientField: FieldAccess = ({ req, doc }) => {
+  const user = req.user
+  if (!user) return false
+  if (user.role === 'admin') return true
+  return relIdOf(doc?.recipient) === user.id
+}
+
 // Saving follows the same visibility rule as liking, plus you can't save
 // your own post.
 export const canSave: Access = async ({ req, data }) => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-import type { AboutBlockData, PostCardData } from '@/lib/serialize'
+import type { AboutBlockData, PostCardData, TestimonialData } from '@/lib/serialize'
 
 import { AboutSection } from './AboutSection'
 import { ConnectionsPanel } from './ConnectionsPanel'
@@ -13,20 +13,32 @@ import {
   ImageIcon,
   ListIcon,
   PinIcon,
+  QuoteIcon,
   UserIcon,
   UsersIcon,
 } from './icons'
 import { MediaGrid } from './MediaGrid'
 import { PostCard } from './PostCard'
+import { TestimonialsPanel } from './TestimonialsPanel'
 
-type Tab = 'about' | 'posts' | 'media' | 'connections'
+type Tab = 'about' | 'posts' | 'media' | 'connections' | 'testimonials'
 
 const TABS: { value: Tab; label: string; icon: typeof UserIcon }[] = [
   { value: 'about', label: 'About', icon: UserIcon },
   { value: 'posts', label: 'Posts', icon: ListIcon },
   { value: 'media', label: 'Photos', icon: ImageIcon },
+  { value: 'testimonials', label: 'Testimonials', icon: QuoteIcon },
   { value: 'connections', label: 'Connections', icon: UsersIcon },
 ]
+
+export interface ProfileTestimonials {
+  items: TestimonialData[]
+  hasMore: boolean
+  mine: TestimonialData | null
+  canWrite: boolean
+  viewerAuthenticated: boolean
+  pendingCount: number
+}
 
 // Posts / About / Media / Connections segmented control for the profile page.
 export function ProfileTabs({
@@ -36,9 +48,11 @@ export function ProfileTabs({
   authorId,
   about,
   isSelf,
+  name,
   username,
   followerCount,
   followingCount,
+  testimonials,
   isPublicPage = false,
 }: {
   initialPosts: PostCardData[]
@@ -47,9 +61,11 @@ export function ProfileTabs({
   authorId: number
   about: AboutBlockData[]
   isSelf: boolean
+  name: string
   username: string
   followerCount: number
   followingCount: number
+  testimonials: ProfileTestimonials
   isPublicPage?: boolean
 }) {
   const [tab, setTab] = useState<Tab>('about')
@@ -274,6 +290,28 @@ export function ProfileTabs({
             userId={authorId}
             followerCount={followerCount}
             followingCount={followingCount}
+            isPublicPage={isPublicPage}
+          />
+        </div>
+      )}
+      {visited.has('testimonials') && (
+        <div
+          role="tabpanel"
+          id="profile-panel-testimonials"
+          aria-labelledby="profile-tab-testimonials"
+          hidden={tab !== 'testimonials'}
+        >
+          <TestimonialsPanel
+            recipientId={authorId}
+            recipientName={name}
+            recipientUsername={username}
+            testimonials={testimonials.items}
+            hasMore={testimonials.hasMore}
+            mine={testimonials.mine}
+            canWrite={testimonials.canWrite}
+            viewerAuthenticated={testimonials.viewerAuthenticated}
+            isSelf={isSelf}
+            pendingCount={testimonials.pendingCount}
             isPublicPage={isPublicPage}
           />
         </div>

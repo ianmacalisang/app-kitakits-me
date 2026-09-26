@@ -6,7 +6,13 @@ import { ProfileTabs } from '@/components/ProfileTabs'
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
 import { FEED_PAGE_SIZE, hydratePosts } from '@/lib/posts'
-import { avatarUrl, coverUrl, toAboutBlocks } from '@/lib/serialize'
+import {
+  avatarUrl,
+  coverUrl,
+  toAboutBlocks,
+  toTestimonialData,
+  type TestimonialData,
+} from '@/lib/serialize'
 
 export default async function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params
@@ -26,7 +32,18 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   const profileUser = userResult.docs[0]
   if (!profileUser) notFound()
 
-  const [followers, following, existingFollow, posts, pinned] = await Promise.all([
+  const isSelf = profileUser.id === viewer.id
+
+  const [
+    followers,
+    following,
+    existingFollow,
+    posts,
+    pinned,
+    testimonials,
+    myTestimonial,
+    pendingTestimonials,
+  ] = await Promise.all([
     payload.count({
       collection: 'follows',
       where: { following: { equals: profileUser.id } },
@@ -68,6 +85,39 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       user: viewer,
       overrideAccess: false,
     }),
+    payload.find({
+      collection: 'testimonials',
+      where: {
+        and: [{ recipient: { equals: profileUser.id } }, { status: { equals: 'approved' } }],
+      },
+      sort: '-createdAt',
+      limit: 20,
+      depth: 2,
+      user: viewer,
+      overrideAccess: false,
+    }),
+    isSelf
+      ? Promise.resolve({ docs: [] })
+      : payload.find({
+          collection: 'testimonials',
+          where: {
+            and: [{ author: { equals: viewer.id } }, { recipient: { equals: profileUser.id } }],
+          },
+          limit: 1,
+          depth: 2,
+          user: viewer,
+          overrideAccess: false,
+        }),
+    isSelf
+      ? payload.count({
+          collection: 'testimonials',
+          where: {
+            and: [{ recipient: { equals: viewer.id } }, { status: { equals: 'pending' } }],
+          },
+          user: viewer,
+          overrideAccess: false,
+        })
+      : Promise.resolve({ totalDocs: 0 }),
   ])
 
   const [cards, pinnedCards] = await Promise.all([
@@ -75,9 +125,18 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     hydratePosts(pinned.docs, viewer),
   ])
 
-  const isSelf = profileUser.id === viewer.id
   const isFollowing = existingFollow.totalDocs > 0
   const canViewPosts = !profileUser.isPrivate || isSelf || isFollowing || viewer.role === 'admin'
+
+  // Mirrors canWriteTestimonial so the form doesn't even render for people the
+  // recipient's settings would reject anyway.
+  const testimonialPermission = profileUser.testimonialPermission ?? 'everyone'
+  const canWriteTestimonial =
+    !isSelf &&
+    testimonialPermission !== 'off' &&
+    (!(testimonialPermission === 'followers' || profileUser.isPrivate) ||
+      isFollowing ||
+      viewer.role === 'admin')
 
   return (
     <div className="flex flex-col gap-6">
@@ -101,9 +160,20 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
           authorId={profileUser.id}
           about={toAboutBlocks(profileUser)}
           isSelf={isSelf}
+          name={profileUser.name}
           username={profileUser.username}
           followerCount={followers.totalDocs}
           followingCount={following.totalDocs}
+          testimonials={{
+            items: testimonials.docs
+              .map((doc) => toTestimonialData(doc, viewer))
+              .filter((t): t is TestimonialData => t !== null),
+            hasMore: testimonials.hasNextPage,
+            mine: myTestimonial.docs[0] ? toTestimonialData(myTestimonial.docs[0], viewer) : null,
+            canWrite: canWriteTestimonial,
+            viewerAuthenticated: true,
+            pendingCount: pendingTestimonials.totalDocs,
+          }}
         />
       ) : (
         <div className="glass flex flex-col items-center gap-2 rounded-3xl p-10 text-center">

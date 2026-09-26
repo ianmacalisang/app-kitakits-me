@@ -39,6 +39,7 @@ export interface OnboardingInitial {
   discoverable: boolean
   publicProfile: boolean
   commentPermission: Permission
+  testimonialPermission: Permission
   theme: Theme
   about: AboutBlockData[]
 }
@@ -363,6 +364,7 @@ export function OnboardingWizard({
                   discoverable: initial.discoverable,
                   publicProfile: initial.publicProfile,
                   commentPermission: initial.commentPermission,
+                  testimonialPermission: initial.testimonialPermission,
                 }}
               />
               <div className="mt-5 flex items-center gap-2">

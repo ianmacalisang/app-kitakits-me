@@ -39,6 +39,7 @@ export default async function OnboardingPage() {
           discoverable: fullUser.discoverable ?? true,
           publicProfile: fullUser.publicProfile ?? false,
           commentPermission: fullUser.commentPermission ?? 'everyone',
+          testimonialPermission: fullUser.testimonialPermission ?? 'everyone',
           theme: fullUser.theme ?? 'light',
           about: toAboutBlocks(fullUser),
         }}

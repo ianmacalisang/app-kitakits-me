@@ -19,6 +19,7 @@ import { Threads } from './collections/Threads'
 import { Messages } from './collections/Messages'
 import { MailDrafts } from './collections/MailDrafts'
 import { MailAttachments } from './collections/MailAttachments'
+import { Testimonials } from './collections/Testimonials'
 import { Videos } from './collections/Videos'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -53,6 +54,7 @@ export default buildConfig({
     MailDrafts,
     MailAttachments,
     Videos,
+    Testimonials,
   ],
   globals: [SiteSettings],
   editor: lexicalEditor(),

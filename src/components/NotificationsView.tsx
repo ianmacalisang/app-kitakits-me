@@ -13,8 +13,9 @@ import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { CommentsSheet } from './CommentsSheet'
+import { CountBadge } from './CountBadge'
 import { EmptyState } from './EmptyState'
-import { BellIcon, CheckIcon, CommentIcon, HeartIcon, UserIcon } from './icons'
+import { BellIcon, CheckIcon, CommentIcon, HeartIcon, QuoteIcon, UserIcon } from './icons'
 import { PostSheet } from './PostSheet'
 import { LoadSentinel } from './LoadSentinel'
 
@@ -22,18 +23,21 @@ const typeIcon = {
   like: <HeartIcon className="h-2.5 w-2.5" filled />,
   comment: <CommentIcon className="h-2.5 w-2.5" />,
   follow: <UserIcon className="h-2.5 w-2.5" />,
+  testimonial: <QuoteIcon className="h-2.5 w-2.5" />,
 }
 
-const typeText = {
-  like: 'liked your post',
-  comment: 'commented on your post',
-  follow: 'started following you',
+const notificationText = (n: NotificationData) => {
+  if (n.type === 'like') return 'liked your post'
+  if (n.type === 'comment') return 'commented on your post'
+  if (n.type === 'follow') return 'started following you'
+  return n.testimonialEvent === 'approved' ? 'approved your testimonial' : 'wrote you a testimonial'
 }
 
 const typeColor = {
   like: 'bg-rose-500 text-white',
   comment: 'bg-accent-500 text-white',
   follow: 'bg-accent-500 text-white',
+  testimonial: 'bg-accent-500 text-white',
 }
 
 const sectionLabel = 'mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400'
@@ -138,6 +142,8 @@ export function NotificationsView({
         await Promise.all(unreadIds.map((id) => markNotificationRead(id)))
         if (notification.type === 'follow') {
           router.push(`/profile/${notification.actorUsername}`)
+        } else if (notification.type === 'testimonial') {
+          router.push('/testimonials')
         } else if (notification.postId) {
           if (notification.type === 'like') setViewPostId(notification.postId)
           else setOpenPostId(notification.postId)
@@ -193,13 +199,14 @@ export function NotificationsView({
           <button
             key={value}
             onClick={() => setFilter(value)}
-            className={`flex-1 rounded-full py-1.5 text-sm font-medium capitalize transition-all ${
+            className={`flex flex-1 items-center justify-center rounded-full py-1.5 text-sm font-medium capitalize transition-all ${
               filter === value
                 ? 'bg-white/90 text-neutral-900 shadow-sm'
                 : 'text-neutral-500 hover:text-neutral-700'
             }`}
           >
-            {value === 'unread' && unread.length > 0 ? `Unread (${unread.length})` : value}
+            {value}
+            {value === 'unread' && <CountBadge count={unread.length} />}
           </button>
         ))}
       </div>
@@ -284,18 +291,25 @@ const NotificationItem = memo(function NotificationItem({
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm">
             <span className="font-semibold">{notification.actorName}</span>{' '}
-            {typeText[notification.type]}
+            {notificationText(notification)}
           </span>
           {notification.commentSnippet && (
             <span className="block truncate text-xs italic text-neutral-600">
               “{notification.commentSnippet}”
             </span>
           )}
-          {!notification.commentSnippet && notification.postSnippet && (
-            <span className="block truncate text-xs text-neutral-500">
-              {notification.postSnippet}
+          {notification.testimonialSnippet && (
+            <span className="block truncate text-xs italic text-neutral-600">
+              “{notification.testimonialSnippet}”
             </span>
           )}
+          {!notification.commentSnippet &&
+            !notification.testimonialSnippet &&
+            notification.postSnippet && (
+              <span className="block truncate text-xs text-neutral-500">
+                {notification.postSnippet}
+              </span>
+            )}
           <span className="block text-xs text-neutral-500">
             @{notification.actorUsername} · {formatRelativeTime(notification.createdAt)}
           </span>
@@ -348,11 +362,16 @@ const NotificationStack = memo(function NotificationStack({
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm">
                 <span className="font-semibold">{notification.actorName}</span>{' '}
-                {typeText[notification.type]}
+                {notificationText(notification)}
               </span>
               {notification.commentSnippet && (
                 <span className="block truncate text-xs italic text-neutral-600">
                   “{notification.commentSnippet}”
+                </span>
+              )}
+              {notification.testimonialSnippet && (
+                <span className="block truncate text-xs italic text-neutral-600">
+                  “{notification.testimonialSnippet}”
                 </span>
               )}
               <span className="block text-xs text-neutral-500">

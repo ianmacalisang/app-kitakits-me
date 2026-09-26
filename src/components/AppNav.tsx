@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
 
 import { logout } from '@/actions/auth'
+import { getNavBadgeCounts } from '@/actions/nav'
 import { searchUsers, updateTheme } from '@/actions/users'
 import type { UserCardData } from '@/lib/serialize'
 
@@ -20,10 +21,10 @@ import {
   MailboxIcon,
   MonitorIcon,
   MoonIcon,
+  QuoteIcon,
   SearchIcon,
   SettingsIcon,
   SunIcon,
-  UserIcon,
   UsersIcon,
   XIcon,
 } from './icons'
@@ -43,6 +44,7 @@ interface AppNavProps {
   avatarUrl?: string
   unreadCount: number
   unreadMailCount: number
+  pendingTestimonialCount: number
   theme: Theme
 }
 
@@ -239,6 +241,7 @@ export function AppNav({
   avatarUrl,
   unreadCount,
   unreadMailCount,
+  pendingTestimonialCount,
   theme: themeProp,
 }: AppNavProps) {
   const pathname = usePathname()
@@ -253,6 +256,43 @@ export function AppNav({
     setPrevThemeProp(themeProp)
     setTheme(themeProp)
   }
+
+  // Badge counts live in state so polling can bump them without a server
+  // re-render; fresh props (router.refresh) still win when they land.
+  const [badges, setBadges] = useState({
+    unread: unreadCount,
+    unreadMail: unreadMailCount,
+    pendingTestimonials: pendingTestimonialCount,
+  })
+  const [prevBadgeProps, setPrevBadgeProps] = useState({
+    unreadCount,
+    unreadMailCount,
+    pendingTestimonialCount,
+  })
+  if (
+    prevBadgeProps.unreadCount !== unreadCount ||
+    prevBadgeProps.unreadMailCount !== unreadMailCount ||
+    prevBadgeProps.pendingTestimonialCount !== pendingTestimonialCount
+  ) {
+    setPrevBadgeProps({ unreadCount, unreadMailCount, pendingTestimonialCount })
+    setBadges({
+      unread: unreadCount,
+      unreadMail: unreadMailCount,
+      pendingTestimonials: pendingTestimonialCount,
+    })
+  }
+
+  // Poll for new notifications/mail/testimonials — catches counts that didn't
+  // trigger a server re-render. Skips while the tab is hidden.
+  useEffect(() => {
+    const tick = async () => {
+      if (document.hidden) return
+      const result = await getNavBadgeCounts()
+      if (result) setBadges(result)
+    }
+    const timer = setInterval(tick, 12000)
+    return () => clearInterval(timer)
+  }, [])
 
   // Close the user dropdown when clicking outside of it or pressing Escape.
   useEffect(() => {
@@ -286,14 +326,25 @@ export function AppNav({
   }[] = [
     { href: '/home', label: 'Home', icon: HomeIcon },
     { href: '/explore', label: 'Explore', icon: CompassIcon },
-    { href: '/mailbox', label: 'Mailbox', icon: MailboxIcon, badge: unreadMailCount },
-    { href: `/profile/${username}`, label: 'Profile', icon: UserIcon },
+    { href: '/mailbox', label: 'Mailbox', icon: MailboxIcon, badge: badges.unreadMail },
+    {
+      href: '/testimonials',
+      label: 'Testimonials',
+      icon: QuoteIcon,
+      badge: badges.pendingTestimonials,
+    },
   ]
 
   // Sliding pill — measure the active dock link so the indicator glides
-  // between items instead of blinking on each one independently.
+  // between items instead of blinking on each one independently. Height comes
+  // from the link (not the nav) so icon-only links get a perfect circle.
   const dockRef = useRef<HTMLElement>(null)
-  const [thumb, setThumb] = useState<{ left: number; width: number } | null>(null)
+  const [thumb, setThumb] = useState<{
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
   const activeIndex = links.findIndex((l) => l.href === pathname)
 
   useEffect(() => {
@@ -301,7 +352,16 @@ export function AppNav({
     if (!nav) return
     const measure = () => {
       const el = nav.querySelectorAll<HTMLElement>('[data-dock-link]')[activeIndex]
-      setThumb(el ? { left: el.offsetLeft, width: el.offsetWidth } : null)
+      setThumb(
+        el
+          ? {
+              left: el.offsetLeft,
+              top: el.offsetTop,
+              width: el.offsetWidth,
+              height: el.offsetHeight,
+            }
+          : null,
+      )
     }
     measure()
     // Labels appear at lg (changing widths) and the dock width tracks the
@@ -382,7 +442,7 @@ export function AppNav({
                         {name}
                       </span>
                       <span className="block truncate text-xs leading-tight text-neutral-500">
-                        @{username}
+                        View profile
                       </span>
                     </span>
                   </Link>
@@ -390,7 +450,7 @@ export function AppNav({
                     href="/settings"
                     onClick={() => setMenuOpen(false)}
                     role="menuitem"
-                    className="mt-0.5 flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-white/70"
+                    className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-white/70"
                   >
                     <SettingsIcon className="h-4 w-4" />
                     Settings
@@ -439,7 +499,7 @@ export function AppNav({
           </div>
         </header>
 
-        <NotificationsMenu unreadCount={unreadCount} />
+        <NotificationsMenu unreadCount={badges.unread} />
       </div>
 
       {/* Floating bottom dock — matches the content column width */}
@@ -450,10 +510,15 @@ export function AppNav({
         {/* Sliding pill — fills the active item's slot, glides on navigation */}
         <span
           aria-hidden
-          className={`absolute inset-y-1 rounded-full bg-accent-700 shadow-md shadow-accent-900/25 motion-safe:transition-all motion-safe:duration-300 motion-safe:ease-out dark:bg-accent-200 dark:shadow-none ${
+          className={`absolute rounded-full bg-accent-700 shadow-md shadow-accent-900/25 motion-safe:transition-all motion-safe:duration-300 motion-safe:ease-out dark:bg-accent-200 dark:shadow-none ${
             thumb ? 'opacity-100' : 'opacity-0'
           }`}
-          style={{ left: thumb?.left ?? 0, width: thumb?.width ?? 0 }}
+          style={{
+            left: thumb?.left ?? 0,
+            top: thumb?.top ?? 0,
+            width: thumb?.width ?? 0,
+            height: thumb?.height ?? 0,
+          }}
         />
         <div className="flex flex-1 justify-around">
           {links.slice(0, 2).map(({ href, label, icon: Icon }) => (

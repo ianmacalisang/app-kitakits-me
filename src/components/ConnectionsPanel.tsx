@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { getFollowList } from '@/actions/follows'
 import type { UserCardData } from '@/lib/serialize'
 
+import { CountBadge } from './CountBadge'
 import { EmptyState } from './EmptyState'
 import { SearchIcon, UsersIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
@@ -48,14 +49,14 @@ export function ConnectionsPanel({
             key={value}
             type="button"
             onClick={() => select(value)}
-            className={`-mb-px flex-1 border-b-2 px-2 pb-2.5 pt-1 text-sm font-medium capitalize transition-colors ${
+            className={`-mb-px flex flex-1 items-center justify-center border-b-2 px-2 pb-2.5 pt-1 text-sm font-medium capitalize transition-colors ${
               kind === value
                 ? 'border-accent-600 text-neutral-900'
                 : 'border-transparent text-neutral-500 hover:text-neutral-700'
             }`}
           >
             {value}
-            <span className="ml-1.5 tabular-nums text-neutral-400">{counts[value]}</span>
+            <CountBadge count={counts[value]} showZero />
           </button>
         ))}
       </div>

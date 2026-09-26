@@ -9,6 +9,7 @@ import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { ComposeMail } from './ComposeMail'
+import { CountBadge } from './CountBadge'
 import { EmptyState } from './EmptyState'
 import { ComposeIcon, MailboxIcon, SearchIcon, TrashIcon, XIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
@@ -268,13 +269,14 @@ export function MailboxView({
               <button
                 key={value}
                 onClick={() => switchBox(value)}
-                className={`relative z-10 flex-1 rounded-full py-1.5 text-sm font-semibold capitalize transition-colors duration-300 ${
+                className={`relative z-10 flex flex-1 items-center justify-center rounded-full py-1.5 text-sm font-semibold capitalize transition-colors duration-300 ${
                   box === value ? 'text-white' : 'text-neutral-500 hover:text-neutral-700'
                 }`}
               >
-                {value === 'drafts' && draftItems.length > 0
-                  ? `Drafts (${draftItems.length})`
-                  : value}
+                {value}
+                {value === 'drafts' && (
+                  <CountBadge count={draftItems.length} onAccent={box === value} />
+                )}
               </button>
             ))}
           </div>

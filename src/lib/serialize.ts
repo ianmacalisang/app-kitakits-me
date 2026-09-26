@@ -6,6 +6,7 @@ import type {
   Message,
   Notification,
   Post,
+  Testimonial,
   Thread,
   User,
   Video,
@@ -345,9 +346,55 @@ export function toCommentData(comment: Comment, viewer: User | null): CommentDat
   }
 }
 
+export interface TestimonialData {
+  id: number
+  content: string
+  status: 'pending' | 'approved' | 'rejected'
+  createdAt: string
+  authorId: number
+  authorName: string
+  authorUsername: string
+  authorAvatarUrl?: string
+  recipientId: number
+  recipientName: string
+  recipientUsername: string
+  recipientAvatarUrl?: string
+  canEdit: boolean
+  canModerate: boolean
+}
+
+export function toTestimonialData(
+  testimonial: Testimonial,
+  viewer: User | null,
+): TestimonialData | null {
+  const author = isObj(testimonial.author) ? (testimonial.author as User) : null
+  const recipient = isObj(testimonial.recipient) ? (testimonial.recipient as User) : null
+  if (!author || !recipient) return null
+
+  return {
+    id: testimonial.id,
+    content: testimonial.content,
+    status:
+      testimonial.status === 'approved' || testimonial.status === 'rejected'
+        ? testimonial.status
+        : 'pending',
+    createdAt: testimonial.createdAt,
+    authorId: author.id,
+    authorName: author.name,
+    authorUsername: author.username,
+    authorAvatarUrl: avatarUrl(author),
+    recipientId: recipient.id,
+    recipientName: recipient.name,
+    recipientUsername: recipient.username,
+    recipientAvatarUrl: avatarUrl(recipient),
+    canEdit: viewer !== null && author.id === viewer.id,
+    canModerate: viewer !== null && recipient.id === viewer.id,
+  }
+}
+
 export interface NotificationData {
   id: number
-  type: 'like' | 'comment' | 'follow'
+  type: 'like' | 'comment' | 'follow' | 'testimonial'
   read: boolean
   createdAt: string
   actorName: string
@@ -356,6 +403,10 @@ export interface NotificationData {
   postId?: number
   postSnippet?: string
   commentSnippet?: string
+  testimonialSnippet?: string
+  // 'received' — the actor wrote you a testimonial (awaiting your approval);
+  // 'approved' — the actor approved one you wrote.
+  testimonialEvent?: 'received' | 'approved'
 }
 
 export const snippet = (value: unknown): string | undefined => {
@@ -370,6 +421,15 @@ export function toNotificationData(notification: Notification): NotificationData
   const actor = notification.actor
   if (!isObj(actor)) return null
 
+  // The actor being the testimonial's author means "they wrote you one";
+  // otherwise the actor is the recipient who approved yours.
+  const testimonial = notification.testimonial
+  const testimonialEvent = isObj(testimonial)
+    ? relId((testimonial as Testimonial).author) === actor.id
+      ? 'received'
+      : 'approved'
+    : undefined
+
   return {
     id: notification.id,
     type: notification.type,
@@ -381,15 +441,17 @@ export function toNotificationData(notification: Notification): NotificationData
     postId: relId(notification.post) ?? undefined,
     postSnippet: snippet(notification.post),
     commentSnippet: snippet(notification.comment),
+    testimonialSnippet: snippet(notification.testimonial),
+    testimonialEvent,
   }
 }
 
 // One row in the home Activities tab — something a followed user did.
 // Which fields are populated depends on `type`: post fields for like/comment,
-// target fields for follow.
+// target fields for follow/testimonial.
 export interface ActivityData {
   id: string
-  type: 'like' | 'comment' | 'follow'
+  type: 'like' | 'comment' | 'follow' | 'testimonial'
   createdAt: string
   actorName: string
   actorUsername: string
@@ -399,6 +461,7 @@ export interface ActivityData {
   postAuthorName?: string
   postAuthorUsername?: string
   commentSnippet?: string
+  testimonialSnippet?: string
   // The fully hydrated post card for like/comment rows — the row renders the
   // whole post inline, not just the snippet.
   post?: PostCardData

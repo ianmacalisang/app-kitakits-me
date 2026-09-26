@@ -75,6 +75,7 @@ export default async function SettingsPage() {
                 discoverable: fullUser.discoverable ?? true,
                 publicProfile: fullUser.publicProfile ?? false,
                 commentPermission: fullUser.commentPermission ?? 'everyone',
+                testimonialPermission: fullUser.testimonialPermission ?? 'everyone',
               }}
             />
             <DeleteAccount username={fullUser.username} />

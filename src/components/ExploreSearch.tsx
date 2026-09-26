@@ -9,7 +9,7 @@ import type { PostCardData, UserCardData } from '@/lib/serialize'
 
 import { EmptyState } from './EmptyState'
 import { ExplorePostCard } from './ExplorePostCard'
-import { ListIcon, SearchIcon, UsersIcon } from './icons'
+import { CompassIcon, ListIcon, SearchIcon, SparklesIcon, UsersIcon, XIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
 import { Spinner } from './Spinner'
 import { UserCoverCard } from './UserCoverCard'
@@ -68,21 +68,55 @@ export function ExploreSearch({
 
   return (
     <div>
-      <h1 className="text-3xl font-bold tracking-tight">Explore</h1>
-      <p className="mb-4 mt-1 text-sm text-neutral-500">
-        See what&rsquo;s trending in the community.
-      </p>
-
-      {query ? (
-        <p className="text-sm text-neutral-500">
-          Results for <span className="font-semibold text-neutral-800">“{query}”</span>
-        </p>
-      ) : null}
+      <header className="glass relative mb-4 overflow-hidden rounded-3xl p-4 sm:p-5">
+        {/* Decorative aurora washes + a faint compass watermark */}
+        <span
+          aria-hidden
+          className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-accent-300/25 blur-3xl dark:bg-white/5"
+        />
+        <span
+          aria-hidden
+          className="absolute -bottom-16 left-1/4 h-36 w-36 rounded-full bg-accent-200/30 blur-3xl dark:bg-white/5"
+        />
+        <CompassIcon
+          aria-hidden
+          className="absolute -right-2 top-1/2 h-24 w-24 -translate-y-1/2 rotate-12 text-accent-500/10"
+        />
+        <div className="relative flex items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-500 to-accent-600 text-white shadow-md shadow-accent-600/30">
+            <CompassIcon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight">Explore</h1>
+            <p className="truncate text-sm text-neutral-500">
+              {query ? (
+                <>
+                  Results for <span className="font-semibold text-neutral-800">“{query}”</span>
+                </>
+              ) : (
+                'See what’s trending in the community.'
+              )}
+            </p>
+          </div>
+          {query ? (
+            <Link
+              href="/explore"
+              className="glass relative ml-auto flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:text-neutral-900"
+            >
+              <XIcon className="h-3.5 w-3.5" />
+              Clear
+            </Link>
+          ) : null}
+        </div>
+      </header>
 
       {/* Trending hashtag chips — hidden while searching */}
       {!query && trendingTags.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-medium text-neutral-400">Trending</p>
+          <p className="mb-2 flex items-center gap-1 text-xs font-medium text-neutral-400">
+            <SparklesIcon className="h-3.5 w-3.5" />
+            Trending
+          </p>
           <div className="flex flex-wrap gap-1.5">
             {trendingTags.map((tag) => (
               <Link
