@@ -17,6 +17,7 @@ import {
   MusicIcon,
   QuestionIcon,
   ShuffleIcon,
+  TagIcon,
   UtensilsIcon,
 } from './icons'
 
@@ -33,6 +34,7 @@ export const CATEGORY_ICONS: Record<PostCategoryIcon, IconComponent> = {
   megaphone: MegaphoneIcon,
   'eye-off': EyeOffIcon,
   shuffle: ShuffleIcon,
+  tag: TagIcon,
 }
 
 export function CategoryChip({

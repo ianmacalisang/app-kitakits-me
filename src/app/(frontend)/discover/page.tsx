@@ -152,7 +152,7 @@ export default async function DiscoverPage({
           {/* Floating category tiles — a decorative preview of the rail */}
           <FloatTile
             icon={CATEGORY_ICONS.book}
-            tint="amber"
+            tint="yellow"
             rotate="-8deg"
             delay="0.3s"
             className="left-5 top-8 sm:flex"

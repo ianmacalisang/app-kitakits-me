@@ -31,11 +31,11 @@ export function FollowButton({
       disabled={pending}
       className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-all disabled:opacity-50 ${
         following
-          ? 'border border-white/60 bg-white/60 text-neutral-600 shadow-sm backdrop-blur hover:text-red-500'
+          ? 'border border-red-500/25 bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:text-red-400'
           : 'btn-primary'
       }`}
     >
-      {following ? 'Following' : 'Follow'}
+      {following ? 'Unfollow' : 'Follow'}
     </button>
   )
 }

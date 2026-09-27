@@ -34,7 +34,7 @@ export const UserCoverCard = memo(function UserCoverCard({
         {cover ? <BlurImage src={cover} alt="" className="h-full w-full object-cover" /> : null}
       </Link>
       <div className="flex flex-1 flex-col items-center px-4 pb-4 text-center">
-        <Link href={href} className="-mt-10 inline-flex rounded-full ring-4 ring-white/70">
+        <Link href={href} className="relative -mt-10 inline-flex rounded-full ring-2 ring-white/70">
           <Avatar src={user.avatarUrl} name={user.name} size="lg" />
         </Link>
         <Link href={href} className="mt-2 block max-w-full hover:underline">

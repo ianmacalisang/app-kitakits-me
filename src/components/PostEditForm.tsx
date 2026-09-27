@@ -382,7 +382,7 @@ export function PostEditForm({
           </label>
         </div>
 
-        <div className="flex rounded-full bg-black/5 p-0.5 text-xs font-medium">
+        <div className="flex rounded-full bg-black/5 p-0.5 text-xs font-medium dark:bg-white/10">
           {(
             [
               { value: 'public', label: 'Everyone' },
@@ -395,8 +395,8 @@ export function PostEditForm({
               onClick={() => setVisibility(value)}
               className={`rounded-full px-3 py-1.5 transition-all ${
                 visibility === value
-                  ? 'bg-white text-neutral-900 shadow-sm'
-                  : 'text-neutral-500 hover:text-neutral-700'
+                  ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100 dark:shadow-none'
+                  : 'text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
               }`}
             >
               {label}

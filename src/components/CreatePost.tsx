@@ -234,9 +234,13 @@ export const CreatePost = memo(function CreatePost({
         onClick={() => setOpen(true)}
         aria-label="Create post"
         title="Create"
-        className="-my-6 flex items-center justify-center rounded-full transition-transform hover:scale-105 active:scale-95"
+        className="-my-6 relative flex items-center justify-center rounded-full transition-transform hover:scale-105 active:scale-95"
       >
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/40 ring-4 ring-white/60">
+        <span
+          aria-hidden
+          className="absolute inset-0 rounded-full opacity-0 ring-2 ring-emerald-400/70 motion-safe:animate-mail-ring"
+        />
+        <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/40 ring-4 ring-white/60">
           <PlusIcon className="h-7 w-7" />
         </span>
       </button>

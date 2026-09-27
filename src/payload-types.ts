@@ -289,7 +289,8 @@ export interface Post {
   id: number;
   author: number | User;
   visibility?: ('public' | 'followers') | null;
-  category: 'kwento' | 'tanong' | 'feels' | 'food' | 'gala' | 'music' | 'memes' | 'rant' | 'nsfw' | 'random';
+  category:
+    'kwento' | 'tanong' | 'feels' | 'food' | 'gala' | 'music' | 'memes' | 'rant' | 'promotion' | 'nsfw' | 'random';
   content?: string | null;
   image?: (number | Media)[] | null;
   video?: (number | null) | Video;

@@ -543,3 +543,10 @@ export const ShuffleIcon = (props: IconProps) => (
     <path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45" />
   </svg>
 )
+
+export const TagIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+    <circle cx="7.5" cy="7.5" r="1" />
+  </svg>
+)

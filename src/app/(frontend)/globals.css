@@ -881,6 +881,18 @@ html.dark::before {
   border-color: rgb(255 255 255 / 0.16);
 }
 
+/* Accent-100 surfaces (empty avatars, placeholder tiles) — the near-white
+   disc glares on dark; keep a soft wash of the profile accent instead */
+.dark .bg-accent-100\/80:not(:where(.light, .light *)) {
+  background-color: color-mix(in srgb, var(--color-accent-500) 22%, transparent);
+}
+.dark .bg-accent-100\/70:not(:where(.light, .light *)) {
+  background-color: color-mix(in srgb, var(--color-accent-500) 18%, transparent);
+}
+.dark .ring-accent-900\/10:not(:where(.light, .light *)) {
+  --tw-ring-color: rgb(255 255 255 / 0.14);
+}
+
 /* Wireframe/neutral fills used in template previews and empty states */
 .dark .bg-neutral-200:not(:where(.light, .light *)),
 .dark .bg-neutral-200\/80:not(:where(.light, .light *)),
