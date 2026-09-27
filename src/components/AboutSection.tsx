@@ -1,7 +1,16 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Fragment, memo, useMemo, useState, useTransition, type ReactNode } from 'react'
+import {
+  Fragment,
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from 'react'
 
 import { updateAbout } from '@/actions/users'
 import { ABOUT_TEMPLATES, type AboutBlockSeed } from '@/lib/aboutTemplates'
@@ -229,6 +238,48 @@ const LinkRow = ({ label, url }: { label: string; url: string }) => {
   )
 }
 
+// Portfolio-style stat number — tweens 0 → value when scrolled into view,
+// keeping any prefix/suffix ("+", "yrs") and grouping ("1,000") intact.
+const StatValue = memo(function StatValue({ value }: { value: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [display, setDisplay] = useState<string | null>(null)
+  const match = /^([^0-9]*)([0-9][0-9,]*(?:\.\d+)?)(.*)$/.exec(value)
+
+  useEffect(() => {
+    const el = ref.current
+    const m = /^([^0-9]*)([0-9][0-9,]*(?:\.\d+)?)(.*)$/.exec(value)
+    if (!el || !m) return
+    const target = parseFloat(m[2].replace(/,/g, ''))
+    const decimals = m[2].split('.')[1]?.length ?? 0
+    const grouped = m[2].includes(',')
+    const fmt = (n: number) =>
+      grouped
+        ? n.toLocaleString('en-US', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+          })
+        : n.toFixed(decimals)
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return
+        io.disconnect()
+        const t0 = performance.now()
+        const tick = (now: number) => {
+          const p = Math.min((now - t0) / 900, 1)
+          setDisplay(fmt(target * (1 - Math.pow(1 - p, 3))))
+          if (p < 1) requestAnimationFrame(tick)
+        }
+        requestAnimationFrame(tick)
+      },
+      { threshold: 0.4 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [value])
+
+  return <span ref={ref}>{match ? `${match[1]}${display ?? match[2]}${match[3]}` : value}</span>
+})
+
 // Hairline between sections — fades out at both edges with a subtle center dot.
 const SectionDivider = () => (
   <div aria-hidden className="flex items-center gap-3">
@@ -277,10 +328,7 @@ const AboutBlock = ({
           {hasDescriptions ? (
             <ul className="flex flex-col divide-y divide-black/5">
               {block.items.map((item, i) => (
-                <li
-                  key={i}
-                  className="-mx-2 flex items-start gap-3.5 rounded-xl px-2 py-3.5 transition-colors duration-150 first:pt-0 last:pb-0 hover:bg-accent-500/[0.05]"
-                >
+                <li key={i} className="flex items-start gap-3.5 py-3.5 first:pt-0 last:pb-0">
                   <span
                     aria-hidden
                     className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-500/10 text-accent-700 ring-1 ring-inset ring-accent-500/15"
@@ -434,18 +482,27 @@ const AboutBlock = ({
       )
     case 'stats':
       return (
-        <section className="flex flex-col gap-5 py-8">
-          {block.heading && <BlockHeader icon={ActivityIcon}>{block.heading}</BlockHeader>}
-          <dl className="flex flex-wrap items-stretch justify-center gap-3">
+        <section className="my-4 flex flex-col gap-7 rounded-3xl bg-accent-500/[0.05] px-6 py-9 ring-1 ring-inset ring-accent-500/10 sm:px-10">
+          {block.heading && (
+            <h3 className="text-center text-[11px] font-semibold uppercase tracking-widest text-accent-700/70">
+              {block.heading}
+            </h3>
+          )}
+          <dl className="grid grid-cols-[repeat(auto-fit,minmax(8.75rem,1fr))] gap-3">
             {block.items.map((item, i) => (
               <div
                 key={i}
-                className="flex min-w-28 max-w-44 flex-1 basis-28 flex-col items-center justify-center gap-1 rounded-2xl bg-white/60 px-4 py-4 text-center shadow-sm ring-1 ring-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-accent-600/10"
+                className="group relative flex flex-col items-center gap-1.5 overflow-hidden rounded-2xl bg-white/70 px-4 py-6 text-center shadow-sm ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:bg-white/90 hover:shadow-lg hover:shadow-accent-600/15"
               >
-                <dd className="order-1 bg-gradient-to-br from-accent-500 to-accent-600 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
-                  {item.value}
+                {/* Accent strip across the top of each metric card */}
+                <span
+                  aria-hidden
+                  className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-accent-500/80 via-accent-400/50 to-transparent transition-transform duration-300 group-hover:scale-x-110"
+                />
+                <dd className="order-1 bg-gradient-to-br from-accent-600 to-accent-500 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-4xl">
+                  <StatValue value={item.value} />
                 </dd>
-                <dt className="order-2 text-[11px] font-semibold uppercase leading-snug tracking-wide text-neutral-400">
+                <dt className="order-2 text-[11px] font-semibold uppercase leading-snug tracking-widest text-neutral-500">
                   {item.label}
                 </dt>
               </div>
