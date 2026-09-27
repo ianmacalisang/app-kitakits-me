@@ -7,8 +7,10 @@ const __filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(__filename)
 
 const nextConfig: NextConfig = {
-  // Required by the Dockerfile — it copies .next/standalone as the runtime.
-  output: 'standalone',
+  // Standalone output is only for the Docker image — the Dockerfile sets
+  // BUILD_STANDALONE=1 and copies .next/standalone as the runtime. Vercel
+  // does its own output tracing and breaks on standalone builds.
+  ...(process.env.BUILD_STANDALONE === '1' ? { output: 'standalone' as const } : {}),
   experimental: {
     // Keep the router cache alive for dynamic pages so navigating back is
     // instant. 0 would disable it entirely; Payload admin warns above 0
