@@ -482,12 +482,8 @@ const AboutBlock = ({
       )
     case 'stats':
       return (
-        <section className="my-4 flex flex-col gap-7 rounded-3xl bg-accent-500/[0.05] px-6 py-9 ring-1 ring-inset ring-accent-500/10 sm:px-10">
-          {block.heading && (
-            <h3 className="text-center text-[11px] font-semibold uppercase tracking-widest text-accent-700/70">
-              {block.heading}
-            </h3>
-          )}
+        <section className="flex flex-col gap-5 py-8">
+          {block.heading && <BlockHeader icon={ActivityIcon}>{block.heading}</BlockHeader>}
           <dl className="grid grid-cols-[repeat(auto-fit,minmax(8.75rem,1fr))] gap-3">
             {block.items.map((item, i) => (
               <div
