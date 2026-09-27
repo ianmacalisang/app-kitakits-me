@@ -4,7 +4,12 @@ import { redirect } from 'next/navigation'
 
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
-import { isProfileAccent, isProfileCardStyle, isProfileLayout } from '@/lib/profileDesign'
+import {
+  isProfileAccent,
+  isProfileCardStyle,
+  isProfileLayout,
+  isProfileTheme,
+} from '@/lib/profileDesign'
 import { type Paged, toUserCardData, type UserCardData } from '@/lib/serialize'
 import type { User } from '@/payload-types'
 
@@ -148,6 +153,7 @@ export async function updateProfileDesign(
   const layout = formData.get('profileLayout')
   const accent = formData.get('profileAccent')
   const cardStyle = formData.get('profileCardStyle')
+  const theme = formData.get('profileTheme')
   const file = formData.get('profileBackground')
   const removeBackground = formData.get('removeBackground') === 'on'
 
@@ -155,12 +161,14 @@ export async function updateProfileDesign(
     profileLayout?: User['profileLayout']
     profileAccent?: User['profileAccent']
     profileCardStyle?: User['profileCardStyle']
+    profileTheme?: User['profileTheme']
     profileBackground?: number | null
   } = {}
 
   if (isProfileLayout(layout)) data.profileLayout = layout
   if (isProfileAccent(accent)) data.profileAccent = accent
   if (isProfileCardStyle(cardStyle)) data.profileCardStyle = cardStyle
+  if (isProfileTheme(theme)) data.profileTheme = theme
 
   if (file instanceof File && file.size > 0) {
     if (!file.type.startsWith('image/')) return { error: 'Background must be an image.' }

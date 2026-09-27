@@ -8,12 +8,18 @@ import { BrandMark } from '@/components/Branding'
 import { LockIcon } from '@/components/icons'
 import { ProfileTabs } from '@/components/ProfileTabs'
 import { PublicMailButton } from '@/components/PublicMailButton'
+import { PublicPageTheme } from '@/components/PublicPageTheme'
 import { PublicProfileHero } from '@/components/PublicProfileHero'
 import { ShareProfileButton } from '@/components/ShareProfileButton'
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
 import { FEED_PAGE_SIZE, hydratePosts } from '@/lib/posts'
-import { profileAccentValue, profileCardStyleValue, profileLayoutValue } from '@/lib/profileDesign'
+import {
+  profileAccentValue,
+  profileCardStyleValue,
+  profileLayoutValue,
+  profileThemeValue,
+} from '@/lib/profileDesign'
 import {
   avatarUrl,
   coverUrl,
@@ -209,6 +215,7 @@ export default async function PublicProfilePage({
   const layout = profileLayoutValue(profileUser)
   const accent = profileAccentValue(profileUser)
   const cardStyle = profileCardStyleValue(profileUser)
+  const theme = profileThemeValue(profileUser)
   const joinedLabel = new Date(profileUser.createdAt).toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric',
@@ -219,6 +226,16 @@ export default async function PublicProfilePage({
       data-profile-accent={accent === 'default' ? undefined : accent}
       data-profile-cards={cardStyle === 'glass' ? undefined : cardStyle}
     >
+      {/* Owner-chosen page theme — the script applies it pre-paint on first
+          load; the component covers client-side navigation and restores the
+          visitor's own theme on exit. */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `try{document.documentElement.classList.toggle('dark',${theme === 'dark'})}catch(e){}`,
+        }}
+      />
+      <PublicPageTheme theme={theme} visitorTheme={viewer?.theme ?? 'light'} />
+
       {/* Custom page backdrop — a fixed layer under the content. Positioned
           after the body's negative-z aurora pseudo-elements; the content
           wrapper's `relative` keeps it painted underneath. */}

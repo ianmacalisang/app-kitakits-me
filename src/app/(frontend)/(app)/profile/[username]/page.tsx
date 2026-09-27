@@ -7,7 +7,12 @@ import { ProfileTabs } from '@/components/ProfileTabs'
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
 import { FEED_PAGE_SIZE, hydratePosts } from '@/lib/posts'
-import { profileAccentValue, profileCardStyleValue, profileLayoutValue } from '@/lib/profileDesign'
+import {
+  profileAccentValue,
+  profileCardStyleValue,
+  profileLayoutValue,
+  profileThemeValue,
+} from '@/lib/profileDesign'
 import {
   avatarUrl,
   coverUrl,
@@ -151,6 +156,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
             layout: profileLayoutValue(profileUser),
             accent: profileAccentValue(profileUser),
             cardStyle: profileCardStyleValue(profileUser),
+            theme: profileThemeValue(profileUser),
             backgroundUrl: mediaUrl(profileUser.profileBackground),
           }}
           preview={{

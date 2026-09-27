@@ -186,6 +186,18 @@ export const Users: CollectionConfig = {
       },
     },
     {
+      name: 'profileTheme',
+      type: 'select',
+      options: [
+        { label: 'Light', value: 'light' },
+        { label: 'Dark', value: 'dark' },
+      ],
+      defaultValue: 'light',
+      admin: {
+        description: 'Light or dark theme for the public /@username page.',
+      },
+    },
+    {
       name: 'bio',
       type: 'textarea',
       maxLength: 300,

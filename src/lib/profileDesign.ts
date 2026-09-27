@@ -6,6 +6,24 @@ import type { User } from '@/payload-types'
 export type ProfileLayout = 'classic' | 'hero' | 'minimal'
 export type ProfileAccent = 'default' | 'ocean' | 'emerald' | 'sunset' | 'berry' | 'gold'
 export type ProfileCardStyle = 'glass' | 'solid'
+export type ProfileTheme = 'light' | 'dark'
+
+export const PROFILE_THEMES: {
+  value: ProfileTheme
+  label: string
+  description: string
+}[] = [
+  {
+    value: 'light',
+    label: 'Light',
+    description: 'Bright & airy — the default look.',
+  },
+  {
+    value: 'dark',
+    label: 'Dark',
+    description: 'Easy on the eyes, day or night.',
+  },
+]
 
 export const PROFILE_LAYOUTS: { value: ProfileLayout; label: string; description: string }[] = [
   {
@@ -54,6 +72,7 @@ export const PROFILE_CARD_STYLES: {
 const LAYOUTS: ProfileLayout[] = ['classic', 'hero', 'minimal']
 const ACCENTS: ProfileAccent[] = ['default', 'ocean', 'emerald', 'sunset', 'berry', 'gold']
 const CARD_STYLES: ProfileCardStyle[] = ['glass', 'solid']
+const THEMES: ProfileTheme[] = ['light', 'dark']
 
 export const isProfileLayout = (value: unknown): value is ProfileLayout =>
   LAYOUTS.includes(value as ProfileLayout)
@@ -63,6 +82,9 @@ export const isProfileAccent = (value: unknown): value is ProfileAccent =>
 
 export const isProfileCardStyle = (value: unknown): value is ProfileCardStyle =>
   CARD_STYLES.includes(value as ProfileCardStyle)
+
+export const isProfileTheme = (value: unknown): value is ProfileTheme =>
+  THEMES.includes(value as ProfileTheme)
 
 export function profileLayoutValue(user: User): ProfileLayout {
   return isProfileLayout(user.profileLayout) ? user.profileLayout : 'classic'
@@ -74,4 +96,8 @@ export function profileAccentValue(user: User): ProfileAccent {
 
 export function profileCardStyleValue(user: User): ProfileCardStyle {
   return isProfileCardStyle(user.profileCardStyle) ? user.profileCardStyle : 'glass'
+}
+
+export function profileThemeValue(user: User): ProfileTheme {
+  return isProfileTheme(user.profileTheme) ? user.profileTheme : 'light'
 }

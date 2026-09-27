@@ -19,7 +19,6 @@ import {
   HomeIcon,
   LogoutIcon,
   MailboxIcon,
-  MonitorIcon,
   MoonIcon,
   SearchIcon,
   SettingsIcon,
@@ -32,10 +31,9 @@ import { Spinner } from './Spinner'
 
 type Theme = 'light' | 'dark' | 'system'
 
-const THEME_ICONS: Record<Theme, typeof SunIcon> = {
+const THEME_ICONS: Record<'light' | 'dark', typeof SunIcon> = {
   light: SunIcon,
   dark: MoonIcon,
-  system: MonitorIcon,
 }
 
 interface AppNavProps {
@@ -382,16 +380,17 @@ export function AppNav({
   const chooseTheme = (next: Theme) => {
     if (next === theme) return
     setTheme(next)
-    const dark =
-      next === 'dark' ||
-      (next === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    document.documentElement.classList.toggle('dark', dark)
+    document.documentElement.classList.toggle('dark', next === 'dark')
     document.documentElement.setAttribute('data-theme', next)
     startTransition(async () => {
       const res = await updateTheme(next)
       if (res?.error) {
         setTheme(themeProp)
-        document.documentElement.classList.toggle('dark', themeProp === 'dark')
+        document.documentElement.classList.toggle(
+          'dark',
+          themeProp === 'dark' ||
+            (themeProp === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches),
+        )
         document.documentElement.setAttribute('data-theme', themeProp)
       }
     })
@@ -460,7 +459,7 @@ export function AppNav({
                       Theme
                     </p>
                     <div className="flex rounded-xl bg-black/5 p-1">
-                      {(['light', 'dark', 'system'] as const).map((t) => {
+                      {(['light', 'dark'] as const).map((t) => {
                         const active = theme === t
                         const Icon = THEME_ICONS[t]
                         return (

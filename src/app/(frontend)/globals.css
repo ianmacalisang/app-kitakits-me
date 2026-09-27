@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 
-@custom-variant dark (&:where(.dark, .dark *));
+/* Dark theme — `.dark` ancestor scopes it; a `.light` container inside a
+   dark subtree escapes back to light (design preview's theme picker). */
+@custom-variant dark (&:where(.dark, .dark *):not(:where(.light, .light *)));
 
 @theme {
   --font-sans:
@@ -102,7 +104,7 @@
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
-.dark [data-profile-cards='solid'] .glass {
+.dark [data-profile-cards='solid'] .glass:not(:where(.light, .light *)) {
   background-color: rgb(16 16 16 / 0.97);
 }
 
@@ -655,8 +657,11 @@ body::after {
 
 /* ------------------------------------------------------------------
    Dark theme — activated by the `dark` class on <html> (user's theme
-   preference on their account). Mostly a palette remap so the shared
-   light-styled components stay legible without per-component changes.
+   preference on their account) or a scoped `.dark` container (the design
+   preview). Mostly a palette remap so the shared light-styled components
+   stay legible without per-component changes. Every subject carries
+   `:not(:where(.light, .light *))` so a `.light` container inside a dark
+   page escapes the remap — keep that suffix on new rules in this section.
 ------------------------------------------------------------------- */
 html.dark {
   background-color: #0a0a0a;
@@ -694,7 +699,7 @@ html.dark::before {
 }
 
 /* Frosted surfaces go dark */
-.dark .glass {
+.dark .glass:not(:where(.light, .light *)) {
   border-color: rgb(255 255 255 / 0.1);
   background-color: rgb(10 10 10 / 0.72);
   box-shadow:
@@ -703,7 +708,7 @@ html.dark::before {
     0 2px 8px -4px rgb(0 0 0 / 0.45);
 }
 
-.dark .glass-pop {
+.dark .glass-pop:not(:where(.light, .light *)) {
   border-color: rgb(255 255 255 / 0.1);
   background-color: #0a0a0a;
   box-shadow:
@@ -713,202 +718,202 @@ html.dark::before {
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .dark .glass-pop {
+  .dark .glass-pop:not(:where(.light, .light *)) {
     background-color: #0a0a0a;
   }
 }
 
-.dark .glass-input {
+.dark .glass-input:not(:where(.light, .light *)) {
   border-color: rgb(255 255 255 / 0.12);
   background-color: rgb(255 255 255 / 0.06);
   color: var(--color-neutral-100);
 }
 
-.dark .glass-input::placeholder {
+.dark .glass-input:not(:where(.light, .light *))::placeholder {
   color: var(--color-neutral-500);
 }
 
-.dark .glass-input:focus {
+.dark .glass-input:not(:where(.light, .light *)):focus {
   border-color: var(--color-accent-400);
   background-color: rgb(255 255 255 / 0.1);
   box-shadow: 0 0 0 4px rgb(255 255 255 / 0.12);
 }
 
-.dark .btn-accent-soft {
+.dark .btn-accent-soft:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.12);
   color: var(--color-accent-300);
 }
 
-.dark .btn-accent-soft:hover {
+.dark .btn-accent-soft:not(:where(.light, .light *)):hover {
   background-color: rgb(255 255 255 / 0.2);
 }
 
-.dark ::selection {
+.dark :not(:where(.light, .light *))::selection {
   background-color: var(--color-accent-600);
 }
 
 /* Palette remap — text shades brighten, translucent white surfaces dim */
-.dark .text-neutral-900 {
+.dark .text-neutral-900:not(:where(.light, .light *)) {
   color: var(--color-neutral-100);
 }
-.dark .text-neutral-800 {
+.dark .text-neutral-800:not(:where(.light, .light *)) {
   color: var(--color-neutral-100);
 }
-.dark .text-neutral-700 {
+.dark .text-neutral-700:not(:where(.light, .light *)) {
   color: var(--color-neutral-200);
 }
-.dark .text-neutral-600 {
+.dark .text-neutral-600:not(:where(.light, .light *)) {
   color: var(--color-neutral-300);
 }
-.dark .text-accent-700 {
+.dark .text-accent-700:not(:where(.light, .light *)) {
   color: var(--color-accent-300);
 }
-.dark .text-accent-600 {
+.dark .text-accent-600:not(:where(.light, .light *)) {
   color: var(--color-accent-400);
 }
 /* Opacity-modified variants — the plain-class remaps above don't cover them */
-.dark .text-accent-700\/80 {
+.dark .text-accent-700\/80:not(:where(.light, .light *)) {
   color: color-mix(in srgb, var(--color-accent-300) 80%, transparent);
 }
-.dark .text-accent-700\/70 {
+.dark .text-accent-700\/70:not(:where(.light, .light *)) {
   color: color-mix(in srgb, var(--color-accent-300) 70%, transparent);
 }
-.dark .text-accent-600\/80 {
+.dark .text-accent-600\/80:not(:where(.light, .light *)) {
   color: color-mix(in srgb, var(--color-accent-400) 80%, transparent);
 }
-.dark .text-accent-600\/50 {
+.dark .text-accent-600\/50:not(:where(.light, .light *)) {
   color: color-mix(in srgb, var(--color-accent-400) 50%, transparent);
 }
 /* Muted / secondary text — brightened so it stays legible on the dark bg */
-.dark .text-neutral-500 {
+.dark .text-neutral-500:not(:where(.light, .light *)) {
   color: var(--color-neutral-400);
 }
 
-.dark .bg-white\/40 {
+.dark .bg-white\/40:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.06);
 }
-.dark .bg-white\/50 {
+.dark .bg-white\/50:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.07);
 }
-.dark .bg-white\/60 {
+.dark .bg-white\/60:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.09);
 }
-.dark .bg-white\/70 {
+.dark .bg-white\/70:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.1);
 }
-.dark .bg-white\/80 {
+.dark .bg-white\/80:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.12);
 }
-.dark .bg-white\/90 {
+.dark .bg-white\/90:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.14);
 }
-.dark .bg-white\/95 {
+.dark .bg-white\/95:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.15);
 }
-.dark .bg-black\/5 {
+.dark .bg-black\/5:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.08);
 }
-.dark .bg-black\/10 {
+.dark .bg-black\/10:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.14);
 }
-.dark .bg-black\/\[0\.04\] {
+.dark .bg-black\/\[0\.04\]:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.06);
 }
 
-.dark .border-black\/5 {
+.dark .border-black\/5:not(:where(.light, .light *)) {
   border-color: rgb(255 255 255 / 0.08);
 }
-.dark .divide-black\/5 > :not([hidden]) ~ :not([hidden]) {
+.dark .divide-black\/5:not(:where(.light, .light *)) > :not([hidden]) ~ :not([hidden]) {
   border-color: rgb(255 255 255 / 0.08);
 }
-.dark .border-neutral-200\/60 {
+.dark .border-neutral-200\/60:not(:where(.light, .light *)) {
   border-color: rgb(255 255 255 / 0.12);
 }
-.dark .border-neutral-300 {
+.dark .border-neutral-300:not(:where(.light, .light *)) {
   border-color: rgb(255 255 255 / 0.2);
 }
-.dark .border-neutral-300\/70 {
+.dark .border-neutral-300\/70:not(:where(.light, .light *)) {
   border-color: rgb(255 255 255 / 0.2);
 }
 
 /* Hover-state surfaces (menus, list rows, buttons) */
-.dark .hover\:bg-white\/70:hover {
+.dark .hover\:bg-white\/70:not(:where(.light, .light *)):hover {
   background-color: rgb(255 255 255 / 0.1);
 }
-.dark .hover\:bg-white\/60:hover {
+.dark .hover\:bg-white\/60:not(:where(.light, .light *)):hover {
   background-color: rgb(255 255 255 / 0.09);
 }
-.dark .hover\:bg-white\/80:hover {
+.dark .hover\:bg-white\/80:not(:where(.light, .light *)):hover {
   background-color: rgb(255 255 255 / 0.12);
 }
-.dark .hover\:bg-black\/5:hover {
+.dark .hover\:bg-black\/5:not(:where(.light, .light *)):hover {
   background-color: rgb(255 255 255 / 0.08);
 }
-.dark .hover\:bg-black\/10:hover {
+.dark .hover\:bg-black\/10:not(:where(.light, .light *)):hover {
   background-color: rgb(255 255 255 / 0.14);
 }
-.dark .hover\:bg-accent-50\/40:hover {
+.dark .hover\:bg-accent-50\/40:not(:where(.light, .light *)):hover {
   background-color: rgb(255 255 255 / 0.1);
 }
-.dark .hover\:bg-accent-500\/15:hover {
+.dark .hover\:bg-accent-500\/15:not(:where(.light, .light *)):hover {
   background-color: rgb(255 255 255 / 0.14);
 }
-.dark .hover\:bg-accent-500\/20:hover {
+.dark .hover\:bg-accent-500\/20:not(:where(.light, .light *)):hover {
   background-color: rgb(255 255 255 / 0.18);
 }
 
 /* Hover text — keep interactive elements legible when the pointer lands on them */
-.dark .hover\:text-neutral-900:hover {
+.dark .hover\:text-neutral-900:not(:where(.light, .light *)):hover {
   color: var(--color-neutral-100);
 }
-.dark .hover\:text-neutral-700:hover {
+.dark .hover\:text-neutral-700:not(:where(.light, .light *)):hover {
   color: var(--color-neutral-200);
 }
-.dark .hover\:text-accent-600:hover {
+.dark .hover\:text-accent-600:not(:where(.light, .light *)):hover {
   color: var(--color-accent-400);
 }
 
 /* Embedded share card — light accent tint is too bright on dark surfaces */
-.dark .bg-accent-50\/50 {
+.dark .bg-accent-50\/50:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.07);
 }
-.dark .border-accent-900\/10 {
+.dark .border-accent-900\/10:not(:where(.light, .light *)) {
   border-color: rgb(255 255 255 / 0.16);
 }
 
 /* Wireframe/neutral fills used in template previews and empty states */
-.dark .bg-neutral-200,
-.dark .bg-neutral-200\/80,
-.dark .bg-neutral-200\/70 {
+.dark .bg-neutral-200:not(:where(.light, .light *)),
+.dark .bg-neutral-200\/80:not(:where(.light, .light *)),
+.dark .bg-neutral-200\/70:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.1);
 }
-.dark .bg-neutral-300\/80 {
+.dark .bg-neutral-300\/80:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.25);
 }
-.dark .bg-neutral-300 {
+.dark .bg-neutral-300:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.25);
 }
-.dark .bg-neutral-300\/70 {
+.dark .bg-neutral-300\/70:not(:where(.light, .light *)) {
   background-color: rgb(255 255 255 / 0.18);
 }
 
 /* Scrollbar — lighter gray so it's visible on the dark bg */
-.dark * {
+.dark *:not(:where(.light, .light *)) {
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
 
 /* Mail rich text — code, blockquote, hr, and links need dark-aware colours */
-.dark .mail-richtext :where(a) {
+.dark .mail-richtext :where(a):not(:where(.light, .light *)) {
   color: var(--color-accent-400);
 }
-.dark .mail-richtext :where(blockquote) {
+.dark .mail-richtext :where(blockquote):not(:where(.light, .light *)) {
   border-left-color: var(--color-accent-700);
   color: var(--color-neutral-400);
 }
-.dark .mail-richtext :where(code),
-.dark .mail-richtext :where(pre) {
+.dark .mail-richtext :where(code):not(:where(.light, .light *)),
+.dark .mail-richtext :where(pre):not(:where(.light, .light *)) {
   background: rgb(255 255 255 / 0.07);
 }
-.dark .mail-richtext :where(hr) {
+.dark .mail-richtext :where(hr):not(:where(.light, .light *)) {
   border-top-color: rgb(255 255 255 / 0.12);
 }

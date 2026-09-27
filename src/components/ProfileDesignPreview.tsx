@@ -1,4 +1,9 @@
-import type { ProfileAccent, ProfileCardStyle, ProfileLayout } from '@/lib/profileDesign'
+import type {
+  ProfileAccent,
+  ProfileCardStyle,
+  ProfileLayout,
+  ProfileTheme,
+} from '@/lib/profileDesign'
 
 import { BlurImage } from './BlurImage'
 import { MailIcon } from './icons'
@@ -12,6 +17,7 @@ export function ProfileDesignPreview({
   layout,
   accent,
   cardStyle,
+  theme,
   backgroundUrl,
   name,
   username,
@@ -26,6 +32,7 @@ export function ProfileDesignPreview({
   layout: ProfileLayout
   accent: ProfileAccent
   cardStyle: ProfileCardStyle
+  theme: ProfileTheme
   backgroundUrl?: string | null
   name: string
   username: string
@@ -46,7 +53,14 @@ export function ProfileDesignPreview({
       <div
         data-profile-accent={accent === 'default' ? undefined : accent}
         data-profile-cards={cardStyle === 'glass' ? undefined : cardStyle}
-        className="relative overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10"
+        // Scoped theme box: `dark` activates the dark palette inside the
+        // frame, `light` escapes a dark page so the app keeps the user's own
+        // theme while the preview shows the page's. Colours mirror html/body.
+        className={`relative overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10 ${
+          theme === 'dark'
+            ? 'dark bg-[#0a0a0a] text-neutral-100'
+            : 'light bg-[#f4f4f4] text-neutral-900'
+        }`}
       >
         {/* Page backdrop — mirrors the fixed layer on the public page */}
         {backgroundUrl && (

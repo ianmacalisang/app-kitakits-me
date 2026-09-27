@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-import type { ProfileAccent, ProfileCardStyle, ProfileLayout } from '@/lib/profileDesign'
+import type {
+  ProfileAccent,
+  ProfileCardStyle,
+  ProfileLayout,
+  ProfileTheme,
+} from '@/lib/profileDesign'
 
 import { ChevronRightIcon, PaletteIcon } from './icons'
 import { ProfileDesignForm, type DesignPreviewData } from './ProfileDesignForm'
@@ -25,6 +30,7 @@ export function ProfileDesignSheet({
     layout: ProfileLayout
     accent: ProfileAccent
     cardStyle: ProfileCardStyle
+    theme: ProfileTheme
     backgroundUrl?: string
   }
   preview: DesignPreviewData
@@ -68,7 +74,7 @@ export function ProfileDesignSheet({
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold">Design your public profile</span>
           <span className="block truncate text-xs text-neutral-500">
-            Layout, background &amp; colors for /@{username}
+            Layout, theme &amp; colors for /@{username}
           </span>
         </span>
         <ChevronRightIcon className="h-4 w-4 shrink-0 text-neutral-400 transition group-hover:translate-x-0.5" />

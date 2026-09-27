@@ -171,6 +171,10 @@ export interface User {
    * Card surface style for the public /@username page.
    */
   profileCardStyle?: ('glass' | 'solid') | null;
+  /**
+   * Light or dark theme for the public /@username page.
+   */
+  profileTheme?: ('light' | 'dark') | null;
   bio?: string | null;
   website?: string | null;
   about?:
@@ -610,6 +614,7 @@ export interface UsersSelect<T extends boolean = true> {
   profileAccent?: T;
   profileBackground?: T;
   profileCardStyle?: T;
+  profileTheme?: T;
   bio?: T;
   website?: T;
   about?:

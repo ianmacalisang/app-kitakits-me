@@ -7,6 +7,7 @@ import { CATEGORY_ICONS } from '@/components/CategoryChip'
 import { DiscoverFeed } from '@/components/DiscoverFeed'
 import { ChevronRightIcon, CompassIcon } from '@/components/icons'
 import { LandingUserSearch } from '@/components/LandingUserSearch'
+import { PublicPageTheme } from '@/components/PublicPageTheme'
 import { getCurrentUser } from '@/lib/auth'
 import {
   CATEGORY_TINTS,
@@ -99,6 +100,16 @@ export default async function DiscoverPage({
 
   return (
     <main className="animate-page-in">
+      {/* Discover is always light — the script removes the visitor's dark
+          class pre-paint on first load; the component covers client-side
+          navigation and restores their theme on exit. */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: "try{document.documentElement.classList.remove('dark')}catch(e){}",
+        }}
+      />
+      <PublicPageTheme theme="light" visitorTheme={viewer?.theme ?? 'light'} />
+
       <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-6">
         <div className="flex items-center justify-between gap-3">
           <Link href="/" className="flex w-fit items-center gap-2.5">

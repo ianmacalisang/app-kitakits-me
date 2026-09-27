@@ -4,7 +4,12 @@ import { getSuggestedPeople } from '@/actions/users'
 import { OnboardingWizard } from '@/components/OnboardingWizard'
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
-import { profileAccentValue, profileCardStyleValue, profileLayoutValue } from '@/lib/profileDesign'
+import {
+  profileAccentValue,
+  profileCardStyleValue,
+  profileLayoutValue,
+  profileThemeValue,
+} from '@/lib/profileDesign'
 import { avatarUrl, coverUrl, mediaUrl, toAboutBlocks } from '@/lib/serialize'
 
 export const metadata = { title: 'Welcome' }
@@ -60,6 +65,7 @@ export default async function OnboardingPage() {
           profileLayout: profileLayoutValue(fullUser),
           profileAccent: profileAccentValue(fullUser),
           profileCardStyle: profileCardStyleValue(fullUser),
+          profileTheme: profileThemeValue(fullUser),
           profileBackgroundUrl: mediaUrl(fullUser.profileBackground),
           followers: followers.totalDocs,
           following: following.totalDocs,

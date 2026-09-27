@@ -14,7 +14,6 @@ import {
   LockIcon,
   MailboxIcon,
   MailIcon,
-  MonitorIcon,
   MoonIcon,
   QuoteIcon,
   SearchIcon,
@@ -27,6 +26,7 @@ import {
 } from '@/components/icons'
 import { InView } from '@/components/InView'
 import { LandingUserSearch } from '@/components/LandingUserSearch'
+import { PublicPageTheme } from '@/components/PublicPageTheme'
 import { getCurrentUser } from '@/lib/auth'
 import { getSiteSettings } from '@/lib/settings'
 
@@ -202,7 +202,7 @@ const FEATURES: Feature[] = [
   {
     icon: MoonIcon,
     title: 'Magaan sa mata',
-    description: 'Light, dark, o system — buong app susunod sa theme mo.',
+    description: 'Light o dark — buong app susunod sa theme mo.',
     preview: (
       <div className="flex flex-col gap-1.5">
         {/* Segmented theme switcher, mirroring the in-app control */}
@@ -212,9 +212,6 @@ const FEATURES: Feature[] = [
           </span>
           <span className="flex flex-1 items-center justify-center py-1">
             <MoonIcon className="h-2.5 w-2.5 text-neutral-400" />
-          </span>
-          <span className="flex flex-1 items-center justify-center py-1">
-            <MonitorIcon className="h-2.5 w-2.5 text-neutral-400" />
           </span>
         </div>
         {/* Same surface, light and dark halves */}
@@ -355,6 +352,16 @@ export default async function LandingPage() {
 
   return (
     <main className="animate-page-in">
+      {/* Landing is always light — the script removes the visitor's dark
+          class pre-paint on first load; the component covers client-side
+          navigation and restores their theme on exit. */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: "try{document.documentElement.classList.remove('dark')}catch(e){}",
+        }}
+      />
+      <PublicPageTheme theme="light" visitorTheme={user?.theme ?? 'light'} />
+
       {/* Hero */}
       <section className="mx-auto flex max-w-3xl flex-col items-center px-4 pb-16 pt-12 text-center sm:pt-20">
         <BrandMark size="lg" />

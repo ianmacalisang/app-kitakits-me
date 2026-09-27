@@ -37,6 +37,7 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
       lang="en"
       className={`${poppins.variable}${theme === 'dark' ? ' dark' : ''}`}
       data-theme={theme}
+      suppressHydrationWarning
     >
       <head>
         {theme === 'system' && (

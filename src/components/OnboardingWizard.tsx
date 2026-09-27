@@ -10,7 +10,12 @@ import {
   updateProfileDesign,
   updateTheme,
 } from '@/actions/users'
-import type { ProfileAccent, ProfileCardStyle, ProfileLayout } from '@/lib/profileDesign'
+import type {
+  ProfileAccent,
+  ProfileCardStyle,
+  ProfileLayout,
+  ProfileTheme,
+} from '@/lib/profileDesign'
 import type { AboutBlockData, UserCardData } from '@/lib/serialize'
 
 import { AboutEditor } from './AboutSection'
@@ -21,7 +26,6 @@ import {
   ImageIcon,
   LayoutIcon,
   LockIcon,
-  MonitorIcon,
   MoonIcon,
   PaletteIcon,
   SearchIcon,
@@ -55,6 +59,7 @@ export interface OnboardingInitial {
   profileLayout: ProfileLayout
   profileAccent: ProfileAccent
   profileCardStyle: ProfileCardStyle
+  profileTheme: ProfileTheme
   profileBackgroundUrl?: string
   followers: number
   following: number
@@ -91,15 +96,6 @@ const THEME_OPTIONS: {
     icon: MoonIcon,
     preview: 'bg-gradient-to-br from-neutral-900 via-accent-950 to-accent-950 ring-1 ring-white/10',
     iconColor: 'text-accent-300',
-  },
-  {
-    value: 'system',
-    label: 'System',
-    description: 'Matches device',
-    icon: MonitorIcon,
-    preview:
-      'bg-gradient-to-r from-white from-50% via-accent-950 via-50% to-neutral-900 ring-1 ring-black/10',
-    iconColor: 'text-neutral-500',
   },
 ]
 
@@ -163,6 +159,7 @@ export function OnboardingWizard({
   const [designLayout, setDesignLayout] = useState<ProfileLayout>(initial.profileLayout)
   const [designAccent, setDesignAccent] = useState<ProfileAccent>(initial.profileAccent)
   const [designCardStyle, setDesignCardStyle] = useState<ProfileCardStyle>(initial.profileCardStyle)
+  const [designTheme, setDesignTheme] = useState<ProfileTheme>(initial.profileTheme)
   // undefined = untouched; null = removed; string = pending-upload preview.
   const [designBg, setDesignBg] = useState<string | null | undefined>(undefined)
   // Photos uploaded in step 0 and the bio saved in step 1 feed the live
@@ -221,10 +218,7 @@ export function OnboardingWizard({
 
   const chooseTheme = (nextTheme: Theme) => {
     setTheme(nextTheme)
-    const dark =
-      nextTheme === 'dark' ||
-      (nextTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    document.documentElement.classList.toggle('dark', dark)
+    document.documentElement.classList.toggle('dark', nextTheme === 'dark')
     document.documentElement.setAttribute('data-theme', nextTheme)
     startTransition(async () => {
       const res = await updateTheme(nextTheme)
@@ -438,6 +432,7 @@ export function OnboardingWizard({
                 layout={designLayout}
                 accent={designAccent}
                 cardStyle={designCardStyle}
+                theme={designTheme}
                 backgroundUrl={designBg === undefined ? initial.profileBackgroundUrl : designBg}
                 name={initial.name}
                 username={initial.username}
@@ -457,10 +452,12 @@ export function OnboardingWizard({
                 layout={designLayout}
                 accent={designAccent}
                 cardStyle={designCardStyle}
+                theme={designTheme}
                 backgroundUrl={initial.profileBackgroundUrl}
                 onLayoutChange={setDesignLayout}
                 onAccentChange={setDesignAccent}
                 onCardStyleChange={setDesignCardStyle}
+                onThemeChange={setDesignTheme}
                 onBackgroundChange={setDesignBg}
               />
 
@@ -486,7 +483,7 @@ export function OnboardingWizard({
 
           {step === 5 && (
             <div className="mt-5">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {THEME_OPTIONS.map(
                   ({ value, label, description, icon: Icon, preview, iconColor }) => (
                     <button

@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation'
 import { useActionState, useEffect, useState } from 'react'
 
 import { updateProfileDesign } from '@/actions/users'
-import type { ProfileAccent, ProfileCardStyle, ProfileLayout } from '@/lib/profileDesign'
+import type {
+  ProfileAccent,
+  ProfileCardStyle,
+  ProfileLayout,
+  ProfileTheme,
+} from '@/lib/profileDesign'
 
 import { ArrowUpRightIcon, CheckIcon } from './icons'
 import { ProfileDesignControls } from './ProfileDesignControls'
@@ -39,6 +44,7 @@ export function ProfileDesignForm({
     layout: ProfileLayout
     accent: ProfileAccent
     cardStyle: ProfileCardStyle
+    theme: ProfileTheme
     backgroundUrl?: string
   }
   preview: DesignPreviewData
@@ -48,6 +54,7 @@ export function ProfileDesignForm({
   const [layout, setLayout] = useState<ProfileLayout>(initial.layout)
   const [accent, setAccent] = useState<ProfileAccent>(initial.accent)
   const [cardStyle, setCardStyle] = useState<ProfileCardStyle>(initial.cardStyle)
+  const [theme, setTheme] = useState<ProfileTheme>(initial.theme)
   // undefined = untouched (use initial.backgroundUrl); null = removed;
   // string = pending upload preview.
   const [background, setBackground] = useState<string | null | undefined>(undefined)
@@ -66,6 +73,7 @@ export function ProfileDesignForm({
         layout={layout}
         accent={accent}
         cardStyle={cardStyle}
+        theme={theme}
         backgroundUrl={background === undefined ? initial.backgroundUrl : background}
         {...preview}
       />
@@ -74,10 +82,12 @@ export function ProfileDesignForm({
         layout={layout}
         accent={accent}
         cardStyle={cardStyle}
+        theme={theme}
         backgroundUrl={initial.backgroundUrl}
         onLayoutChange={setLayout}
         onAccentChange={setAccent}
         onCardStyleChange={setCardStyle}
+        onThemeChange={setTheme}
         onBackgroundChange={setBackground}
       />
 

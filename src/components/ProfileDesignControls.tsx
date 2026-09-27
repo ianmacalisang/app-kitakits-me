@@ -7,13 +7,15 @@ import {
   PROFILE_ACCENTS,
   PROFILE_CARD_STYLES,
   PROFILE_LAYOUTS,
+  PROFILE_THEMES,
   type ProfileAccent,
   type ProfileCardStyle,
   type ProfileLayout,
+  type ProfileTheme,
 } from '@/lib/profileDesign'
 
 import { BlurImage } from './BlurImage'
-import { CheckIcon, ImageIcon, XIcon } from './icons'
+import { CheckIcon, ImageIcon, MoonIcon, SunIcon, XIcon } from './icons'
 
 const labelClass = 'mb-1.5 block text-sm font-medium text-neutral-600 dark:text-neutral-300'
 
@@ -61,27 +63,31 @@ function SectionLabel({ children }: { children: ReactNode }) {
   return <span className={labelClass}>{children}</span>
 }
 
-// Shared layout/accent/background pickers — used by the design sheet and the
-// onboarding step. Values travel through hidden inputs + the file input, so
-// any parent <form> picks them up in FormData; layout/accent are also lifted
-// via onLayoutChange/onAccentChange so parents can render a live preview.
+// Shared theme/layout/accent/card/background pickers — used by the design
+// sheet and the onboarding step. Values travel through hidden inputs + the
+// file input, so any parent <form> picks them up in FormData; they're also
+// lifted via on*Change callbacks so parents can render a live preview.
 export function ProfileDesignControls({
   layout,
   accent,
   cardStyle,
+  theme,
   backgroundUrl,
   onLayoutChange,
   onAccentChange,
   onCardStyleChange,
+  onThemeChange,
   onBackgroundChange,
 }: {
   layout: ProfileLayout
   accent: ProfileAccent
   cardStyle: ProfileCardStyle
+  theme: ProfileTheme
   backgroundUrl?: string
   onLayoutChange: (layout: ProfileLayout) => void
   onAccentChange: (accent: ProfileAccent) => void
   onCardStyleChange: (style: ProfileCardStyle) => void
+  onThemeChange: (theme: ProfileTheme) => void
   // Reports the object-URL preview (or null) so the parent preview can show
   // the pending image before it's uploaded.
   onBackgroundChange?: (previewUrl: string | null) => void
@@ -127,7 +133,52 @@ export function ProfileDesignControls({
       <input type="hidden" name="profileLayout" value={layout} />
       <input type="hidden" name="profileAccent" value={accent} />
       <input type="hidden" name="profileCardStyle" value={cardStyle} />
+      <input type="hidden" name="profileTheme" value={theme} />
       {removed && !preview && <input type="hidden" name="removeBackground" value="on" />}
+
+      <div>
+        <SectionLabel>Theme</SectionLabel>
+        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Page theme">
+          {PROFILE_THEMES.map((option) => {
+            const ThemeIcon = option.value === 'dark' ? MoonIcon : SunIcon
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={theme === option.value}
+                onClick={() => onThemeChange(option.value)}
+                className={`flex items-center gap-3 rounded-2xl p-2.5 text-left ring-2 transition ${
+                  theme === option.value
+                    ? 'bg-accent-500/10 ring-accent-500/60'
+                    : 'ring-transparent hover:bg-black/[0.03] hover:ring-black/10 dark:hover:bg-white/5 dark:hover:ring-white/10'
+                }`}
+              >
+                {/* Mini page swatch — light surface vs dark surface */}
+                <span
+                  className={`relative flex h-12 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border ${
+                    option.value === 'dark'
+                      ? 'border-neutral-700 bg-neutral-900'
+                      : 'border-neutral-200/70 bg-white'
+                  }`}
+                >
+                  <ThemeIcon
+                    className={`h-4 w-4 ${
+                      option.value === 'dark' ? 'text-accent-300' : 'text-amber-500'
+                    }`}
+                  />
+                </span>
+                <span>
+                  <span className="block text-xs font-semibold">{option.label}</span>
+                  <span className="block text-[11px] leading-snug text-neutral-500">
+                    {option.description}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       <div>
         <SectionLabel>Layout</SectionLabel>
