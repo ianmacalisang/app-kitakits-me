@@ -43,6 +43,13 @@ export function categoryFilterClauses(category?: PostCategory | 'all'): Where[] 
   return [{ category: { equals: category } }]
 }
 
+// Where-clauses restricting a feed to posts a signed-out reader may see —
+// mirrors the anonymous constraint in canReadPosts. Powers public surfaces
+// (Discover, public profiles) for anonymous and signed-in viewers alike.
+export function publicPostClauses(): Where[] {
+  return [{ visibility: { not_equals: 'followers' } }, { 'author.isPrivate': { not_equals: true } }]
+}
+
 // Posts the viewer has saved, most recently saved first — powers the home
 // "Saved" tab. Saves are paginated first, then the posts are fetched in one
 // query and reordered to match save order; posts the viewer can no longer see

@@ -1,7 +1,7 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 
 import { BrandMark } from '@/components/Branding'
+import { CategoryChip } from '@/components/CategoryChip'
 import {
   BookmarkIcon,
   CheckIcon,
@@ -18,12 +18,14 @@ import {
   MoonIcon,
   QuoteIcon,
   SearchIcon,
+  ShareIcon,
   SparklesIcon,
   SunIcon,
   UserIcon,
   UsersIcon,
   XIcon,
 } from '@/components/icons'
+import { InView } from '@/components/InView'
 import { LandingUserSearch } from '@/components/LandingUserSearch'
 import { getCurrentUser } from '@/lib/auth'
 import { getSiteSettings } from '@/lib/settings'
@@ -335,7 +337,7 @@ function FloatChip({
 }) {
   return (
     <span
-      className={`glass-pop absolute items-center gap-2 rounded-2xl px-3 py-2 text-xs font-medium text-neutral-600 shadow-lg motion-safe:animate-float ${className}`}
+      className={`glass-pop absolute items-center gap-2 rounded-2xl px-3 py-2 text-xs font-medium text-neutral-600 shadow-lg motion-safe:animate-float-chip ${className}`}
       style={{ '--float-rotate': rotate, animationDelay: delay } as React.CSSProperties}
     >
       {children}
@@ -345,9 +347,11 @@ function FloatChip({
 
 export default async function LandingPage() {
   const user = await getCurrentUser()
-  if (user) redirect('/home')
-
   const settings = await getSiteSettings()
+
+  // Signed-in visitors keep the landing page — every signup CTA just routes to
+  // their profile instead of /register.
+  const primaryHref = user ? `/profile/${user.username}` : '/register'
 
   return (
     <main className="animate-page-in">
@@ -395,77 +399,22 @@ export default async function LandingPage() {
 
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/register"
+            href={primaryHref}
             className="btn-primary group flex items-center gap-1.5 rounded-full px-7 py-3.5 text-sm"
           >
-            Gumawa ka na ng account
+            {user ? 'Go to Profile' : 'Gumawa ka na ng account'}
             <ChevronRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
-          <Link
-            href="/login"
-            className="glass rounded-full px-7 py-3.5 text-sm font-semibold text-neutral-700 transition-transform hover:scale-[1.03] active:scale-[0.98]"
-          >
-            May account na ako
-          </Link>
+          {!user && (
+            <Link
+              href="/login"
+              className="glass rounded-full px-7 py-3.5 text-sm font-semibold text-neutral-700 transition-transform hover:scale-[1.03] active:scale-[0.98]"
+            >
+              May account na ako
+            </Link>
+          )}
         </div>
-        <p className="mt-3 text-xs text-neutral-400">Isang minuto lang, promise.</p>
-
-        {/* Decorative feed preview — suggests the timeline without a screenshot,
-            with floating notification chips for a sense of life */}
-        <div className="relative mt-20 w-full max-w-md" aria-hidden="true">
-          <div className="glass absolute inset-x-8 -bottom-2.5 top-8 rotate-2 rounded-3xl opacity-60" />
-          <div className="glass absolute inset-x-4 -bottom-1 top-4 -rotate-1 rounded-3xl opacity-80" />
-
-          <FloatChip className="-top-6 right-3 flex" rotate="2deg" delay="0.4s">
-            <HeartIcon filled className="h-3.5 w-3.5 text-accent-500" />
-            Nag-like si Maria ng kwento mo
-          </FloatChip>
-          <FloatChip className="-left-7 top-1/3 hidden sm:flex" rotate="-2deg" delay="1.4s">
-            <UsersIcon className="h-3.5 w-3.5 text-accent-600" />
-            Nag-follow si @jose sa&apos;yo
-          </FloatChip>
-          <FloatChip className="-bottom-8 right-5 hidden sm:flex" rotate="1.5deg" delay="2.3s">
-            <MailIcon className="h-3.5 w-3.5 text-accent-600" />
-            May mail ka kay Ate Kim
-          </FloatChip>
-          <FloatChip className="-bottom-10 left-3 hidden sm:flex" rotate="-1.5deg" delay="3.1s">
-            <QuoteIcon className="h-3.5 w-3.5 text-accent-600" />
-            May testimonial ka kay Ana
-          </FloatChip>
-
-          <article className="glass relative rounded-3xl p-5 text-left">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent-400 to-accent-600 text-sm font-bold text-white">
-                J
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold leading-tight text-neutral-800">
-                  Juan Dela Cruz
-                </span>
-                <span className="block truncate text-xs leading-tight text-neutral-500">
-                  @juandelacruz · 2h
-                </span>
-              </span>
-            </div>
-            <p className="mt-3 text-sm leading-relaxed text-neutral-700">
-              Walang algorithm dito, walang arte — kwento lang. Parang internet dati. Tambay tayo!
-            </p>
-            <div className="mt-3 flex h-28 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-400/50 via-accent-300/40 to-accent-300/40 text-accent-700/50">
-              <ImageIcon className="h-6 w-6" />
-            </div>
-            <div className="mt-3 flex items-center gap-4 text-xs font-medium text-neutral-500">
-              <span className="flex items-center gap-1.5 text-accent-600">
-                <HeartIcon filled className="h-4 w-4" /> 24
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CommentIcon className="h-4 w-4" /> 6
-              </span>
-              <span className="flex items-center gap-1.5">
-                <BookmarkIcon className="h-4 w-4" /> 3
-              </span>
-            </div>
-          </article>
-        </div>
+        {!user && <p className="mt-3 text-xs text-neutral-400">Isang minuto lang, promise.</p>}
       </section>
 
       {/* The promise — what we left behind vs. what you get */}
@@ -531,6 +480,121 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      {/* Divider — a perforated edge, like tearing the page */}
+      <div className="mx-auto max-w-sm px-4 pb-16" aria-hidden="true">
+        <span className="block border-t-2 border-dashed border-neutral-300" />
+      </div>
+
+      {/* Decorative feed preview — suggests the timeline without a screenshot,
+          with floating notification chips for a sense of life. Animations stay
+          parked until the InView wrapper scrolls into view. */}
+      <section className="mx-auto w-full max-w-lg px-4 pb-16 sm:pb-20">
+        <InView className="relative" aria-hidden={true}>
+          {/* The transform on this wrapper makes it the containing block for
+              the stacked cards, so they drift together with the post. Each
+              layer shows a mini post header in its peeking bottom strip —
+              reads as the next posts in the feed, not plain paper sheets. */}
+          <div className="motion-safe:animate-float-soft">
+            <div
+              className="glass absolute inset-x-10 -bottom-11 top-20 -rotate-2 rounded-3xl opacity-60 motion-safe:animate-post-rise"
+              style={{ animationDelay: '0.1s' }}
+            >
+              <span className="absolute inset-x-3.5 bottom-2 flex items-center gap-1.5">
+                <Disc className="h-4 w-4 bg-gradient-to-br from-accent-400/60 to-accent-500/60" />
+                <Bar className="w-16 bg-neutral-300/80" />
+                <Bar className="w-8 bg-neutral-200" />
+              </span>
+            </div>
+            <div
+              className="glass absolute inset-x-5 -bottom-5 top-10 rotate-[1.2deg] rounded-3xl opacity-80 motion-safe:animate-post-rise"
+              style={{ animationDelay: '0.2s' }}
+            >
+              <span className="absolute inset-x-3.5 bottom-2 flex items-center gap-1.5">
+                <Disc className="h-4 w-4 bg-gradient-to-br from-accent-400/80 to-accent-500/80" />
+                <Bar className="w-14 bg-neutral-300" />
+                <Bar className="w-10 bg-neutral-200" />
+              </span>
+            </div>
+
+            <FloatChip className="-top-6 right-3 flex" rotate="2deg" delay="0.4s">
+              <HeartIcon filled className="h-3.5 w-3.5 text-accent-500" />
+              Nag-like si Maria ng kwento mo
+            </FloatChip>
+            <FloatChip className="-left-7 top-1/3 hidden sm:flex" rotate="-2deg" delay="1.4s">
+              <UsersIcon className="h-3.5 w-3.5 text-accent-600" />
+              Nag-follow si @jose sa&apos;yo
+            </FloatChip>
+            <FloatChip className="-bottom-8 right-5 hidden sm:flex" rotate="1.5deg" delay="2.3s">
+              <MailIcon className="h-3.5 w-3.5 text-accent-600" />
+              May mail ka kay Ate Kim
+            </FloatChip>
+            <FloatChip className="-bottom-10 left-3 hidden sm:flex" rotate="-1.5deg" delay="3.1s">
+              <QuoteIcon className="h-3.5 w-3.5 text-accent-600" />
+              May testimonial ka kay Ana
+            </FloatChip>
+
+            <article
+              className="glass relative rounded-3xl border-amber-500/40! p-4 text-left motion-safe:animate-post-rise"
+              style={{ animationDelay: '0.35s' }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent-400 to-accent-600 text-sm font-bold text-white ring-1 ring-accent-900/10">
+                    C
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold leading-tight text-neutral-800">
+                      Crisostomo Ibarra
+                    </span>
+                    <span className="block truncate text-xs leading-tight text-neutral-500">
+                      @crisostomoibarra · 2h
+                    </span>
+                  </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <CategoryChip category="kwento" />
+                  <BookmarkIcon className="h-5 w-5 text-neutral-500" />
+                </div>
+              </div>
+              <p className="mt-3 text-sm leading-relaxed text-neutral-700">
+                Walang algorithm dito, walang arte — kwento lang. Parang internet dati. Tambay tayo!
+              </p>
+              <div className="relative mt-3 flex h-36 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-accent-400/50 via-accent-300/40 to-accent-300/40 text-accent-700/50">
+                <ImageIcon className="h-6 w-6 motion-safe:animate-processing-glow" />
+                <span className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent motion-safe:animate-shimmer" />
+              </div>
+              <div className="mt-3 flex items-center gap-4 border-t border-black/5 pt-3 text-sm font-medium text-neutral-500">
+                <span className="flex items-center gap-1.5 text-rose-500">
+                  <HeartIcon filled className="h-5 w-5 motion-safe:animate-heart-pop" /> 24
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CommentIcon className="h-5 w-5" /> 6
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <ShareIcon className="h-5 w-5" /> 3
+                </span>
+                {/* Overlapping liker avatars, same as the real card */}
+                <span className="ml-auto flex items-center -space-x-2">
+                  <Disc className="h-6 w-6 bg-gradient-to-br from-accent-300 to-accent-500 ring-2 ring-white" />
+                  <Disc className="h-6 w-6 bg-gradient-to-br from-neutral-300 to-neutral-400 ring-2 ring-white" />
+                  <Disc className="h-6 w-6 bg-gradient-to-br from-accent-400 to-accent-600 ring-2 ring-white" />
+                </span>
+              </div>
+            </article>
+          </div>
+        </InView>
+        {/* Extra top margin clears the peeking stack layers and float chips */}
+        <div className="mt-20 text-center">
+          <Link
+            href="/discover"
+            className="btn-primary group inline-flex items-center gap-1.5 rounded-full px-7 py-3.5 text-sm"
+          >
+            Discover stories
+            <ChevronRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+      </section>
+
       {/* Features */}
       <section className="mx-auto max-w-5xl px-4 pb-16 sm:pb-20">
         <div className="mx-auto max-w-xl text-center">
@@ -552,10 +616,10 @@ export default async function LandingPage() {
         </div>
         <p className="mt-8 text-center text-sm">
           <Link
-            href="/register"
+            href={primaryHref}
             className="inline-flex items-center gap-1 font-semibold text-accent-700 hover:underline"
           >
-            Gumawa ka na ng account para makita mo lahat
+            {user ? 'Go to Profile' : 'Gumawa ka na ng account para makita mo lahat'}
             <ChevronRightIcon className="h-3.5 w-3.5" />
           </Link>
         </p>
@@ -590,10 +654,10 @@ export default async function LandingPage() {
             ang maganda bago ka maunahan.
           </p>
           <Link
-            href="/register"
+            href={primaryHref}
             className="btn-primary mt-6 inline-block rounded-full px-7 py-3 text-sm"
           >
-            Claim mo na
+            {user ? 'Go to Profile' : 'Claim mo na'}
           </Link>
         </div>
       </section>
@@ -647,21 +711,23 @@ export default async function LandingPage() {
             mo sa {settings.appName} ngayon.
           </p>
           <Link
-            href="/register"
+            href={primaryHref}
             className="relative mt-7 inline-flex items-center gap-1.5 rounded-full bg-white px-8 py-3.5 text-sm font-bold text-accent-700 shadow-lg transition-all hover:scale-[1.03] hover:shadow-xl active:scale-[0.98]"
           >
-            Gumawa ka na — libre lang
+            {user ? 'Go to Profile' : 'Gumawa ka na — libre lang'}
             <ChevronRightIcon className="h-4 w-4" />
           </Link>
-          <p className="relative mt-5 text-xs text-accent-100/80">
-            May account ka na?{' '}
-            <Link
-              href="/login"
-              className="font-semibold text-white underline-offset-2 hover:underline"
-            >
-              Log in
-            </Link>
-          </p>
+          {!user && (
+            <p className="relative mt-5 text-xs text-accent-100/80">
+              May account ka na?{' '}
+              <Link
+                href="/login"
+                className="font-semibold text-white underline-offset-2 hover:underline"
+              >
+                Log in
+              </Link>
+            </p>
+          )}
         </div>
       </section>
     </main>

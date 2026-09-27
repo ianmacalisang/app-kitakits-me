@@ -11,6 +11,10 @@ export const Users: CollectionConfig = {
     useAsTitle: 'username',
   },
   auth: {
+    // 30 days — the login "Remember me" checkbox only controls whether the
+    // cookie persists across browser restarts; the JWT lifetime is this either
+    // way.
+    tokenExpiration: 60 * 60 * 24 * 30,
     forgotPassword: {
       generateEmailHTML: ({ req, token, user } = {}) => {
         const brand = req?.payload.email?.defaultFromName || 'Kitakits'

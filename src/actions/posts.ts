@@ -11,6 +11,7 @@ import {
   getSavedPosts,
   hydratePosts,
   mediaFilterClauses,
+  publicPostClauses,
 } from '@/lib/posts'
 import { type MediaFilter, type Paged, type PostCardData, mediaUrl, relId } from '@/lib/serialize'
 import type { Media, User } from '@/payload-types'
@@ -289,20 +290,32 @@ export async function deletePost(postId: number): Promise<FormState> {
 }
 
 // Single hydrated post — used by sheets that show a post outside the feed
-// (e.g. tapping a like notification).
+// (e.g. tapping a like notification or a Discover card). Signed-out readers
+// get the anonymous canReadPosts constraint inline — access control can't
+// apply it for them because the nested author.isPrivate path requires read
+// permission on the users collection.
 export async function getPost(postId: number): Promise<PostCardData | null> {
   const user = await getCurrentUser()
-  if (!user) redirect('/login')
 
   const payload = await getPayloadClient()
   try {
-    const post = await payload.findByID({
-      collection: 'posts',
-      id: postId,
-      depth: 2,
-      user,
-      overrideAccess: false,
-    })
+    const post = user
+      ? await payload.findByID({
+          collection: 'posts',
+          id: postId,
+          depth: 2,
+          user,
+          overrideAccess: false,
+        })
+      : (
+          await payload.find({
+            collection: 'posts',
+            where: { and: [{ id: { equals: postId } }, ...publicPostClauses()] },
+            limit: 1,
+            depth: 2,
+          })
+        ).docs[0]
+    if (!post) return null
     const [hydrated] = await hydratePosts([post], user)
     return hydrated ?? null
   } catch {
@@ -470,11 +483,7 @@ export async function loadMorePosts(options: {
     const result = await payload.find({
       collection: 'posts',
       where: {
-        and: [
-          { author: { equals: authorId } },
-          { visibility: { not_equals: 'followers' } },
-          { 'author.isPrivate': { not_equals: true } },
-        ],
+        and: [{ author: { equals: authorId } }, ...publicPostClauses()],
       },
       sort: '-createdAt',
       page,

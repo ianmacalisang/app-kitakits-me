@@ -28,14 +28,16 @@ const errorMessage = (err: unknown, fallback: string) => {
   return fallback
 }
 
-const setAuthCookie = async (token: string, exp?: number) => {
+const setAuthCookie = async (token: string, exp?: number, remember = true) => {
   const store = await cookies()
   store.set('payload-token', token, {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
     secure: process.env.NODE_ENV === 'production',
-    expires: exp ? new Date(exp * 1000) : undefined,
+    // Without an expiry the browser drops the cookie when it closes — that is
+    // the "don't remember me" path.
+    expires: remember && exp ? new Date(exp * 1000) : undefined,
   })
 }
 
@@ -52,7 +54,9 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
       collection: 'users',
       data: { email, password },
     })
-    if (result.token) await setAuthCookie(result.token, result.exp)
+    if (result.token) {
+      await setAuthCookie(result.token, result.exp, formData.get('remember') === 'on')
+    }
   } catch {
     return { error: 'Invalid email or password.', values }
   }

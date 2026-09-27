@@ -120,7 +120,20 @@ export function LoginForm() {
         autoComplete="current-password"
         defaultValue={state.values?.password}
       />
-      <div className="-mt-1 text-right">
+      <div className="-mt-1 flex items-center justify-between">
+        <label
+          htmlFor="remember"
+          className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-neutral-600"
+        >
+          <input
+            id="remember"
+            name="remember"
+            type="checkbox"
+            defaultChecked
+            className="h-3.5 w-3.5 rounded border-neutral-300 accent-accent-600"
+          />
+          Remember me
+        </label>
         <Link
           href="/forgot-password"
           className="text-xs font-medium text-accent-700 hover:underline"

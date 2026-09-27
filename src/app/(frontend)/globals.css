@@ -444,6 +444,100 @@ body::after {
   }
 }
 
+/* Hero post preview — card stack rises in on load */
+@utility animate-post-rise {
+  animation: post-rise 0.7s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+}
+
+@keyframes post-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Slower, shallower bob for the whole hero card stack */
+@utility animate-float-soft {
+  animation: float-soft 7s ease-in-out infinite;
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Floating chips fade in at their staggered delay, then the float loop takes
+   over — the second animation wins on transform while both run */
+@utility animate-float-chip {
+  animation:
+    chip-in 0.6s cubic-bezier(0.32, 0.72, 0, 1) backwards,
+    float 5s ease-in-out infinite;
+}
+
+@keyframes chip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Periodic double-beat on the hero post's like heart */
+@utility animate-heart-pop {
+  animation: heart-pop 4s ease-in-out infinite;
+}
+
+@keyframes heart-pop {
+  0%,
+  55%,
+  100% {
+    transform: scale(1);
+  }
+  60% {
+    transform: scale(1.35);
+  }
+  65% {
+    transform: scale(1);
+  }
+  72% {
+    transform: scale(1.2);
+  }
+  80% {
+    transform: scale(1);
+  }
+}
+
+/* Occasional sheen sweep across the hero post's image placeholder */
+@utility animate-shimmer {
+  animation: shimmer 4.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-160%) skewX(-12deg);
+  }
+  45%,
+  100% {
+    transform: translateX(260%) skewX(-12deg);
+  }
+}
+
+/* InView wrapper — every descendant animation stays parked (entrance pieces
+   hold their `from` frame, loops freeze) until the element scrolls into view */
+[data-inview-root]:not([data-inview]) * {
+  animation-play-state: paused;
+}
+
 /* Video processing placeholder — soft accent glow breathing behind the icon */
 @utility animate-processing-glow {
   animation: processing-glow 3s ease-in-out infinite;

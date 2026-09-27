@@ -57,7 +57,14 @@ function ExpandableText({ content, className }: { content: string; className?: s
   )
 }
 
-export const PostCard = memo(function PostCard({ post }: { post: PostCardData }) {
+export const PostCard = memo(function PostCard({
+  post,
+  isPublicPage = false,
+}: {
+  post: PostCardData
+  // Links go to the public @handle pages instead of the in-app profiles.
+  isPublicPage?: boolean
+}) {
   const router = useRouter()
   const [deleting, startDelete] = useTransition()
   const [pinning, startPin] = useTransition()
@@ -128,6 +135,8 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
   }
 
   const categoryEntry = postCategory(post.category)
+  const profileHref = (username: string) =>
+    isPublicPage ? `/@${username}` : `/profile/${username}`
 
   return (
     <article
@@ -136,7 +145,7 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <Link href={`/profile/${post.authorUsername}`} className="flex min-w-0 items-center gap-3">
+        <Link href={profileHref(post.authorUsername)} className="flex min-w-0 items-center gap-3">
           <Avatar src={post.authorAvatarUrl} name={post.authorName} />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{post.authorName}</p>
@@ -199,7 +208,7 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
         // Share card — the original post embedded read-only.
         <div className="mt-3 rounded-2xl border border-accent-900/10 bg-accent-50/50 p-3">
           <Link
-            href={`/profile/${post.sharedPost.authorUsername}`}
+            href={profileHref(post.sharedPost.authorUsername)}
             className="flex min-w-0 items-center gap-2"
           >
             <Avatar
@@ -277,7 +286,7 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
             {post.likers.map((liker) => (
               <Link
                 key={liker.username}
-                href={`/profile/${liker.username}`}
+                href={profileHref(liker.username)}
                 aria-label={liker.name}
                 className="rounded-full ring-2 ring-white transition-transform hover:z-10 hover:scale-110"
               >
