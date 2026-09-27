@@ -7,6 +7,8 @@ const __filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(__filename)
 
 const nextConfig: NextConfig = {
+  // Required by the Dockerfile — it copies .next/standalone as the runtime.
+  output: 'standalone',
   experimental: {
     // Keep the router cache alive for dynamic pages so navigating back is
     // instant. 0 would disable it entirely; Payload admin warns above 0

@@ -1,6 +1,10 @@
 'use server'
 
+import { sql } from '@payloadcms/db-postgres'
+
 import { getCurrentUser } from '@/lib/auth'
+import { drizzleOf } from '@/lib/db'
+import { rateLimitIP } from '@/lib/rate-limit'
 import {
   bunnyStreamConfigured,
   createStreamVideo,
@@ -194,24 +198,21 @@ export async function getVideoStatus(videoId: number): Promise<PostVideoData | n
 }
 
 // Called by PostVideo when playback starts — anyone can bump the count, so
-// this bypasses the owner-only update access on purpose.
+// this bypasses the owner-only update access on purpose. One atomic UPDATE
+// (no read-modify-write, so concurrent plays can't lose increments), with a
+// per-IP ceiling since the action is unauthenticated.
 export async function recordVideoPlay(videoId: number): Promise<{ playCount?: number }> {
+  if (!Number.isFinite(videoId) || videoId <= 0) return {}
+  if (!(await rateLimitIP('video-play', 30, 60_000))) return {}
+
   const payload = await getPayloadClient()
+  const db = drizzleOf(payload)
+  if (!db) return {}
   try {
-    const video = await payload.findByID({
-      collection: 'videos',
-      id: videoId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const playCount = (video.playCount ?? 0) + 1
-    await payload.update({
-      collection: 'videos',
-      id: videoId,
-      data: { playCount },
-      overrideAccess: true,
-    })
-    return { playCount }
+    const { rows } = (await db.execute(
+      sql`UPDATE videos SET play_count = play_count + 1 WHERE id = ${videoId} RETURNING play_count`,
+    )) as { rows: { play_count: number }[] }
+    return { playCount: rows[0]?.play_count }
   } catch {
     return {}
   }

@@ -15,6 +15,10 @@ export const Users: CollectionConfig = {
     // cookie persists across browser restarts; the JWT lifetime is this either
     // way.
     tokenExpiration: 60 * 60 * 24 * 30,
+    // Brute-force protection — lock the account for 10 minutes after 5
+    // consecutive failed logins.
+    maxLoginAttempts: 5,
+    lockTime: 10 * 60 * 1000,
     forgotPassword: {
       generateEmailHTML: ({ req, token, user } = {}) => {
         const brand = req?.payload.email?.defaultFromName || 'Kitakits'

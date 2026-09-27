@@ -1,3 +1,5 @@
+import { cache } from 'react'
+
 import type { Access, FieldAccess, PayloadRequest, Where } from 'payload'
 
 // Boolean-only variant for spots that don't accept Where queries (e.g. `access.admin`).
@@ -43,21 +45,29 @@ export const isSelfOrAdmin: Access = ({ req }) => {
   }
 }
 
-// IDs of every user the current viewer follows (empty when signed out).
-const followedIds = async (req: PayloadRequest): Promise<number[]> => {
-  const user = req.user
-  if (!user) return []
-  const follows = await req.payload.find({
-    collection: 'follows',
-    where: { follower: { equals: user.id } },
-    limit: 0,
-    depth: 0,
-    req,
-  })
-  return follows.docs.map((follow) =>
-    typeof follow.following === 'object' ? follow.following.id : follow.following,
-  )
-}
+// IDs of every user the viewer follows, deduped per request via React cache —
+// a single page render or action can trigger several access checks that would
+// otherwise each re-run this query. Keyed on (payload, userId) because req
+// objects differ between Local API calls in the same request.
+// Capped at 2000 (the feed's followee ceiling) so the generated IN() clause
+// stays bounded instead of scaling with the user's social graph.
+const followedIdsByUser = cache(
+  async (payload: PayloadRequest['payload'], userId: number): Promise<number[]> => {
+    const follows = await payload.find({
+      collection: 'follows',
+      where: { follower: { equals: userId } },
+      limit: 2000,
+      depth: 0,
+      overrideAccess: true,
+    })
+    return follows.docs.map((follow) =>
+      typeof follow.following === 'object' ? follow.following.id : follow.following,
+    )
+  },
+)
+
+const followedIds = (req: PayloadRequest): Promise<number[]> =>
+  req.user ? followedIdsByUser(req.payload, req.user.id) : Promise.resolve([])
 
 const findPost = async (req: PayloadRequest, postRef: unknown) => {
   const postId =

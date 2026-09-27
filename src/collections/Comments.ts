@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { canComment, canReadComments, isAdminField, isOwner } from '../access'
 import { createCommentNotification } from '../hooks/createCommentNotification'
 import { deleteCommentNotifications } from '../hooks/deleteCommentNotifications'
+import { commentCounter } from '../hooks/postCounters'
 
 export const Comments: CollectionConfig = {
   slug: 'comments',
@@ -27,8 +28,9 @@ export const Comments: CollectionConfig = {
         return data
       },
     ],
-    afterChange: [createCommentNotification],
+    afterChange: [createCommentNotification, commentCounter.onCreate],
     beforeDelete: [deleteCommentNotifications],
+    afterDelete: [commentCounter.onDelete],
   },
   fields: [
     {

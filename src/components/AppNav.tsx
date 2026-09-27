@@ -246,6 +246,7 @@ export function AppNav({
   theme: themeProp,
 }: AppNavProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -283,17 +284,45 @@ export function AppNav({
     })
   }
 
+  // Baseline for "is this new?" detection across polls — props are the source
+  // of truth, re-synced whenever a server re-render delivers fresh counts.
+  const lastBadgesRef = useRef({
+    unread: unreadCount,
+    unreadMail: unreadMailCount,
+    pendingTestimonials: pendingTestimonialCount,
+  })
+  useEffect(() => {
+    lastBadgesRef.current = {
+      unread: unreadCount,
+      unreadMail: unreadMailCount,
+      pendingTestimonials: pendingTestimonialCount,
+    }
+  }, [unreadCount, unreadMailCount, pendingTestimonialCount])
+
   // Poll for new notifications/mail/testimonials — catches counts that didn't
-  // trigger a server re-render. Skips while the tab is hidden.
+  // trigger a server re-render. When a count goes UP something new arrived,
+  // so refresh the route too: the notifications menu, mailbox, and feed pick
+  // it up immediately instead of waiting for the next navigation.
+  // Skips while the tab is hidden.
   useEffect(() => {
     const tick = async () => {
       if (document.hidden) return
       const result = await getNavBadgeCounts()
-      if (result) setBadges(result)
+      if (!result) return
+      setBadges(result)
+      const prev = lastBadgesRef.current
+      lastBadgesRef.current = result
+      if (
+        result.unread > prev.unread ||
+        result.unreadMail > prev.unreadMail ||
+        result.pendingTestimonials > prev.pendingTestimonials
+      ) {
+        router.refresh()
+      }
     }
     const timer = setInterval(tick, 12000)
     return () => clearInterval(timer)
-  }, [])
+  }, [router])
 
   // Close the user dropdown when clicking outside of it or pressing Escape.
   useEffect(() => {

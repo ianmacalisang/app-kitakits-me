@@ -5,6 +5,7 @@ import { POST_CATEGORIES } from '../lib/categories'
 import { deletePostDependents } from '../hooks/deletePostDependents'
 import { deletePostMedia, deleteRemovedPostMedia } from '../hooks/deletePostMedia'
 import { deletePostVideo, deleteRemovedPostVideo } from '../hooks/deletePostVideo'
+import { shareCounterCreate, shareCounterDelete } from '../hooks/postCounters'
 
 export const Posts: CollectionConfig = {
   slug: 'posts',
@@ -40,8 +41,8 @@ export const Posts: CollectionConfig = {
       },
     ],
     beforeDelete: [deletePostDependents],
-    afterDelete: [deletePostMedia, deletePostVideo],
-    afterChange: [deleteRemovedPostMedia, deleteRemovedPostVideo],
+    afterDelete: [deletePostMedia, deletePostVideo, shareCounterDelete],
+    afterChange: [deleteRemovedPostMedia, deleteRemovedPostVideo, shareCounterCreate],
   },
   fields: [
     {
@@ -100,6 +101,33 @@ export const Posts: CollectionConfig = {
       type: 'checkbox',
       defaultValue: false,
       index: true,
+    },
+    // Denormalized engagement counters — maintained by the counter hooks on
+    // likes/comments/saves/posts so feeds read them off the row instead of
+    // scanning the relations. Backfilled by scripts/backfill-post-counters.ts.
+    {
+      name: 'likeCount',
+      type: 'number',
+      defaultValue: 0,
+      admin: { readOnly: true },
+    },
+    {
+      name: 'commentCount',
+      type: 'number',
+      defaultValue: 0,
+      admin: { readOnly: true },
+    },
+    {
+      name: 'shareCount',
+      type: 'number',
+      defaultValue: 0,
+      admin: { readOnly: true },
+    },
+    {
+      name: 'saveCount',
+      type: 'number',
+      defaultValue: 0,
+      admin: { readOnly: true },
     },
   ],
   timestamps: true,

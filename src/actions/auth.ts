@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 
 import { getCurrentUser, getRequestOrigin } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
+import { checkRate, rateLimitIP } from '@/lib/rate-limit'
 
 export type FormState = {
   error?: string
@@ -48,6 +49,9 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   const values = { email, password }
 
   if (!email || !password) return { error: 'Email and password are required.', values }
+  if (!(await rateLimitIP('login', 10, 60_000))) {
+    return { error: 'Too many attempts. Try again in a minute.', values }
+  }
 
   try {
     const result = await payload.login({
@@ -82,6 +86,9 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
   if (password.length < 8) {
     return { error: 'Password must be at least 8 characters.', values }
   }
+  if (!(await rateLimitIP('register', 10, 60_000))) {
+    return { error: 'Too many attempts. Try again in a minute.', values }
+  }
 
   try {
     await payload.create({
@@ -114,6 +121,15 @@ export async function requestPasswordReset(
   if (!email) return { error: 'Email is required.' }
 
   const payload = await getPayloadClient()
+
+  // Per-IP AND per-address — a distributed attacker shouldn't be able to
+  // spam one inbox. Report success either way to avoid leaking the limit.
+  if (
+    !(await rateLimitIP('forgot', 5, 60_000)) ||
+    !checkRate(`forgot:${email.toLowerCase()}`, 3, 15 * 60_000)
+  ) {
+    return { success: true }
+  }
 
   try {
     await payload.forgotPassword({
@@ -163,6 +179,7 @@ export async function resetPassword(_prev: FormState, formData: FormData): Promi
 
 export async function checkUsername(username: string): Promise<boolean> {
   if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) return false
+  if (!(await rateLimitIP('check-username', 20, 60_000))) return false
   const payload = await getPayloadClient()
   const { totalDocs } = await payload.count({
     collection: 'users',

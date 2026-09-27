@@ -225,14 +225,16 @@ export async function sharePost(
     shared = true
   }
 
-  const count = await payload.count({
+  // The share counter hooks already bumped the denormalized column on the
+  // target — read it off the row instead of recounting share posts.
+  const target = await payload.findByID({
     collection: 'posts',
-    where: { sharedPost: { equals: targetId } },
-    user,
-    overrideAccess: false,
+    id: targetId,
+    depth: 0,
+    overrideAccess: true,
   })
 
-  return { shared, count: count.totalDocs }
+  return { shared, count: target.shareCount ?? 0 }
 }
 
 // Pin toggle — only the author can pin, and only original posts (not share

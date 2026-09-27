@@ -22,6 +22,7 @@ export async function toggleSave(postId: number): Promise<{ saved: boolean; coun
     overrideAccess: false,
   })
 
+  let saved: boolean
   if (existing.docs[0]) {
     await payload.delete({
       collection: 'saves',
@@ -29,28 +30,24 @@ export async function toggleSave(postId: number): Promise<{ saved: boolean; coun
       user,
       overrideAccess: false,
     })
-
-    const count = await payload.count({
+    saved = false
+  } else {
+    await payload.create({
       collection: 'saves',
-      where: { post: { equals: postId } },
+      data: { user: user.id, post: postId },
       user,
       overrideAccess: false,
     })
-    return { saved: false, count: count.totalDocs }
+    saved = true
   }
 
-  await payload.create({
-    collection: 'saves',
-    data: { user: user.id, post: postId },
-    user,
-    overrideAccess: false,
+  // The counter hooks already bumped the denormalized column — read it off
+  // the post row instead of recounting the saves table.
+  const post = await payload.findByID({
+    collection: 'posts',
+    id: postId,
+    depth: 0,
+    overrideAccess: true,
   })
-
-  const count = await payload.count({
-    collection: 'saves',
-    where: { post: { equals: postId } },
-    user,
-    overrideAccess: false,
-  })
-  return { saved: true, count: count.totalDocs }
+  return { saved, count: post.saveCount ?? 0 }
 }

@@ -296,6 +296,10 @@ export interface Post {
   video?: (number | null) | Video;
   sharedPost?: (number | null) | Post;
   pinned?: boolean | null;
+  likeCount?: number | null;
+  commentCount?: number | null;
+  shareCount?: number | null;
+  saveCount?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -734,6 +738,10 @@ export interface PostsSelect<T extends boolean = true> {
   video?: T;
   sharedPost?: T;
   pinned?: T;
+  likeCount?: T;
+  commentCount?: T;
+  shareCount?: T;
+  saveCount?: T;
   updatedAt?: T;
   createdAt?: T;
 }

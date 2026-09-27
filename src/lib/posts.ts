@@ -1,8 +1,10 @@
+import { sql } from '@payloadcms/db-postgres'
 import type { Where } from 'payload'
 
 import type { Media, Post, User, Video } from '@/payload-types'
 
 import { isPostCategory, type PostCategory } from './categories'
+import { drizzleOf } from './db'
 import { getPayloadClient } from './payload'
 import {
   avatarUrl,
@@ -99,15 +101,21 @@ const isObj = (value: unknown): value is Record<string, unknown> =>
 
 const isUser = (value: unknown): value is User => isObj(value)
 
-// Attaches engagement data to a set of posts with batched queries (rather than
-// N+1 lookups per post): like/comment/share counts, the viewer's like & share
-// state, recent liker avatars, the two latest comments, and embedded originals
-// for share posts.
+// Attaches engagement data to a set of posts. Counts read straight off the
+// denormalized counter columns on each post row; the only row-level lookups
+// are the viewer's own like/save/share state and the top-N likers/commenters
+// the cards actually render — bounded regardless of a post's total
+// engagement, so a viral post can't drag thousands of rows through hydration.
 export async function hydratePosts(docs: Post[], viewer: User | null): Promise<PostCardData[]> {
   if (docs.length === 0) return []
 
   const payload = await getPayloadClient()
   const postIds = docs.map((post) => post.id)
+  const db = drizzleOf(payload)
+  const idIn = sql.join(
+    postIds.map((id) => sql`${id}`),
+    sql`, `,
+  )
 
   // At depth 2 a share's embedded author is populated but that author's avatar
   // is only an ID — collect them for one batched media lookup.
@@ -119,47 +127,61 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
     }
   }
 
-  // Each batch cap is generous enough to give accurate counts at realistic
-  // scale while preventing runaway queries on viral posts. Adjust as needed.
-  const batchSize = postIds.length
-  const LIKES_CAP = Math.max(1000, batchSize * 200) // ≥1000, scales with batch
-  const COMMENTS_CAP = Math.max(500, batchSize * 50)
-  const SHARES_CAP = Math.max(500, batchSize * 50)
-  const SAVES_CAP = Math.max(500, batchSize * 50)
+  type LikerRow = { pid: number; uid: number }
+  type CommentRow = { pid: number; uid: number; content: string }
 
-  const [likes, comments, shares, saves, avatarMedia] = await Promise.all([
-    payload.find({
-      collection: 'likes',
-      where: { post: { in: postIds } },
-      sort: '-createdAt',
-      limit: LIKES_CAP,
-      depth: 2,
-      select: { post: true, user: true },
-    }),
-    payload.find({
-      collection: 'comments',
-      where: { post: { in: postIds } },
-      sort: '-createdAt',
-      limit: COMMENTS_CAP,
-      depth: 2,
-      select: { post: true, author: true, content: true },
-    }),
-    payload.find({
-      collection: 'posts',
-      where: { sharedPost: { in: postIds } },
-      limit: SHARES_CAP,
-      depth: 0,
-      select: { sharedPost: true, author: true },
-    }),
-    // All saves on these posts — feeds both the per-post save count and the
-    // viewer's own savedByMe flag in one query.
-    payload.find({
-      collection: 'saves',
-      where: { post: { in: postIds } },
-      limit: SAVES_CAP,
-      depth: 0,
-      select: { post: true, user: true },
-    }),
+  const [myLikes, mySaves, myShares, likerRows, commentRows, avatarMedia] = await Promise.all([
+    viewer
+      ? payload.find({
+          collection: 'likes',
+          where: { and: [{ user: { equals: viewer.id } }, { post: { in: postIds } }] },
+          limit: postIds.length,
+          depth: 0,
+          select: { post: true },
+          overrideAccess: true,
+        })
+      : Promise.resolve(null),
+    viewer
+      ? payload.find({
+          collection: 'saves',
+          where: { and: [{ user: { equals: viewer.id } }, { post: { in: postIds } }] },
+          limit: postIds.length,
+          depth: 0,
+          select: { post: true },
+          overrideAccess: true,
+        })
+      : Promise.resolve(null),
+    viewer
+      ? payload.find({
+          collection: 'posts',
+          where: { and: [{ author: { equals: viewer.id } }, { sharedPost: { in: postIds } }] },
+          limit: postIds.length,
+          depth: 0,
+          select: { sharedPost: true },
+          overrideAccess: true,
+        })
+      : Promise.resolve(null),
+    // Top 3 likers per post — ROW_NUMBER windows keep this at ≤3 rows per
+    // post no matter how many likes exist.
+    db
+      ? (db.execute(sql`
+          SELECT post_id AS pid, user_id AS uid FROM (
+            SELECT post_id, user_id,
+              ROW_NUMBER() OVER (PARTITION BY post_id ORDER BY created_at DESC, id DESC) AS rn
+            FROM likes WHERE post_id IN (${idIn})
+          ) t WHERE rn <= 3 ORDER BY pid, rn
+        `) as Promise<{ rows: LikerRow[] }>)
+      : Promise.resolve({ rows: [] as LikerRow[] }),
+    // Two most recent comments per post — same windowed bound.
+    db
+      ? (db.execute(sql`
+          SELECT post_id AS pid, author_id AS uid, content FROM (
+            SELECT post_id, author_id, content,
+              ROW_NUMBER() OVER (PARTITION BY post_id ORDER BY created_at DESC, id DESC) AS rn
+            FROM comments WHERE post_id IN (${idIn})
+          ) t WHERE rn <= 2 ORDER BY pid, rn
+        `) as Promise<{ rows: CommentRow[] }>)
+      : Promise.resolve({ rows: [] as CommentRow[] }),
     embeddedAvatarIds.length > 0
       ? payload.find({
           collection: 'media',
@@ -170,69 +192,51 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
       : Promise.resolve({ docs: [] as Media[] }),
   ])
 
-  const likeCounts = new Map<number, number>()
-  const likedByMe = new Set<number>()
-  const likersByPost = new Map<number, PostCardData['likers']>()
-  const seenLikers = new Map<number, Set<number>>()
-  for (const like of likes.docs) {
-    const postId = relId(like.post)
-    if (postId === null) continue
-    likeCounts.set(postId, (likeCounts.get(postId) ?? 0) + 1)
-    if (viewer && relId(like.user) === viewer.id) likedByMe.add(postId)
-
-    // Avatar stack — up to 3 unique users, newest first.
-    if (isUser(like.user)) {
-      const seen = seenLikers.get(postId) ?? new Set<number>()
-      const stack = likersByPost.get(postId) ?? []
-      if (!seen.has(like.user.id) && stack.length < 3) {
-        seen.add(like.user.id)
-        seenLikers.set(postId, seen)
-        stack.push({
-          name: like.user.name,
-          username: like.user.username,
-          avatarUrl: avatarUrl(like.user),
+  // One batched lookup for every actor the cards surface (likers + comment
+  // authors), depth 1 so avatars come back populated.
+  const actorIds = new Set<number>()
+  for (const row of likerRows.rows) actorIds.add(row.uid)
+  for (const row of commentRows.rows) actorIds.add(row.uid)
+  const actors =
+    actorIds.size > 0
+      ? await payload.find({
+          collection: 'users',
+          where: { id: { in: [...actorIds] } },
+          limit: actorIds.size,
+          depth: 1,
+          overrideAccess: true,
         })
-        likersByPost.set(postId, stack)
-      }
-    }
+      : { docs: [] as User[] }
+  const actorMap = new Map(actors.docs.map((u) => [u.id, u]))
+
+  const likedByMe = new Set((myLikes?.docs ?? []).map((d) => relId(d.post)))
+  const savedByMe = new Set((mySaves?.docs ?? []).map((d) => relId(d.post)))
+  const sharedByMe = new Set((myShares?.docs ?? []).map((d) => relId(d.sharedPost)))
+
+  // Avatar stack — up to 3 users per post, newest first (rn is already the
+  // newest-first order from the window query).
+  const likersByPost = new Map<number, PostCardData['likers']>()
+  for (const row of likerRows.rows) {
+    const actor = actorMap.get(row.uid)
+    if (!actor) continue
+    const stack = likersByPost.get(row.pid) ?? []
+    stack.push({ name: actor.name, username: actor.username, avatarUrl: avatarUrl(actor) })
+    likersByPost.set(row.pid, stack)
   }
 
-  const commentCounts = new Map<number, number>()
   const latestByPost = new Map<number, PostCardData['latestComments']>()
-  for (const comment of comments.docs) {
-    const postId = relId(comment.post)
-    if (postId === null) continue
-    commentCounts.set(postId, (commentCounts.get(postId) ?? 0) + 1)
-
-    // Two most recent comments (fetched newest-first, reversed to display order).
-    const list = latestByPost.get(postId) ?? []
-    if (list.length < 2 && isUser(comment.author)) {
-      list.unshift({
-        authorName: comment.author.name,
-        authorUsername: comment.author.username,
-        authorAvatarUrl: avatarUrl(comment.author),
-        content: comment.content,
-      })
-      latestByPost.set(postId, list)
-    }
-  }
-
-  const shareCounts = new Map<number, number>()
-  const sharedByMe = new Set<number>()
-  for (const share of shares.docs) {
-    const postId = relId(share.sharedPost)
-    if (postId === null) continue
-    shareCounts.set(postId, (shareCounts.get(postId) ?? 0) + 1)
-    if (viewer && relId(share.author) === viewer.id) sharedByMe.add(postId)
-  }
-
-  const saveCounts = new Map<number, number>()
-  const savedByMe = new Set<number>()
-  for (const save of saves.docs) {
-    const postId = relId(save.post)
-    if (postId === null) continue
-    saveCounts.set(postId, (saveCounts.get(postId) ?? 0) + 1)
-    if (viewer && relId(save.user) === viewer.id) savedByMe.add(postId)
+  for (const row of commentRows.rows) {
+    const actor = actorMap.get(row.uid)
+    if (!actor) continue
+    // Rows arrive newest-first; unshift so the older of the two renders first.
+    const list = latestByPost.get(row.pid) ?? []
+    list.unshift({
+      authorName: actor.name,
+      authorUsername: actor.username,
+      authorAvatarUrl: avatarUrl(actor),
+      content: row.content,
+    })
+    latestByPost.set(row.pid, list)
   }
 
   const avatarMap = new Map(avatarMedia.docs.map((m) => [m.id, mediaUrl(m)]))
@@ -261,16 +265,16 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
     }
 
     return toPostCardData(post, viewer, {
-      likeCount: likeCounts.get(post.id) ?? 0,
-      commentCount: commentCounts.get(post.id) ?? 0,
+      likeCount: post.likeCount ?? 0,
+      commentCount: post.commentCount ?? 0,
       likedByMe: likedByMe.has(post.id),
       likers: likersByPost.get(post.id) ?? [],
       latestComments: latestByPost.get(post.id) ?? [],
-      shareCount: shareCounts.get(post.id) ?? 0,
+      shareCount: post.shareCount ?? 0,
       sharedByMe: sharedByMe.has(post.id),
       sharedPost: embedded,
       savedByMe: savedByMe.has(post.id),
-      saveCount: saveCounts.get(post.id) ?? 0,
+      saveCount: post.saveCount ?? 0,
     })
   })
 }

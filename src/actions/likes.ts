@@ -41,12 +41,14 @@ export async function toggleLike(postId: number): Promise<{ liked: boolean; coun
     liked = true
   }
 
-  const count = await payload.count({
-    collection: 'likes',
-    where: { post: { equals: postId } },
-    user,
-    overrideAccess: false,
+  // The counter hooks already bumped the denormalized column — read it off
+  // the post row instead of recounting the likes table.
+  const post = await payload.findByID({
+    collection: 'posts',
+    id: postId,
+    depth: 0,
+    overrideAccess: true,
   })
 
-  return { liked, count: count.totalDocs }
+  return { liked, count: post.likeCount ?? 0 }
 }
