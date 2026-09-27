@@ -3,19 +3,21 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { cache } from 'react'
 
-import { Avatar } from '@/components/Avatar'
 import { BlurImage } from '@/components/BlurImage'
 import { BrandMark } from '@/components/Branding'
-import { CalendarIcon, LinkIcon, LockIcon } from '@/components/icons'
+import { LockIcon } from '@/components/icons'
 import { ProfileTabs } from '@/components/ProfileTabs'
 import { PublicMailButton } from '@/components/PublicMailButton'
+import { PublicProfileHero } from '@/components/PublicProfileHero'
 import { ShareProfileButton } from '@/components/ShareProfileButton'
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
 import { FEED_PAGE_SIZE, hydratePosts } from '@/lib/posts'
+import { profileAccentValue, profileCardStyleValue, profileLayoutValue } from '@/lib/profileDesign'
 import {
   avatarUrl,
   coverUrl,
+  mediaUrl,
   toAboutBlocks,
   toTestimonialData,
   type TestimonialData,
@@ -203,14 +205,31 @@ export default async function PublicProfilePage({
 
   const avatar = avatarUrl(profileUser)
   const cover = coverUrl(profileUser)
+  const background = mediaUrl(profileUser.profileBackground)
+  const layout = profileLayoutValue(profileUser)
+  const accent = profileAccentValue(profileUser)
+  const cardStyle = profileCardStyleValue(profileUser)
   const joinedLabel = new Date(profileUser.createdAt).toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric',
   })
 
   return (
-    <main>
-      <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-6">
+    <main
+      data-profile-accent={accent === 'default' ? undefined : accent}
+      data-profile-cards={cardStyle === 'glass' ? undefined : cardStyle}
+    >
+      {/* Custom page backdrop — a fixed layer under the content. Positioned
+          after the body's negative-z aurora pseudo-elements; the content
+          wrapper's `relative` keeps it painted underneath. */}
+      {background && (
+        <div aria-hidden className="fixed inset-0">
+          <BlurImage src={background} alt="" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-white/55 dark:bg-black/55" />
+        </div>
+      )}
+
+      <div className="relative mx-auto w-full max-w-3xl px-4 pb-16 pt-6">
         <div className="mb-4 flex items-center justify-between">
           <Link href="/" className="flex w-fit items-center gap-2.5">
             <BrandMark size="sm" />
@@ -219,82 +238,38 @@ export default async function PublicProfilePage({
         </div>
 
         <div className="flex flex-col gap-4">
-          {/* Hero — banner cover, avatar overlapping the edge, then identity,
-              meta chips, and the CTA on the card body. */}
-          <header className="glass overflow-hidden rounded-3xl">
-            <div className="relative h-52 sm:h-60">
-              {cover ? (
-                <BlurImage src={cover} alt="" className="h-full w-full object-cover" />
+          <PublicProfileHero
+            layout={layout}
+            name={profileUser.name}
+            username={profileUser.username}
+            bio={profileUser.bio ?? null}
+            website={profileUser.website ?? null}
+            avatar={avatar}
+            cover={cover}
+            joinedLabel={joinedLabel}
+            followers={followers.totalDocs}
+            following={following.totalDocs}
+            action={
+              isSelf ? (
+                <span
+                  className={`mb-1 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset ${
+                    layout === 'hero' || (layout === 'minimal' && cover)
+                      ? 'bg-white/15 text-white ring-white/30 backdrop-blur'
+                      : 'bg-accent-500/10 text-accent-700 ring-accent-500/20'
+                  }`}
+                >
+                  Public preview
+                </span>
               ) : (
-                <div className="h-full w-full bg-gradient-to-br from-accent-500 via-accent-500 to-accent-700" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
-            </div>
-
-            {/* `relative` lifts the body above the positioned banner so the
-                avatar overlaps the cover instead of sitting underneath it. */}
-            <div className="relative px-5 pb-5 sm:px-6 sm:pb-6">
-              <div className="-mt-8 flex items-end justify-between gap-4 sm:-mt-10">
-                <span className="inline-flex shrink-0 rounded-full shadow-lg ring-4 ring-white/90">
-                  <Avatar src={avatar} name={profileUser.name} size="xl" />
-                </span>
-                {isSelf ? (
-                  <span className="mb-1 rounded-full bg-accent-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-accent-700 ring-1 ring-inset ring-accent-500/20">
-                    Public preview
-                  </span>
-                ) : (
-                  <PublicMailButton
-                    variant="inline"
-                    username={profileUser.username}
-                    recipientName={profileUser.name}
-                    isLoggedIn={Boolean(viewer)}
-                  />
-                )}
-              </div>
-
-              <h1 className="mt-2.5 text-xl font-bold tracking-tight text-neutral-900 sm:text-2xl">
-                {profileUser.name}
-              </h1>
-              <p className="text-sm text-neutral-500">@{profileUser.username}</p>
-
-              {profileUser.bio && (
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">
-                  {profileUser.bio}
-                </p>
-              )}
-
-              {/* Meta chips — website, joined date, and the social counts */}
-              <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                {profileUser.website && (
-                  <a
-                    href={
-                      profileUser.website.startsWith('http')
-                        ? profileUser.website
-                        : `https://${profileUser.website}`
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-accent-500/10 px-2.5 py-1 text-xs font-semibold text-accent-700 ring-1 ring-inset ring-accent-500/20 transition-colors hover:bg-accent-500/20"
-                  >
-                    <LinkIcon className="h-3.5 w-3.5" />
-                    {profileUser.website.replace(/^https?:\/\//, '')}
-                  </a>
-                )}
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-black/[0.04] px-2.5 py-1 text-xs font-medium text-neutral-600">
-                  <CalendarIcon className="h-3.5 w-3.5" />
-                  Joined {joinedLabel}
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-black/[0.04] px-2.5 py-1 text-xs font-medium text-neutral-600">
-                  <strong className="font-bold text-neutral-800">{followers.totalDocs}</strong>
-                  Followers
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-black/[0.04] px-2.5 py-1 text-xs font-medium text-neutral-600">
-                  <strong className="font-bold text-neutral-800">{following.totalDocs}</strong>
-                  Following
-                </span>
-              </div>
-            </div>
-          </header>
+                <PublicMailButton
+                  variant="inline"
+                  username={profileUser.username}
+                  recipientName={profileUser.name}
+                  isLoggedIn={Boolean(viewer)}
+                />
+              )
+            }
+          />
 
           {canViewPosts ? (
             <ProfileTabs

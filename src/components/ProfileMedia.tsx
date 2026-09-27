@@ -21,6 +21,7 @@ export function ProfileMedia({
   username,
   stats,
   children,
+  onMediaChange,
 }: {
   isSelf: boolean
   centered?: boolean
@@ -30,6 +31,9 @@ export function ProfileMedia({
   username: string
   stats?: ReactNode
   children?: ReactNode
+  // Reports a successful upload with its local preview URL — lets parents
+  // (e.g. the onboarding design preview) reflect new photos immediately.
+  onMediaChange?: (kind: 'avatar' | 'cover', previewUrl: string) => void
 }) {
   const router = useRouter()
   const coverInputRef = useRef<HTMLInputElement>(null)
@@ -63,7 +67,8 @@ export function ProfileMedia({
       const compressed = await compressImage(file, {
         maxSize: kind === 'cover' ? 1920 : 800,
       })
-      setPreview(URL.createObjectURL(compressed))
+      const objectUrl = URL.createObjectURL(compressed)
+      setPreview(objectUrl)
       const formData = new FormData()
       formData.set(kind, compressed)
       try {
@@ -74,6 +79,7 @@ export function ProfileMedia({
         setError('Upload failed. Try a smaller image.')
         return
       }
+      onMediaChange?.(kind, objectUrl)
       router.refresh()
     })
   }

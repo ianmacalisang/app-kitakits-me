@@ -137,6 +137,55 @@ export const Users: CollectionConfig = {
       relationTo: 'media',
     },
     {
+      name: 'profileLayout',
+      type: 'select',
+      options: [
+        { label: 'Classic', value: 'classic' },
+        { label: 'Hero', value: 'hero' },
+        { label: 'Minimal', value: 'minimal' },
+      ],
+      defaultValue: 'classic',
+      admin: {
+        description: 'Layout preset for the public /@username page.',
+      },
+    },
+    {
+      name: 'profileAccent',
+      type: 'select',
+      options: [
+        { label: 'Charcoal', value: 'default' },
+        { label: 'Ocean', value: 'ocean' },
+        { label: 'Emerald', value: 'emerald' },
+        { label: 'Sunset', value: 'sunset' },
+        { label: 'Berry', value: 'berry' },
+        { label: 'Gold', value: 'gold' },
+      ],
+      defaultValue: 'default',
+      admin: {
+        description: 'Accent color palette for the public /@username page.',
+      },
+    },
+    {
+      name: 'profileBackground',
+      type: 'upload',
+      relationTo: 'media',
+      admin: {
+        description: 'Full-page backdrop image for the public /@username page.',
+      },
+    },
+    {
+      name: 'profileCardStyle',
+      type: 'select',
+      options: [
+        { label: 'Glass (frosted)', value: 'glass' },
+        { label: 'Solid', value: 'solid' },
+      ],
+      defaultValue: 'glass',
+      admin: {
+        description: 'Card surface style for the public /@username page.',
+      },
+    },
+    {
       name: 'bio',
       type: 'textarea',
       maxLength: 300,

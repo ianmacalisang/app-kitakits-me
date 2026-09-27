@@ -3,7 +3,14 @@
 import { type FormEvent, useEffect, useRef, useState, useTransition } from 'react'
 
 import { followMany } from '@/actions/follows'
-import { completeOnboarding, searchUsers, updateProfile, updateTheme } from '@/actions/users'
+import {
+  completeOnboarding,
+  searchUsers,
+  updateProfile,
+  updateProfileDesign,
+  updateTheme,
+} from '@/actions/users'
+import type { ProfileAccent, ProfileCardStyle, ProfileLayout } from '@/lib/profileDesign'
 import type { AboutBlockData, UserCardData } from '@/lib/serialize'
 
 import { AboutEditor } from './AboutSection'
@@ -16,12 +23,15 @@ import {
   LockIcon,
   MonitorIcon,
   MoonIcon,
+  PaletteIcon,
   SearchIcon,
   SunIcon,
   TextIcon,
   UserIcon,
 } from './icons'
 import { PrivacySettings } from './PrivacySettings'
+import { ProfileDesignControls } from './ProfileDesignControls'
+import { ProfileDesignPreview } from './ProfileDesignPreview'
 import { ProfileMedia } from './ProfileMedia'
 import { Spinner } from './Spinner'
 
@@ -42,6 +52,12 @@ export interface OnboardingInitial {
   testimonialPermission: Permission
   theme: Theme
   about: AboutBlockData[]
+  profileLayout: ProfileLayout
+  profileAccent: ProfileAccent
+  profileCardStyle: ProfileCardStyle
+  profileBackgroundUrl?: string
+  followers: number
+  following: number
 }
 
 const inputClass = 'glass-input'
@@ -121,6 +137,11 @@ export function OnboardingWizard({
       icon: LockIcon,
     },
     {
+      title: 'Design your public page',
+      description: `Pick a layout, accent color, and background for /@${initial.username} — anyone with the link sees this page, no account needed.`,
+      icon: PaletteIcon,
+    },
+    {
       title: 'Pick your theme',
       description: 'Choose how Kitakits looks — you can switch it anytime in Settings.',
       icon: MoonIcon,
@@ -139,6 +160,17 @@ export function OnboardingWizard({
   const [followedIds, setFollowedIds] = useState<ReadonlySet<number>>(new Set())
   const [bioLength, setBioLength] = useState(initial.bio.length)
   const [theme, setTheme] = useState<Theme>(initial.theme)
+  const [designLayout, setDesignLayout] = useState<ProfileLayout>(initial.profileLayout)
+  const [designAccent, setDesignAccent] = useState<ProfileAccent>(initial.profileAccent)
+  const [designCardStyle, setDesignCardStyle] = useState<ProfileCardStyle>(initial.profileCardStyle)
+  // undefined = untouched; null = removed; string = pending-upload preview.
+  const [designBg, setDesignBg] = useState<string | null | undefined>(undefined)
+  // Photos uploaded in step 0 and the bio saved in step 1 feed the live
+  // design preview in step 4.
+  const [previewAvatar, setPreviewAvatar] = useState(initial.avatarUrl)
+  const [previewCover, setPreviewCover] = useState(initial.coverUrl)
+  const [previewBio, setPreviewBio] = useState(initial.bio)
+  const [previewWebsite, setPreviewWebsite] = useState(initial.website)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<UserCardData[] | null>(null)
   const searchSeq = useRef(0)
@@ -205,6 +237,19 @@ export function OnboardingWizard({
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
       const res = await updateProfile({}, fd)
+      if (res.error) {
+        setError(res.error)
+        return
+      }
+      next()
+    })
+  }
+
+  const submitDesign = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    startTransition(async () => {
+      const res = await updateProfileDesign({}, fd)
       if (res.error) {
         setError(res.error)
         return
@@ -282,6 +327,9 @@ export function OnboardingWizard({
                   coverUrl={initial.coverUrl}
                   name={initial.name}
                   username={initial.username}
+                  onMediaChange={(kind, previewUrl) =>
+                    kind === 'avatar' ? setPreviewAvatar(previewUrl) : setPreviewCover(previewUrl)
+                  }
                 />
               </div>
               <p className="mt-3 text-xs leading-relaxed text-neutral-400">
@@ -313,7 +361,10 @@ export function OnboardingWizard({
                   maxLength={300}
                   defaultValue={initial.bio}
                   placeholder="Tell people a little about yourself"
-                  onChange={(e) => setBioLength(e.target.value.length)}
+                  onChange={(e) => {
+                    setBioLength(e.target.value.length)
+                    setPreviewBio(e.target.value)
+                  }}
                   className={`${inputClass} resize-none`}
                 />
               </div>
@@ -327,6 +378,7 @@ export function OnboardingWizard({
                   type="text"
                   defaultValue={initial.website}
                   placeholder="https://"
+                  onChange={(e) => setPreviewWebsite(e.target.value)}
                   className={inputClass}
                 />
               </div>
@@ -377,6 +429,62 @@ export function OnboardingWizard({
           )}
 
           {step === 4 && (
+            <form
+              onSubmit={submitDesign}
+              className="mt-5 flex flex-col gap-5"
+              data-profile-accent={designAccent === 'default' ? undefined : designAccent}
+            >
+              <ProfileDesignPreview
+                layout={designLayout}
+                accent={designAccent}
+                cardStyle={designCardStyle}
+                backgroundUrl={designBg === undefined ? initial.profileBackgroundUrl : designBg}
+                name={initial.name}
+                username={initial.username}
+                bio={previewBio || null}
+                website={previewWebsite || null}
+                avatarUrl={previewAvatar}
+                coverUrl={previewCover}
+                joinedLabel={new Date().toLocaleDateString('en-US', {
+                  month: 'long',
+                  year: 'numeric',
+                })}
+                followers={initial.followers}
+                following={initial.following}
+              />
+
+              <ProfileDesignControls
+                layout={designLayout}
+                accent={designAccent}
+                cardStyle={designCardStyle}
+                backgroundUrl={initial.profileBackgroundUrl}
+                onLayoutChange={setDesignLayout}
+                onAccentChange={setDesignAccent}
+                onCardStyleChange={setDesignCardStyle}
+                onBackgroundChange={setDesignBg}
+              />
+
+              {!initial.publicProfile && (
+                <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                  Your public profile is off — turn it on in the previous step to share this page.
+                  You can still design it now.
+                </p>
+              )}
+
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              <div className="flex items-center gap-2">
+                {backButton}
+                <button type="submit" disabled={pending} className={submitClass}>
+                  {pending ? 'Saving…' : 'Save & continue'}
+                </button>
+                <button type="button" onClick={next} disabled={pending} className={skipClass}>
+                  Skip
+                </button>
+              </div>
+            </form>
+          )}
+
+          {step === 5 && (
             <div className="mt-5">
               <div className="grid grid-cols-3 gap-3">
                 {THEME_OPTIONS.map(
@@ -415,7 +523,7 @@ export function OnboardingWizard({
             </div>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <div className="mt-5">
               <div className="relative">
                 <input

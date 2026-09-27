@@ -1,14 +1,17 @@
 import { notFound, redirect } from 'next/navigation'
 
 import { LockIcon } from '@/components/icons'
+import { ProfileDesignSheet } from '@/components/ProfileDesignSheet'
 import { ProfileHeader } from '@/components/ProfileHeader'
 import { ProfileTabs } from '@/components/ProfileTabs'
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
 import { FEED_PAGE_SIZE, hydratePosts } from '@/lib/posts'
+import { profileAccentValue, profileCardStyleValue, profileLayoutValue } from '@/lib/profileDesign'
 import {
   avatarUrl,
   coverUrl,
+  mediaUrl,
   toAboutBlocks,
   toTestimonialData,
   type TestimonialData,
@@ -140,6 +143,32 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   return (
     <div className="flex flex-col gap-6">
+      {isSelf && (
+        <ProfileDesignSheet
+          username={profileUser.username}
+          publicProfile={profileUser.publicProfile ?? false}
+          initial={{
+            layout: profileLayoutValue(profileUser),
+            accent: profileAccentValue(profileUser),
+            cardStyle: profileCardStyleValue(profileUser),
+            backgroundUrl: mediaUrl(profileUser.profileBackground),
+          }}
+          preview={{
+            name: profileUser.name,
+            username: profileUser.username,
+            bio: profileUser.bio ?? null,
+            website: profileUser.website ?? null,
+            avatarUrl: avatarUrl(profileUser),
+            coverUrl: coverUrl(profileUser),
+            joinedLabel: new Date(profileUser.createdAt).toLocaleDateString('en-US', {
+              month: 'long',
+              year: 'numeric',
+            }),
+            followers: followers.totalDocs,
+            following: following.totalDocs,
+          }}
+        />
+      )}
       <ProfileHeader
         userId={profileUser.id}
         name={profileUser.name}

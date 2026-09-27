@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
+import { isProfileAccent, isProfileCardStyle, isProfileLayout } from '@/lib/profileDesign'
 import { type Paged, toUserCardData, type UserCardData } from '@/lib/serialize'
 import type { User } from '@/payload-types'
 
@@ -127,6 +128,69 @@ export async function updateProfileMedia(formData: FormData): Promise<FormState>
     })
   } catch (err) {
     return { error: errorMessage(err, 'Could not update your photo.') }
+  }
+
+  return { success: true }
+}
+
+// Public-profile design (/@username): layout preset, accent palette, and an
+// optional full-page background image. Layout/accent are validated against the
+// same lists the select fields use; the background uploads like avatar/cover.
+export async function updateProfileDesign(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+
+  const layout = formData.get('profileLayout')
+  const accent = formData.get('profileAccent')
+  const cardStyle = formData.get('profileCardStyle')
+  const file = formData.get('profileBackground')
+  const removeBackground = formData.get('removeBackground') === 'on'
+
+  const data: {
+    profileLayout?: User['profileLayout']
+    profileAccent?: User['profileAccent']
+    profileCardStyle?: User['profileCardStyle']
+    profileBackground?: number | null
+  } = {}
+
+  if (isProfileLayout(layout)) data.profileLayout = layout
+  if (isProfileAccent(accent)) data.profileAccent = accent
+  if (isProfileCardStyle(cardStyle)) data.profileCardStyle = cardStyle
+
+  if (file instanceof File && file.size > 0) {
+    if (!file.type.startsWith('image/')) return { error: 'Background must be an image.' }
+    const media = await payload.create({
+      collection: 'media',
+      data: { alt: `${user.username} profile background` },
+      file: {
+        data: Buffer.from(await file.arrayBuffer()),
+        mimetype: file.type,
+        name: file.name,
+        size: file.size,
+      },
+      user,
+      overrideAccess: false,
+    })
+    data.profileBackground = media.id
+  } else if (removeBackground) {
+    data.profileBackground = null
+  }
+
+  try {
+    await payload.update({
+      collection: 'users',
+      id: user.id,
+      data,
+      user,
+      overrideAccess: false,
+    })
+  } catch (err) {
+    return { error: errorMessage(err, 'Could not update your profile design.') }
   }
 
   return { success: true }

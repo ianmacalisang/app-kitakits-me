@@ -22,6 +22,7 @@ export async function deleteUserData(payload: Payload, userId: number): Promise<
   const fullUser = await payload.findByID({ collection: 'users', id: userId, depth: 0 })
   addMediaIds(mediaIds, fullUser.avatar)
   addMediaIds(mediaIds, fullUser.cover)
+  addMediaIds(mediaIds, fullUser.profileBackground)
   for (const block of fullUser.about ?? []) {
     if (block.blockType === 'image') addMediaIds(mediaIds, block.image)
   }

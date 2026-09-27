@@ -155,6 +155,22 @@ export interface User {
   username: string;
   avatar?: (number | null) | Media;
   cover?: (number | null) | Media;
+  /**
+   * Layout preset for the public /@username page.
+   */
+  profileLayout?: ('classic' | 'hero' | 'minimal') | null;
+  /**
+   * Accent color palette for the public /@username page.
+   */
+  profileAccent?: ('default' | 'ocean' | 'emerald' | 'sunset' | 'berry' | 'gold') | null;
+  /**
+   * Full-page backdrop image for the public /@username page.
+   */
+  profileBackground?: (number | null) | Media;
+  /**
+   * Card surface style for the public /@username page.
+   */
+  profileCardStyle?: ('glass' | 'solid') | null;
   bio?: string | null;
   website?: string | null;
   about?:
@@ -590,6 +606,10 @@ export interface UsersSelect<T extends boolean = true> {
   username?: T;
   avatar?: T;
   cover?: T;
+  profileLayout?: T;
+  profileAccent?: T;
+  profileBackground?: T;
+  profileCardStyle?: T;
   bio?: T;
   website?: T;
   about?:
