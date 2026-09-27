@@ -240,7 +240,7 @@ export async function sharePost(
 }
 
 // Pin toggle — only the author can pin, and only original posts (not share
-// cards). Pinned posts surface in the Pinned section of the profile About tab.
+// cards). Pinned posts surface in the Pinned section of the profile Posts tab.
 export async function togglePin(postId: number): Promise<{ pinned?: boolean; error?: string }> {
   const user = await getCurrentUser()
   if (!user) redirect('/login')

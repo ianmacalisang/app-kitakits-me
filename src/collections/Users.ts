@@ -266,6 +266,58 @@ export const Users: CollectionConfig = {
             { name: 'caption', type: 'text', maxLength: 300 },
           ],
         },
+        {
+          slug: 'details',
+          fields: [
+            { name: 'heading', type: 'text', maxLength: 120 },
+            {
+              name: 'items',
+              type: 'array',
+              maxRows: 20,
+              fields: [
+                { name: 'label', type: 'text', required: true, maxLength: 60 },
+                { name: 'value', type: 'text', required: true, maxLength: 160 },
+              ],
+            },
+          ],
+        },
+        {
+          slug: 'quote',
+          fields: [
+            { name: 'text', type: 'textarea', required: true, maxLength: 500 },
+            { name: 'attribution', type: 'text', maxLength: 120 },
+          ],
+        },
+        {
+          slug: 'stats',
+          fields: [
+            { name: 'heading', type: 'text', maxLength: 120 },
+            {
+              name: 'items',
+              type: 'array',
+              maxRows: 8,
+              fields: [
+                { name: 'value', type: 'text', required: true, maxLength: 40 },
+                { name: 'label', type: 'text', required: true, maxLength: 80 },
+              ],
+            },
+          ],
+        },
+        {
+          slug: 'gallery',
+          fields: [
+            { name: 'heading', type: 'text', maxLength: 120 },
+            {
+              name: 'items',
+              type: 'array',
+              maxRows: 12,
+              fields: [
+                { name: 'image', type: 'upload', relationTo: 'media', required: true },
+                { name: 'caption', type: 'text', maxLength: 120 },
+              ],
+            },
+          ],
+        },
       ],
     },
     {

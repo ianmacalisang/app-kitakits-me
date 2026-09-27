@@ -175,6 +175,16 @@ export function ProfileTabs({
           aria-labelledby="profile-tab-about"
           hidden={tab !== 'about'}
         >
+          <AboutSection blocks={about} isSelf={isSelf} username={username} />
+        </div>
+      )}
+      {visited.has('posts') && (
+        <div
+          role="tabpanel"
+          id="profile-panel-posts"
+          aria-labelledby="profile-tab-posts"
+          hidden={tab !== 'posts'}
+        >
           <div className="flex flex-col gap-4">
             {pinnedPosts.length > 0 && (
               <section>
@@ -235,30 +245,20 @@ export function ProfileTabs({
                 )}
               </section>
             )}
-            <AboutSection blocks={about} isSelf={isSelf} username={username} />
+            <Feed
+              initialPosts={initialPosts}
+              initialHasMore={initialHasMore}
+              authorId={authorId}
+              emptyIcon={<ListIcon />}
+              emptyTitle="No posts yet"
+              emptyMessage={
+                isSelf
+                  ? 'Posts you share will appear on your timeline.'
+                  : `@${username} hasn't posted anything yet.`
+              }
+              timeline
+            />
           </div>
-        </div>
-      )}
-      {visited.has('posts') && (
-        <div
-          role="tabpanel"
-          id="profile-panel-posts"
-          aria-labelledby="profile-tab-posts"
-          hidden={tab !== 'posts'}
-        >
-          <Feed
-            initialPosts={initialPosts}
-            initialHasMore={initialHasMore}
-            authorId={authorId}
-            emptyIcon={<ListIcon />}
-            emptyTitle="No posts yet"
-            emptyMessage={
-              isSelf
-                ? 'Posts you share will appear on your timeline.'
-                : `@${username} hasn't posted anything yet.`
-            }
-            timeline
-          />
         </div>
       )}
       {visited.has('media') && (

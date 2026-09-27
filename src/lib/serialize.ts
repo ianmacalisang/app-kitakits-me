@@ -219,6 +219,28 @@ export type AboutBlockData =
       caption: string
     }
   | { key: string; id?: string; type: 'embed'; url: string; caption: string }
+  | {
+      key: string
+      id?: string
+      type: 'details'
+      heading: string
+      items: { label: string; value: string }[]
+    }
+  | { key: string; id?: string; type: 'quote'; text: string; attribution: string }
+  | {
+      key: string
+      id?: string
+      type: 'stats'
+      heading: string
+      items: { value: string; label: string }[]
+    }
+  | {
+      key: string
+      id?: string
+      type: 'gallery'
+      heading: string
+      items: { mediaId: number | null; url?: string; caption: string }[]
+    }
 
 export function toAboutBlocks(user: User): AboutBlockData[] {
   if (!Array.isArray(user.about)) return []
@@ -289,6 +311,57 @@ export function toAboutBlocks(user: User): AboutBlockData[] {
             caption: (block.caption ?? '').trim(),
           },
         ]
+      }
+      case 'details': {
+        const items = (block.items ?? [])
+          .map((item) => ({
+            label: (item.label ?? '').trim(),
+            value: (item.value ?? '').trim(),
+          }))
+          .filter((item) => item.label && item.value)
+        const heading = (block.heading ?? '').trim()
+        if (!heading && items.length === 0) return []
+        return [{ key, id: block.id ?? undefined, type: 'details', heading, items }]
+      }
+      case 'quote': {
+        const text = (block.text ?? '').trim()
+        if (!text) return []
+        return [
+          {
+            key,
+            id: block.id ?? undefined,
+            type: 'quote',
+            text,
+            attribution: (block.attribution ?? '').trim(),
+          },
+        ]
+      }
+      case 'stats': {
+        const items = (block.items ?? [])
+          .map((item) => ({
+            value: (item.value ?? '').trim(),
+            label: (item.label ?? '').trim(),
+          }))
+          .filter((item) => item.value && item.label)
+        const heading = (block.heading ?? '').trim()
+        if (!heading && items.length === 0) return []
+        return [{ key, id: block.id ?? undefined, type: 'stats', heading, items }]
+      }
+      case 'gallery': {
+        const items = (block.items ?? []).flatMap((item) => {
+          const url = mediaUrl(item.image)
+          if (!url) return []
+          return [
+            {
+              mediaId: relId(item.image),
+              url,
+              caption: (item.caption ?? '').trim(),
+            },
+          ]
+        })
+        const heading = (block.heading ?? '').trim()
+        if (!heading && items.length === 0) return []
+        return [{ key, id: block.id ?? undefined, type: 'gallery', heading, items }]
       }
       default:
         return []

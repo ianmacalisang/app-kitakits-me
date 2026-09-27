@@ -296,6 +296,24 @@ export async function updateAbout(formData: FormData): Promise<FormState> {
   const clean = (value: unknown, max: number) =>
     typeof value === 'string' ? value.trim().slice(0, max) : ''
 
+  // Uploads a file field to the media collection, returning the new media id.
+  const uploadAboutImage = async (file: FormDataEntryValue | null): Promise<number | null> => {
+    if (!(file instanceof File) || file.size === 0 || !file.type.startsWith('image/')) return null
+    const media = await payload.create({
+      collection: 'media',
+      data: { alt: `${user.username} about photo` },
+      file: {
+        data: Buffer.from(await file.arrayBuffer()),
+        mimetype: file.type,
+        name: file.name,
+        size: file.size,
+      },
+      user,
+      overrideAccess: false,
+    })
+    return media.id
+  }
+
   const about: Record<string, unknown>[] = []
 
   for (const entry of raw.slice(0, MAX_ABOUT_BLOCKS)) {
@@ -355,21 +373,8 @@ export async function updateAbout(formData: FormData): Promise<FormState> {
           typeof e.mediaId === 'number' && Number.isInteger(e.mediaId) ? e.mediaId : null
         const file =
           typeof e.fileField === 'string' && e.fileField ? formData.get(e.fileField) : null
-        if (file instanceof File && file.size > 0 && file.type.startsWith('image/')) {
-          const media = await payload.create({
-            collection: 'media',
-            data: { alt: `${user.username} about photo` },
-            file: {
-              data: Buffer.from(await file.arrayBuffer()),
-              mimetype: file.type,
-              name: file.name,
-              size: file.size,
-            },
-            user,
-            overrideAccess: false,
-          })
-          mediaId = media.id
-        }
+        const uploaded = await uploadAboutImage(file)
+        if (uploaded) mediaId = uploaded
         if (!mediaId) continue
         about.push({ blockType: 'image', image: mediaId, caption: clean(e.caption, 300) })
         break
@@ -378,6 +383,64 @@ export async function updateAbout(formData: FormData): Promise<FormState> {
         const url = clean(e.url, 500)
         if (!url) continue
         about.push({ blockType: 'embed', url, caption: clean(e.caption, 300) })
+        break
+      }
+      case 'details': {
+        const heading = clean(e.heading, 120)
+        const items = (Array.isArray(e.items) ? e.items : [])
+          .map((item) =>
+            item && typeof item === 'object'
+              ? {
+                  label: clean((item as Record<string, unknown>).label, 60),
+                  value: clean((item as Record<string, unknown>).value, 160),
+                }
+              : { label: '', value: '' },
+          )
+          .filter((item) => item.label && item.value)
+          .slice(0, 20)
+        if (!heading && items.length === 0) continue
+        about.push({ blockType: 'details', heading, items })
+        break
+      }
+      case 'quote': {
+        const text = clean(e.text, 500)
+        if (!text) continue
+        about.push({ blockType: 'quote', text, attribution: clean(e.attribution, 120) })
+        break
+      }
+      case 'stats': {
+        const heading = clean(e.heading, 120)
+        const items = (Array.isArray(e.items) ? e.items : [])
+          .map((item) =>
+            item && typeof item === 'object'
+              ? {
+                  value: clean((item as Record<string, unknown>).value, 40),
+                  label: clean((item as Record<string, unknown>).label, 80),
+                }
+              : { value: '', label: '' },
+          )
+          .filter((item) => item.value && item.label)
+          .slice(0, 8)
+        if (!heading && items.length === 0) continue
+        about.push({ blockType: 'stats', heading, items })
+        break
+      }
+      case 'gallery': {
+        const heading = clean(e.heading, 120)
+        const items: Record<string, unknown>[] = []
+        for (const item of (Array.isArray(e.items) ? e.items : []).slice(0, 12)) {
+          if (!item || typeof item !== 'object') continue
+          const it = item as Record<string, unknown>
+          let mediaId =
+            typeof it.mediaId === 'number' && Number.isInteger(it.mediaId) ? it.mediaId : null
+          const file =
+            typeof it.fileField === 'string' && it.fileField ? formData.get(it.fileField) : null
+          const uploaded = await uploadAboutImage(file)
+          if (uploaded) mediaId = uploaded
+          if (mediaId) items.push({ image: mediaId, caption: clean(it.caption, 120) })
+        }
+        if (!heading && items.length === 0) continue
+        about.push({ blockType: 'gallery', heading, items })
         break
       }
     }

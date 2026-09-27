@@ -13,6 +13,7 @@ import type { AboutBlockData } from '@/lib/serialize'
 import { BlurImage } from './BlurImage'
 import { EmptyState } from './EmptyState'
 import {
+  ActivityIcon,
   ArrowUpRightIcon,
   CheckIcon,
   ChevronDownIcon,
@@ -24,6 +25,7 @@ import {
   LinkIcon,
   ListIcon,
   PlusIcon,
+  QuoteIcon,
   TextIcon,
   UserIcon,
   XIcon,
@@ -36,7 +38,16 @@ type EditorImageBlock = Extract<AboutBlockData, { type: 'image' }> & {
   file?: File
   preview?: string
 }
-type EditorBlock = Exclude<AboutBlockData, { type: 'image' }> | EditorImageBlock
+// Gallery items get the same file/preview treatment as image blocks.
+type EditorGalleryItem = { mediaId: number | null; url?: string; caption: string } & {
+  file?: File
+  preview?: string
+}
+type EditorGalleryBlock = Omit<Extract<AboutBlockData, { type: 'gallery' }>, 'items'> & {
+  items: EditorGalleryItem[]
+}
+type EditorBlock =
+  Exclude<AboutBlockData, { type: 'image' | 'gallery' }> | EditorImageBlock | EditorGalleryBlock
 
 const newKey = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -55,6 +66,14 @@ const blankBlock = (type: EditorBlock['type']): EditorBlock => {
       return { key: newKey(), type, mediaId: null, caption: '' }
     case 'embed':
       return { key: newKey(), type, url: '', caption: '' }
+    case 'details':
+      return { key: newKey(), type, heading: '', items: [{ label: '', value: '' }] }
+    case 'quote':
+      return { key: newKey(), type, text: '', attribution: '' }
+    case 'stats':
+      return { key: newKey(), type, heading: '', items: [{ value: '', label: '' }] }
+    case 'gallery':
+      return { key: newKey(), type, heading: '', items: [] }
   }
 }
 
@@ -88,9 +107,13 @@ const seedToBlock = (seed: AboutBlockSeed): EditorBlock => {
 
 const BLOCK_TYPES = [
   { type: 'section', label: 'Text', icon: TextIcon },
+  { type: 'details', label: 'Details', icon: UserIcon },
   { type: 'list', label: 'List', icon: ListIcon },
   { type: 'links', label: 'Links', icon: LinkIcon },
+  { type: 'quote', label: 'Quote', icon: QuoteIcon },
+  { type: 'stats', label: 'Stats', icon: ActivityIcon },
   { type: 'image', label: 'Photo', icon: ImageIcon },
+  { type: 'gallery', label: 'Gallery', icon: LayoutIcon },
   { type: 'embed', label: 'Embed', icon: CodeIcon },
 ] as const
 
@@ -122,10 +145,28 @@ function blockSummary(block: EditorBlock): string {
       return block.caption || 'Photo'
     case 'embed':
       return block.caption || getEmbed(block.url)?.provider || block.url || 'No link yet'
+    case 'details': {
+      const items = block.items.filter((i) => i.label && i.value)
+      return (
+        block.heading ||
+        (items.length ? `${items.length} detail${items.length === 1 ? '' : 's'}` : 'No details')
+      )
+    }
+    case 'quote':
+      return block.text.slice(0, 60) || 'Empty quote'
+    case 'stats': {
+      const items = block.items.filter((i) => i.value && i.label)
+      return block.heading || (items.length ? items.map((i) => i.value).join(', ') : 'No stats')
+    }
+    case 'gallery': {
+      const count = block.items.length
+      return block.heading || (count ? `${count} photo${count === 1 ? '' : 's'}` : 'No photos')
+    }
   }
 }
 
-// Section header — inline icon, prominent editorial heading, gradient underrule.
+// Section header — accent icon chip (the first block gets the gradient as the
+// page lead), prominent editorial heading, gradient underrule.
 const BlockHeader = ({
   icon: Icon,
   hero,
@@ -137,8 +178,14 @@ const BlockHeader = ({
 }) => (
   <div className="flex flex-col gap-2.5">
     <div className="flex items-center gap-3">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-500/10 text-accent-700 ring-1 ring-inset ring-accent-500/15">
-        <Icon className="h-3.5 w-3.5" />
+      <span
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+          hero
+            ? 'bg-gradient-to-br from-accent-500 to-accent-600 text-white shadow-md shadow-accent-600/30'
+            : 'bg-accent-500/10 text-accent-700 ring-1 ring-inset ring-accent-500/20'
+        }`}
+      >
+        <Icon className="h-4 w-4" />
       </span>
       <h3
         className={`font-bold tracking-tight text-neutral-800 ${
@@ -168,7 +215,7 @@ const LinkRow = ({ label, url }: { label: string; url: string }) => {
       rel="noopener noreferrer"
       className="group flex items-center gap-3.5 rounded-2xl border border-black/5 bg-white/60 px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-300/60 hover:bg-white/80 hover:shadow-lg hover:shadow-accent-600/10 active:scale-[0.99]"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-bold uppercase text-accent-700 shadow-sm ring-1 ring-black/10">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent-500 to-accent-600 text-sm font-bold uppercase text-white shadow-md shadow-accent-600/25 ring-1 ring-inset ring-white/10">
         {host ? host[0] : <LinkIcon className="h-4 w-4" />}
       </span>
       <span className="min-w-0 flex-1">
@@ -211,7 +258,11 @@ const AboutBlock = ({
             </BlockHeader>
           )}
           {block.body && (
-            <p className="max-w-prose whitespace-pre-wrap text-base leading-[1.85] text-neutral-600">
+            <p
+              className={`max-w-prose whitespace-pre-wrap text-neutral-600 ${
+                hero ? 'text-[17px] leading-[1.8]' : 'text-base leading-[1.85]'
+              }`}
+            >
               {block.body}
             </p>
           )}
@@ -226,10 +277,13 @@ const AboutBlock = ({
           {hasDescriptions ? (
             <ul className="flex flex-col divide-y divide-black/5">
               {block.items.map((item, i) => (
-                <li key={i} className="flex items-start gap-3.5 py-3.5 first:pt-0 last:pb-0">
+                <li
+                  key={i}
+                  className="-mx-2 flex items-start gap-3.5 rounded-xl px-2 py-3.5 transition-colors duration-150 first:pt-0 last:pb-0 hover:bg-accent-500/[0.05]"
+                >
                   <span
                     aria-hidden
-                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-500/10 text-accent-700"
+                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-500/10 text-accent-700 ring-1 ring-inset ring-accent-500/15"
                   >
                     <CheckIcon className="h-3 w-3" />
                   </span>
@@ -251,7 +305,7 @@ const AboutBlock = ({
               {block.items.map((item, i) => (
                 <li
                   key={i}
-                  className="flex items-center gap-1.5 rounded-full border border-black/5 bg-white/50 px-3.5 py-1.5 text-sm font-medium text-neutral-700"
+                  className="flex items-center gap-1.5 rounded-full border border-black/5 bg-white/60 px-3.5 py-1.5 text-sm font-medium text-neutral-700 transition-all duration-150 hover:-translate-y-px hover:border-accent-300/60 hover:bg-white hover:shadow-sm hover:shadow-accent-600/10"
                 >
                   <span
                     aria-hidden
@@ -279,7 +333,7 @@ const AboutBlock = ({
     case 'image':
       return (
         <figure className="group py-6">
-          <div className="relative overflow-hidden rounded-2xl shadow-sm ring-1 ring-black/5">
+          <div className="relative overflow-hidden rounded-3xl shadow-md shadow-neutral-900/5 ring-1 ring-black/5">
             <BlurImage
               src={toCdnUrl(block.url) ?? block.url}
               alt={block.caption || 'About photo'}
@@ -327,6 +381,109 @@ const AboutBlock = ({
         </figure>
       )
     }
+    case 'details':
+      return (
+        <section className="flex flex-col gap-5 py-8">
+          {block.heading && <BlockHeader icon={UserIcon}>{block.heading}</BlockHeader>}
+          <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {block.items.map((item, i) => (
+              <div
+                key={i}
+                className="rounded-2xl bg-white/50 px-4 py-3 ring-1 ring-black/5 transition-shadow duration-200 hover:shadow-sm hover:shadow-accent-600/5"
+              >
+                <dt className="text-[11px] font-semibold uppercase tracking-wide text-accent-700/60">
+                  {item.label}
+                </dt>
+                <dd className="mt-0.5 break-words text-sm font-medium text-neutral-800">
+                  {item.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )
+    case 'quote':
+      return (
+        <figure className="relative my-6 overflow-hidden rounded-3xl bg-gradient-to-br from-accent-500/[0.09] via-accent-400/[0.04] to-transparent px-6 py-12 ring-1 ring-inset ring-accent-500/15 sm:px-12">
+          {/* Giant ghost mark — classic editorial pull-quote */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -top-2 left-4 select-none font-serif text-[7rem] leading-none text-accent-500/15"
+          >
+            “
+          </span>
+          <blockquote className="relative mx-auto max-w-prose text-balance text-center font-serif text-xl italic leading-[1.6] text-neutral-800 sm:text-2xl">
+            {block.text}
+          </blockquote>
+          {block.attribution && (
+            <figcaption className="relative mt-6 flex items-center justify-center gap-3">
+              <span
+                aria-hidden
+                className="h-px w-8 bg-gradient-to-r from-transparent to-accent-500/50"
+              />
+              <span className="text-xs font-semibold uppercase tracking-widest text-accent-700/80">
+                {block.attribution}
+              </span>
+              <span
+                aria-hidden
+                className="h-px w-8 bg-gradient-to-l from-transparent to-accent-500/50"
+              />
+            </figcaption>
+          )}
+        </figure>
+      )
+    case 'stats':
+      return (
+        <section className="flex flex-col gap-5 py-8">
+          {block.heading && <BlockHeader icon={ActivityIcon}>{block.heading}</BlockHeader>}
+          <dl className="flex flex-wrap items-stretch justify-center gap-3">
+            {block.items.map((item, i) => (
+              <div
+                key={i}
+                className="flex min-w-28 max-w-44 flex-1 basis-28 flex-col items-center justify-center gap-1 rounded-2xl bg-white/60 px-4 py-4 text-center shadow-sm ring-1 ring-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-accent-600/10"
+              >
+                <dd className="order-1 bg-gradient-to-br from-accent-500 to-accent-600 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
+                  {item.value}
+                </dd>
+                <dt className="order-2 text-[11px] font-semibold uppercase leading-snug tracking-wide text-neutral-400">
+                  {item.label}
+                </dt>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )
+    case 'gallery':
+      return (
+        <section className="flex flex-col gap-5 py-6">
+          {block.heading && <BlockHeader icon={ImageIcon}>{block.heading}</BlockHeader>}
+          {/* 4+ photos → first tile becomes a featured 2×2 mosaic cell
+              (aspect-square keeps it square since its width = 2 cols + gap). */}
+          <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+            {block.items.map((item, i) =>
+              item.url ? (
+                <li
+                  key={i}
+                  className={`group relative overflow-hidden rounded-2xl shadow-sm ring-1 ring-black/5 ${
+                    i === 0 && block.items.length >= 4 ? 'col-span-2 row-span-2' : ''
+                  }`}
+                >
+                  <BlurImage
+                    src={toCdnUrl(item.url) ?? item.url}
+                    alt={item.caption || 'About photo'}
+                    className="aspect-square w-full object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.03]"
+                  />
+                  {item.caption && (
+                    <span className="pointer-events-none absolute inset-x-0 bottom-0 line-clamp-1 bg-gradient-to-t from-black/60 via-black/25 to-transparent px-2.5 pb-1.5 pt-6 text-[11px] font-medium text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                      {item.caption}
+                    </span>
+                  )}
+                </li>
+              ) : null,
+            )}
+          </ul>
+        </section>
+      )
     default:
       return null
   }
@@ -500,6 +657,8 @@ export function AboutEditor({
     setDraft((prev) => {
       const block = prev[index]
       if (block?.type === 'image' && block.preview) URL.revokeObjectURL(block.preview)
+      if (block?.type === 'gallery')
+        block.items.forEach((item) => item.preview && URL.revokeObjectURL(item.preview))
       return prev.filter((_, i) => i !== index)
     })
 
@@ -537,6 +696,32 @@ export function AboutEditor({
     })
   }
 
+  // Multi-file picker for gallery blocks — compresses and appends each image.
+  const pickGalleryImages = (index: number, files: FileList | null) => {
+    if (!files?.length) return
+    Array.from(files).forEach((f) => {
+      if (!f.type.startsWith('image/')) return
+      void compressImage(f).then((compressed) => {
+        patch(index, (b) =>
+          b.type === 'gallery'
+            ? {
+                ...b,
+                items: [
+                  ...b.items,
+                  {
+                    mediaId: null,
+                    caption: '',
+                    file: compressed,
+                    preview: URL.createObjectURL(compressed),
+                  },
+                ],
+              }
+            : b,
+        )
+      })
+    })
+  }
+
   const save = () => {
     setError(null)
     const formData = new FormData()
@@ -563,6 +748,27 @@ export function AboutEditor({
         }
         case 'embed':
           return { type: 'embed', url: b.url, caption: b.caption }
+        case 'details':
+          return { type: 'details', heading: b.heading, items: b.items }
+        case 'quote':
+          return { type: 'quote', text: b.text, attribution: b.attribution }
+        case 'stats':
+          return { type: 'stats', heading: b.heading, items: b.items }
+        case 'gallery': {
+          const items = b.items.map((item, ii) => {
+            const out: Record<string, unknown> = {
+              mediaId: item.mediaId,
+              caption: item.caption,
+            }
+            if (item.file) {
+              const field = `aboutImage${i}x${ii}`
+              formData.append(field, item.file)
+              out.fileField = field
+            }
+            return out
+          })
+          return { type: 'gallery', heading: b.heading, items }
+        }
       }
     })
     formData.append('about', JSON.stringify(blocks))
@@ -618,6 +824,44 @@ export function AboutEditor({
             return b.url
               ? [{ key: b.key, type: 'embed' as const, url: b.url, caption: b.caption }]
               : []
+          case 'details':
+            return [
+              {
+                key: b.key,
+                type: 'details' as const,
+                heading: b.heading,
+                items: b.items.filter((i) => i.label && i.value),
+              },
+            ]
+          case 'quote':
+            return b.text
+              ? [
+                  {
+                    key: b.key,
+                    type: 'quote' as const,
+                    text: b.text,
+                    attribution: b.attribution,
+                  },
+                ]
+              : []
+          case 'stats':
+            return [
+              {
+                key: b.key,
+                type: 'stats' as const,
+                heading: b.heading,
+                items: b.items.filter((i) => i.value && i.label),
+              },
+            ]
+          case 'gallery': {
+            const items = b.items.flatMap((item) => {
+              const url = item.preview ?? item.url
+              return url ? [{ mediaId: item.mediaId, url, caption: item.caption }] : []
+            })
+            return b.heading || items.length
+              ? [{ key: b.key, type: 'gallery' as const, heading: b.heading, items }]
+              : []
+          }
         }
       }),
     [draft],
@@ -1183,6 +1427,304 @@ export function AboutEditor({
                               }
                               className={inputClass}
                             />
+                          </div>
+                        )}
+
+                        {block.type === 'details' && (
+                          <div className="flex flex-col gap-2">
+                            <input
+                              value={block.heading}
+                              maxLength={120}
+                              autoFocus={block.key === focusKey}
+                              placeholder="Heading (optional)"
+                              onChange={(e) =>
+                                patch(i, (b) =>
+                                  b.type === 'details' ? { ...b, heading: e.target.value } : b,
+                                )
+                              }
+                              className={inputClass}
+                            />
+                            {block.items.map((item, ii) => (
+                              <div key={ii} className="flex items-center gap-2">
+                                <input
+                                  value={item.label}
+                                  maxLength={60}
+                                  placeholder="Label (e.g. Location)"
+                                  onChange={(e) =>
+                                    patch(i, (b) =>
+                                      b.type === 'details'
+                                        ? {
+                                            ...b,
+                                            items: b.items.map((v, vi) =>
+                                              vi === ii ? { ...v, label: e.target.value } : v,
+                                            ),
+                                          }
+                                        : b,
+                                    )
+                                  }
+                                  className={`${inputClass} w-2/5`}
+                                />
+                                <input
+                                  value={item.value}
+                                  maxLength={160}
+                                  placeholder="e.g. Manila, PH"
+                                  onChange={(e) =>
+                                    patch(i, (b) =>
+                                      b.type === 'details'
+                                        ? {
+                                            ...b,
+                                            items: b.items.map((v, vi) =>
+                                              vi === ii ? { ...v, value: e.target.value } : v,
+                                            ),
+                                          }
+                                        : b,
+                                    )
+                                  }
+                                  className={inputClass}
+                                />
+                                <button
+                                  type="button"
+                                  aria-label="Remove detail"
+                                  onClick={() =>
+                                    patch(i, (b) =>
+                                      b.type === 'details'
+                                        ? {
+                                            ...b,
+                                            items: b.items.filter((_, vi) => vi !== ii),
+                                          }
+                                        : b,
+                                    )
+                                  }
+                                  className="shrink-0 text-neutral-400 transition-colors hover:text-red-500"
+                                >
+                                  <XIcon className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                patch(i, (b) =>
+                                  b.type === 'details'
+                                    ? {
+                                        ...b,
+                                        items: [...b.items, { label: '', value: '' }],
+                                      }
+                                    : b,
+                                )
+                              }
+                              className="btn-accent-soft flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
+                            >
+                              <PlusIcon className="h-3.5 w-3.5" /> Add detail
+                            </button>
+                          </div>
+                        )}
+
+                        {block.type === 'quote' && (
+                          <div className="flex flex-col gap-2">
+                            <textarea
+                              value={block.text}
+                              rows={3}
+                              maxLength={500}
+                              autoFocus={block.key === focusKey}
+                              placeholder="A quote, motto, or something you live by…"
+                              onChange={(e) =>
+                                patch(i, (b) =>
+                                  b.type === 'quote' ? { ...b, text: e.target.value } : b,
+                                )
+                              }
+                              className={`${inputClass} resize-none`}
+                            />
+                            <input
+                              value={block.attribution}
+                              maxLength={120}
+                              placeholder="Attribution (optional — who said it)"
+                              onChange={(e) =>
+                                patch(i, (b) =>
+                                  b.type === 'quote' ? { ...b, attribution: e.target.value } : b,
+                                )
+                              }
+                              className={inputClass}
+                            />
+                          </div>
+                        )}
+
+                        {block.type === 'stats' && (
+                          <div className="flex flex-col gap-2">
+                            <input
+                              value={block.heading}
+                              maxLength={120}
+                              autoFocus={block.key === focusKey}
+                              placeholder="Heading (optional)"
+                              onChange={(e) =>
+                                patch(i, (b) =>
+                                  b.type === 'stats' ? { ...b, heading: e.target.value } : b,
+                                )
+                              }
+                              className={inputClass}
+                            />
+                            {block.items.map((item, ii) => (
+                              <div key={ii} className="flex items-center gap-2">
+                                <input
+                                  value={item.value}
+                                  maxLength={40}
+                                  placeholder="5+ yrs"
+                                  onChange={(e) =>
+                                    patch(i, (b) =>
+                                      b.type === 'stats'
+                                        ? {
+                                            ...b,
+                                            items: b.items.map((v, vi) =>
+                                              vi === ii ? { ...v, value: e.target.value } : v,
+                                            ),
+                                          }
+                                        : b,
+                                    )
+                                  }
+                                  className={`${inputClass} w-2/5`}
+                                />
+                                <input
+                                  value={item.label}
+                                  maxLength={80}
+                                  placeholder="Label (e.g. Baking)"
+                                  onChange={(e) =>
+                                    patch(i, (b) =>
+                                      b.type === 'stats'
+                                        ? {
+                                            ...b,
+                                            items: b.items.map((v, vi) =>
+                                              vi === ii ? { ...v, label: e.target.value } : v,
+                                            ),
+                                          }
+                                        : b,
+                                    )
+                                  }
+                                  className={inputClass}
+                                />
+                                <button
+                                  type="button"
+                                  aria-label="Remove stat"
+                                  onClick={() =>
+                                    patch(i, (b) =>
+                                      b.type === 'stats'
+                                        ? {
+                                            ...b,
+                                            items: b.items.filter((_, vi) => vi !== ii),
+                                          }
+                                        : b,
+                                    )
+                                  }
+                                  className="shrink-0 text-neutral-400 transition-colors hover:text-red-500"
+                                >
+                                  <XIcon className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              disabled={block.items.length >= 8}
+                              onClick={() =>
+                                patch(i, (b) =>
+                                  b.type === 'stats'
+                                    ? {
+                                        ...b,
+                                        items: [...b.items, { value: '', label: '' }],
+                                      }
+                                    : b,
+                                )
+                              }
+                              className="btn-accent-soft flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+                            >
+                              <PlusIcon className="h-3.5 w-3.5" /> Add stat
+                            </button>
+                          </div>
+                        )}
+
+                        {block.type === 'gallery' && (
+                          <div className="flex flex-col gap-2">
+                            <input
+                              value={block.heading}
+                              maxLength={120}
+                              autoFocus={block.key === focusKey}
+                              placeholder="Heading (optional)"
+                              onChange={(e) =>
+                                patch(i, (b) =>
+                                  b.type === 'gallery' ? { ...b, heading: e.target.value } : b,
+                                )
+                              }
+                              className={inputClass}
+                            />
+                            {block.items.map((item, ii) => (
+                              <div key={ii} className="flex items-center gap-2">
+                                {item.preview || item.url ? (
+                                  <BlurImage
+                                    src={item.preview ?? toCdnUrl(item.url)}
+                                    alt=""
+                                    className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                                  />
+                                ) : (
+                                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-black/5 text-neutral-400">
+                                    <ImageIcon className="h-4 w-4" />
+                                  </span>
+                                )}
+                                <input
+                                  value={item.caption}
+                                  maxLength={120}
+                                  placeholder={`Caption ${ii + 1} (optional)`}
+                                  onChange={(e) =>
+                                    patch(i, (b) =>
+                                      b.type === 'gallery'
+                                        ? {
+                                            ...b,
+                                            items: b.items.map((v, vi) =>
+                                              vi === ii ? { ...v, caption: e.target.value } : v,
+                                            ),
+                                          }
+                                        : b,
+                                    )
+                                  }
+                                  className={inputClass}
+                                />
+                                <button
+                                  type="button"
+                                  aria-label="Remove photo"
+                                  onClick={() =>
+                                    patch(i, (b) => {
+                                      if (b.type !== 'gallery') return b
+                                      const removed = b.items[ii]
+                                      if (removed?.preview) URL.revokeObjectURL(removed.preview)
+                                      return {
+                                        ...b,
+                                        items: b.items.filter((_, vi) => vi !== ii),
+                                      }
+                                    })
+                                  }
+                                  className="shrink-0 text-neutral-400 transition-colors hover:text-red-500"
+                                >
+                                  <XIcon className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                            <label
+                              className={`btn-accent-soft flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
+                                block.items.length >= 12
+                                  ? 'pointer-events-none opacity-40'
+                                  : 'cursor-pointer'
+                              }`}
+                            >
+                              <ImageIcon className="h-3.5 w-3.5" /> Add photos
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                disabled={block.items.length >= 12}
+                                className="hidden"
+                                onChange={(e) => {
+                                  pickGalleryImages(i, e.target.files)
+                                  e.target.value = ''
+                                }}
+                              />
+                            </label>
                           </div>
                         )}
                       </div>
