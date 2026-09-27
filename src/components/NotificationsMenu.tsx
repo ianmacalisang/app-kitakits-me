@@ -17,17 +17,29 @@ export function NotificationsMenu({ unreadCount }: { unreadCount: number }) {
   const [loaded, setLoaded] = useState(false)
   const [notifications, setNotifications] = useState<NotificationData[]>([])
   const [hasMore, setHasMore] = useState(false)
-  const [pending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
   const boxRef = useRef<HTMLDivElement>(null)
+  // Set when the badge drop came from our own open-time mark-all — lets the
+  // resync effect skip the refetch so this view keeps its unread highlights.
+  const autoMarkedRef = useRef(false)
 
-  const refresh = useCallback(() => {
-    startTransition(async () => {
-      const result = await getNotifications(1)
-      setNotifications(result.items)
-      setHasMore(result.hasMore)
-      setLoaded(true)
-    })
-  }, [])
+  const refresh = useCallback(
+    (markRead = false) => {
+      startTransition(async () => {
+        const result = await getNotifications(1)
+        setNotifications(result.items)
+        setHasMore(result.hasMore)
+        setLoaded(true)
+        // Opening the panel counts as seen — persist read in the background
+        // so the badge clears, while this view keeps showing what was unread.
+        if (markRead && result.items.some((n) => !n.read)) {
+          autoMarkedRef.current = true
+          void markAllNotificationsRead().then(() => router.refresh())
+        }
+      })
+    },
+    [router],
+  )
 
   // Close the dropdown when clicking outside of it or pressing Escape.
   useEffect(() => {
@@ -53,23 +65,23 @@ export function NotificationsMenu({ unreadCount }: { unreadCount: number }) {
     setOpen(false)
   }
 
-  // Resync when the unread badge changes after a server refresh (mark-as-read).
+  // Resync when the unread badge changes after a server refresh — skipped
+  // once when the drop came from our own open-time mark-all so the open view
+  // keeps showing what was unread.
   useEffect(() => {
-    if (loaded) refresh()
+    if (!loaded) return
+    if (autoMarkedRef.current) {
+      autoMarkedRef.current = false
+      return
+    }
+    refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unreadCount])
-
-  const markAll = () => {
-    startTransition(async () => {
-      await markAllNotificationsRead()
-      router.refresh()
-    })
-  }
 
   const toggle = () => {
     const next = !open
     setOpen(next)
-    if (next) refresh()
+    if (next) refresh(true)
   }
 
   return (
@@ -106,17 +118,6 @@ export function NotificationsMenu({ unreadCount }: { unreadCount: number }) {
               <div className="min-h-0 flex-1 overflow-y-auto p-3">
                 <NotificationsView notifications={notifications} initialHasMore={hasMore} compact />
               </div>
-              {unreadCount > 0 && (
-                <div className="flex justify-end border-t border-neutral-200/60 p-3 dark:border-white/10">
-                  <button
-                    onClick={markAll}
-                    disabled={pending}
-                    className="text-sm font-medium text-accent-600 transition-colors hover:text-accent-700 disabled:opacity-50"
-                  >
-                    Mark all as read
-                  </button>
-                </div>
-              )}
             </>
           ) : (
             <div className="flex justify-center p-3 py-12">

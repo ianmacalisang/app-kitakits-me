@@ -6,7 +6,7 @@ import { memo, useCallback, useMemo, useState, useTransition } from 'react'
 import {
   getNotifications,
   markAllNotificationsRead,
-  markNotificationRead,
+  markNotificationsRead,
 } from '@/actions/notifications'
 import type { NotificationData } from '@/lib/serialize'
 import { formatRelativeTime } from '@/lib/time'
@@ -143,7 +143,6 @@ export function NotificationsView({
 }) {
   const router = useRouter()
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
-  const [pending, startTransition] = useTransition()
   const [items, setItems] = useState(notifications)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(initialHasMore)
@@ -190,23 +189,29 @@ export function NotificationsView({
   const unreadEntries = useMemo(() => groupNotifications(unread), [unread])
   const readEntries = useMemo(() => groupNotifications(read), [read])
 
+  // Read state is applied optimistically — the bulk server update and nav
+  // refresh run in the background so taps never wait on a round trip.
+  const markReadOptimistic = useCallback(
+    (ids: number[]) => {
+      if (ids.length === 0) return
+      const idSet = new Set(ids)
+      setItems((prev) => prev.map((n) => (idSet.has(n.id) && !n.read ? { ...n, read: true } : n)))
+      void markNotificationsRead(ids).then(() => router.refresh())
+    },
+    [router],
+  )
+
   const markAll = () => {
-    startTransition(async () => {
-      await markAllNotificationsRead()
-      router.refresh()
-    })
+    setItems((prev) => prev.map((n) => (n.read ? n : { ...n, read: true })))
+    void markAllNotificationsRead().then(() => router.refresh())
   }
 
   // Expanding a stack counts as opening it — mark every item read.
   const markStackRead = useCallback(
     (stack: NotificationData[]) => {
-      startTransition(async () => {
-        const unreadIds = stack.filter((n) => !n.read).map((n) => n.id)
-        await Promise.all(unreadIds.map((id) => markNotificationRead(id)))
-        router.refresh()
-      })
+      markReadOptimistic(stack.filter((n) => !n.read).map((n) => n.id))
     },
-    [router],
+    [markReadOptimistic],
   )
 
   // Tapping a line in a stack opens that notification's target. Passing the
@@ -214,21 +219,17 @@ export function NotificationsView({
   // logical notification, like Facebook's grouped alerts.
   const open = useCallback(
     (notification: NotificationData, stack?: NotificationData[]) => {
-      startTransition(async () => {
-        const unreadIds = (stack ?? [notification]).filter((n) => !n.read).map((n) => n.id)
-        await Promise.all(unreadIds.map((id) => markNotificationRead(id)))
-        if (notification.type === 'follow') {
-          router.push(`/profile/${notification.actorUsername}`)
-        } else if (notification.type === 'testimonial') {
-          router.push('/testimonials')
-        } else if (notification.postId) {
-          if (notification.type === 'like') setViewPostId(notification.postId)
-          else setOpenPostId(notification.postId)
-        }
-        router.refresh()
-      })
+      markReadOptimistic((stack ?? [notification]).filter((n) => !n.read).map((n) => n.id))
+      if (notification.type === 'follow') {
+        router.push(`/profile/${notification.actorUsername}`)
+      } else if (notification.type === 'testimonial') {
+        router.push('/testimonials')
+      } else if (notification.postId) {
+        if (notification.type === 'like') setViewPostId(notification.postId)
+        else setOpenPostId(notification.postId)
+      }
     },
-    [router],
+    [router, markReadOptimistic],
   )
 
   const closePost = useCallback(() => setOpenPostId(null), [])
@@ -239,7 +240,6 @@ export function NotificationsView({
       <NotificationStack
         key={`stack-${entry.items[0].id}`}
         items={entry.items}
-        pending={pending}
         expanded={expandedStack === entry.items[0].id}
         onToggleAction={() =>
           setExpandedStack((cur) => (cur === entry.items[0].id ? null : entry.items[0].id))
@@ -248,19 +248,13 @@ export function NotificationsView({
         onReadAction={markStackRead}
       />
     ) : (
-      <NotificationItem
-        key={entry.items[0].id}
-        notification={entry.items[0]}
-        pending={pending}
-        onOpenAction={open}
-      />
+      <NotificationItem key={entry.items[0].id} notification={entry.items[0]} onOpenAction={open} />
     )
 
   const markAllButton = unread.length > 0 && (
     <button
       onClick={markAll}
-      disabled={pending}
-      className="text-sm font-medium text-accent-600 transition-colors hover:text-accent-700 disabled:opacity-50"
+      className="text-sm font-medium text-accent-600 transition-colors hover:text-accent-700"
     >
       Mark all as read
     </button>
@@ -349,19 +343,16 @@ export function NotificationsView({
 
 const NotificationItem = memo(function NotificationItem({
   notification,
-  pending,
   onOpenAction,
 }: {
   notification: NotificationData
-  pending: boolean
   onOpenAction: (notification: NotificationData) => void
 }) {
   return (
     <li>
       <button
         onClick={() => onOpenAction(notification)}
-        disabled={pending}
-        className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-all disabled:opacity-60 ${
+        className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-all ${
           notification.read ? 'border-transparent hover:bg-white/60' : 'glass hover:bg-white'
         }`}
       >
@@ -414,14 +405,12 @@ const NotificationItem = memo(function NotificationItem({
 // alerts.
 const NotificationStack = memo(function NotificationStack({
   items,
-  pending,
   expanded,
   onToggleAction,
   onOpenAction,
   onReadAction,
 }: {
   items: NotificationData[]
-  pending: boolean
   expanded: boolean
   onToggleAction: () => void
   onOpenAction: (notification: NotificationData, stack?: NotificationData[]) => void
@@ -445,9 +434,8 @@ const NotificationStack = memo(function NotificationStack({
     >
       <button
         onClick={toggle}
-        disabled={pending}
         aria-expanded={expanded}
-        className="flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-colors hover:bg-white/60 disabled:opacity-60"
+        className="flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-colors hover:bg-white/60"
       >
         {/* Avatar with a corner type badge */}
         <span className="relative shrink-0">
@@ -495,8 +483,7 @@ const NotificationStack = memo(function NotificationStack({
               <button
                 key={notification.id}
                 onClick={() => onOpenAction(notification, items)}
-                disabled={pending}
-                className="group flex w-full items-center gap-2 rounded-lg px-1.5 py-2.5 text-left transition-colors hover:bg-white/60 active:bg-white/80 disabled:opacity-60"
+                className="group flex w-full items-center gap-2 rounded-lg px-1.5 py-2.5 text-left transition-colors hover:bg-white/60 active:bg-white/80"
               >
                 {/* Timeline icon — the rail runs the full row height so
                     consecutive rows connect into one line under the avatar. */}

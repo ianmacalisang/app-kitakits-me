@@ -29,14 +29,17 @@ export async function getNotifications(page = 1): Promise<Paged<NotificationData
   }
 }
 
-export async function markNotificationRead(notificationId: number) {
+export async function markNotificationsRead(notificationIds: number[]) {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
+  if (notificationIds.length === 0) return
 
   const payload = await getPayloadClient()
   await payload.update({
     collection: 'notifications',
-    id: notificationId,
+    where: {
+      and: [{ id: { in: notificationIds } }, { recipient: { equals: user.id } }],
+    },
     data: { read: true },
     user,
     overrideAccess: false,
