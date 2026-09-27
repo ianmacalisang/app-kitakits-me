@@ -81,6 +81,7 @@ export interface EmbeddedPostData {
   content: string | null
   imageUrls: string[]
   video?: PostVideoData
+  category: PostCategory
   createdAt: string
   authorName: string
   authorUsername: string

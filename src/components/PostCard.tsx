@@ -11,7 +11,7 @@ import type { PostCardData } from '@/lib/serialize'
 import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
-import { CategoryChip } from './CategoryChip'
+import { CategoryChip, RepostBadge } from './CategoryChip'
 import { CommentsSheet } from './CommentsSheet'
 import { CommentIcon, LockIcon, PinIcon, TrashIcon } from './icons'
 import { ExpandableText } from './ExpandableText'
@@ -101,7 +101,9 @@ export const PostCard = memo(function PostCard({
     })
   }
 
-  const categoryEntry = postCategory(post.category)
+  // Share cards stay untinted — the embedded original carries the category.
+  const categoryEntry = post.sharedPost ? undefined : postCategory(post.category)
+  const sharedEntry = postCategory(post.sharedPost?.category)
   const profileHref = (username: string) =>
     isPublicPage ? `/@${username}` : `/profile/${username}`
 
@@ -125,7 +127,11 @@ export const PostCard = memo(function PostCard({
           </div>
         </Link>
         <div className="flex shrink-0 items-center gap-3">
-          {post.category && <CategoryChip category={post.category} />}
+          {post.sharedPost ? (
+            <RepostBadge />
+          ) : (
+            post.category && <CategoryChip category={post.category} />
+          )}
           {post.canEdit ? (
             <div className="flex items-center gap-2 text-xs">
               {!post.sharedPost && (
@@ -172,24 +178,34 @@ export const PostCard = memo(function PostCard({
       </div>
 
       {post.sharedPost ? (
-        // Share card — the original post embedded read-only.
-        <div className="mt-3 rounded-2xl border border-accent-900/10 bg-accent-50/50 p-3">
-          <Link
-            href={profileHref(post.sharedPost.authorUsername)}
-            className="flex min-w-0 items-center gap-2"
-          >
-            <Avatar
-              src={post.sharedPost.authorAvatarUrl}
-              name={post.sharedPost.authorName}
-              size="xs"
-            />
-            <p className="truncate text-xs text-neutral-500">
-              <span className="text-sm font-semibold text-neutral-900">
-                {post.sharedPost.authorName}
-              </span>{' '}
-              @{post.sharedPost.authorUsername} · {formatRelativeTime(post.sharedPost.createdAt)}
-            </p>
-          </Link>
+        // Share card — the original post embedded read-only, tinted and
+        // badged with the original's category.
+        <div
+          className={`mt-3 rounded-2xl border p-3 ${
+            sharedEntry
+              ? CATEGORY_TINTS[sharedEntry.tint].card
+              : 'border-accent-900/10 bg-accent-50/50'
+          }`}
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <Link
+              href={profileHref(post.sharedPost.authorUsername)}
+              className="flex min-w-0 flex-1 items-center gap-2"
+            >
+              <Avatar
+                src={post.sharedPost.authorAvatarUrl}
+                name={post.sharedPost.authorName}
+                size="xs"
+              />
+              <p className="truncate text-xs text-neutral-500">
+                <span className="text-sm font-semibold text-neutral-900">
+                  {post.sharedPost.authorName}
+                </span>{' '}
+                @{post.sharedPost.authorUsername} · {formatRelativeTime(post.sharedPost.createdAt)}
+              </p>
+            </Link>
+            <CategoryChip category={post.sharedPost.category} className="shrink-0" />
+          </div>
           {post.sharedPost.content && (
             <ExpandableText content={post.sharedPost.content} className="mt-2 text-sm" />
           )}

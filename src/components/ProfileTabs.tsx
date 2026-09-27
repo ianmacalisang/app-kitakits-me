@@ -26,7 +26,7 @@ type Tab = 'about' | 'posts' | 'media' | 'connections' | 'testimonials'
 const TABS: { value: Tab; label: string; icon: typeof UserIcon }[] = [
   { value: 'about', label: 'About', icon: UserIcon },
   { value: 'posts', label: 'Posts', icon: ListIcon },
-  { value: 'media', label: 'Photos', icon: ImageIcon },
+  { value: 'media', label: 'Media', icon: ImageIcon },
   { value: 'testimonials', label: 'Testimonials', icon: QuoteIcon },
   { value: 'connections', label: 'Connections', icon: UsersIcon },
 ]
@@ -271,11 +271,8 @@ export function ProfileTabs({
           <MediaGrid
             authorId={authorId}
             publicOnly={isPublicPage}
-            emptyMessage={
-              isSelf
-                ? 'Photos you post will show up here.'
-                : `@${username} hasn't shared photos yet.`
-            }
+            isSelf={isSelf}
+            username={username}
           />
         </div>
       )}

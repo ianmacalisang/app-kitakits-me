@@ -10,7 +10,7 @@ import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { BlurImage } from './BlurImage'
-import { CategoryChip } from './CategoryChip'
+import { CategoryChip, RepostBadge } from './CategoryChip'
 import { CommentIcon, LockIcon, PlayIcon, ShareIcon, VideoIcon } from './icons'
 import { LikeButton } from './LikeButton'
 import { PostSheet } from './PostSheet'
@@ -36,7 +36,9 @@ export const ExplorePostCard = memo(function ExplorePostCard({ post }: { post: P
   const imageUrls = post.sharedPost ? post.sharedPost.imageUrls : post.images.map((i) => i.url)
   const video = post.sharedPost ? post.sharedPost.video : post.video
   const snippet = post.sharedPost ? post.sharedPost.content : post.content
-  const categoryEntry = postCategory(post.category)
+  // Share cards stay untinted — the embedded original carries the category.
+  const categoryEntry = post.sharedPost ? undefined : postCategory(post.category)
+  const sharedEntry = postCategory(post.sharedPost?.category)
 
   return (
     <article
@@ -61,7 +63,11 @@ export const ExplorePostCard = memo(function ExplorePostCard({ post }: { post: P
             </p>
           </div>
         </Link>
-        {post.category && <CategoryChip category={post.category} className="shrink-0" />}
+        {post.sharedPost ? (
+          <RepostBadge className="shrink-0" />
+        ) : (
+          post.category && <CategoryChip category={post.category} className="shrink-0" />
+        )}
       </div>
 
       {snippet && (
@@ -72,13 +78,23 @@ export const ExplorePostCard = memo(function ExplorePostCard({ post }: { post: P
         </button>
       )}
 
+      {/* Shares of text-only posts get the original's chip under the
+          snippet — there's no media tile to carry it. */}
+      {post.sharedPost && !video && imageUrls.length === 0 && (
+        <div className="mt-2">
+          <CategoryChip category={post.sharedPost.category} />
+        </div>
+      )}
+
       {/* Media — layout depends on post type, like PostCard's media block */}
       {(video || imageUrls.length > 0) && (
         <button
           type="button"
           onClick={openPost}
           aria-label={`View post by ${post.authorName}`}
-          className="relative mt-2.5 block w-full overflow-hidden rounded-2xl border border-black/5 text-left"
+          className={`relative mt-2.5 block w-full overflow-hidden rounded-2xl border text-left ${
+            sharedEntry ? CATEGORY_TINTS[sharedEntry.tint].card : 'border-black/5'
+          }`}
         >
           {video && imageUrls.length === 0 ? (
             <VideoTile video={video} />
@@ -93,6 +109,13 @@ export const ExplorePostCard = memo(function ExplorePostCard({ post }: { post: P
             >
               <ShareIcon className="h-3.5 w-3.5" />
             </span>
+          )}
+          {post.sharedPost && (
+            <CategoryChip
+              category={post.sharedPost.category}
+              solid
+              className="absolute right-2 top-2"
+            />
           )}
         </button>
       )}

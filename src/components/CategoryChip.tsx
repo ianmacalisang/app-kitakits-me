@@ -16,6 +16,7 @@ import {
   MegaphoneIcon,
   MusicIcon,
   QuestionIcon,
+  ShareIcon,
   ShuffleIcon,
   TagIcon,
   UtensilsIcon,
@@ -59,6 +60,19 @@ export function CategoryChip({
     >
       <Icon className="h-3 w-3" />
       {c.label}
+    </span>
+  )
+}
+
+// Neutral pill for share cards — a repost carries no category of its own;
+// the embedded original's chip + tint mark it instead.
+export function RepostBadge({ className }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border border-neutral-500/25 bg-neutral-500/10 px-2 py-0.5 text-[10px] font-semibold leading-tight text-neutral-600 dark:text-neutral-300 ${className ?? ''}`}
+    >
+      <ShareIcon className="h-3 w-3" />
+      Reposted
     </span>
   )
 }

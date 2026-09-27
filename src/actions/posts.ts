@@ -13,8 +13,15 @@ import {
   mediaFilterClauses,
   publicPostClauses,
 } from '@/lib/posts'
-import { type MediaFilter, type Paged, type PostCardData, mediaUrl, relId } from '@/lib/serialize'
-import type { Media, User } from '@/payload-types'
+import {
+  type MediaFilter,
+  type Paged,
+  type PostCardData,
+  mediaUrl,
+  relId,
+  toVideoData,
+} from '@/lib/serialize'
+import type { Media, User, Video } from '@/payload-types'
 
 import type { FormState } from './auth'
 
@@ -423,12 +430,21 @@ export interface MediaItem {
   url: string
 }
 
-// All images a user has posted, newest first — powers the profile Media tab.
-// `publicOnly` (used by the public profile page) skips followers-only posts.
+export type MediaType = 'images' | 'videos'
+
+// All media a user has posted, newest first — powers the profile Media
+// tab's Photos and Videos walls. Videos map to their stream thumbnail.
+// `publicOnly` (used by the public profile page) limits to public posts of
+// public accounts. Signed-out readers get the same constraint inlined —
+// access control can't apply the nested author.isPrivate path for them
+// (users read is authenticated-only), and the path can't appear in `where`
+// while access is on. Signed-in callers rely on canReadPosts, which scopes
+// to posts they may read (own + followed authors' followers-only included).
 export async function getUserMedia(
   authorId: number,
   page = 1,
   publicOnly = false,
+  mediaType: MediaType = 'images',
 ): Promise<Paged<MediaItem>> {
   const user = await getCurrentUser()
 
@@ -438,26 +454,32 @@ export async function getUserMedia(
     where: {
       and: [
         { author: { equals: authorId } },
-        { image: { exists: true } },
-        ...(publicOnly ? [{ visibility: { equals: 'public' } }] : []),
+        mediaType === 'videos' ? { video: { exists: true } } : { image: { exists: true } },
+        ...(publicOnly || !user ? publicPostClauses() : []),
       ],
     },
     sort: '-createdAt',
     page,
     limit: 30,
     depth: 1,
-    select: { image: true },
-    // Signed-out readers are scoped to public posts by canReadPosts.
-    user: user ?? undefined,
-    overrideAccess: false,
+    select: mediaType === 'videos' ? { video: true } : { image: true },
+    // Anonymous queries run with access off — the inline publicPostClauses
+    // above is the constraint, evaluated as a plain DB filter like getPost.
+    ...(user ? { user, overrideAccess: false as const } : {}),
   })
 
-  const items = result.docs.flatMap((post) =>
-    (Array.isArray(post.image) ? post.image : [])
+  const items = result.docs.flatMap((post): MediaItem[] => {
+    if (mediaType === 'videos') {
+      const video = post.video
+      if (typeof video !== 'object' || video === null) return []
+      const { id, thumbnailUrl } = toVideoData(video as Video)
+      return [{ id, postId: post.id, url: thumbnailUrl }]
+    }
+    return (Array.isArray(post.image) ? post.image : [])
       .filter((m): m is Media => typeof m === 'object' && m !== null)
       .map((m) => ({ id: m.id, postId: post.id, url: mediaUrl(m) }))
-      .filter((i): i is MediaItem => Boolean(i.url)),
-  )
+      .filter((i): i is MediaItem => Boolean(i.url))
+  })
 
   return { items, hasMore: result.hasNextPage }
 }
