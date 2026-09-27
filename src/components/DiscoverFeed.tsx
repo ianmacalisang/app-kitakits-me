@@ -48,7 +48,11 @@ export function DiscoverFeed({
         <EmptyState
           icon={<ListIcon />}
           title="No posts yet"
-          message="Nothing public in this category — check back soon."
+          message={
+            category === 'all'
+              ? 'Nothing public yet — check back soon.'
+              : 'Nothing public in this category — check back soon.'
+          }
         />
       ) : (
         // Masonry — CSS columns; cards stay whole via break-inside-avoid

@@ -5,9 +5,7 @@ import { getDiscoverPosts } from '@/actions/discover'
 import { BrandMark } from '@/components/Branding'
 import { CATEGORY_ICONS } from '@/components/CategoryChip'
 import { DiscoverFeed } from '@/components/DiscoverFeed'
-import { DiscoverPostCard } from '@/components/DiscoverPostCard'
-import { EmptyState } from '@/components/EmptyState'
-import { ChevronRightIcon, CompassIcon, ListIcon } from '@/components/icons'
+import { ChevronRightIcon, CompassIcon } from '@/components/icons'
 import { LandingUserSearch } from '@/components/LandingUserSearch'
 import { getCurrentUser } from '@/lib/auth'
 import {
@@ -17,16 +15,9 @@ import {
   postCategory,
   type PostCategory,
 } from '@/lib/categories'
-import { getPayloadClient } from '@/lib/payload'
-import { categoryFilterClauses, hydratePosts, publicPostClauses } from '@/lib/posts'
-import type { PostCardData } from '@/lib/serialize'
 import { getSiteSettings } from '@/lib/settings'
 
 export const metadata: Metadata = { title: 'Discover' }
-
-// Cards shown per category section on the overview — a preview, with the
-// full category one tap away.
-const SECTION_LIMIT = 3
 
 // Category filter chip — a Link rather than a button because switching the
 // filter is a navigation (?category=), not client state.
@@ -100,57 +91,11 @@ export default async function DiscoverPage({
   const active = category === 'all' ? undefined : postCategory(category)
   const ActiveIcon = active ? CATEGORY_ICONS[active.icon] : undefined
 
-  const [viewer, settings, payload] = await Promise.all([
-    getCurrentUser(),
-    getSiteSettings(),
-    getPayloadClient(),
-  ])
+  const [viewer, settings] = await Promise.all([getCurrentUser(), getSiteSettings()])
 
-  // Overview: pull the latest public posts of every category, then hydrate
-  // them in one batch rather than hydrating each section separately.
-  const sectionResults =
-    category === 'all'
-      ? await Promise.all(
-          POST_CATEGORIES.map((c) =>
-            payload.find({
-              collection: 'posts',
-              where: {
-                // Original posts only — share cards are excluded from
-                // Discover, matching getDiscoverPosts.
-                and: [
-                  ...publicPostClauses(),
-                  ...categoryFilterClauses(c.value),
-                  { sharedPost: { exists: false } },
-                ],
-              },
-              sort: '-createdAt',
-              page: 1,
-              limit: SECTION_LIMIT,
-              depth: 2,
-              // Same anonymous pattern as getDiscoverPosts — the public
-              // constraint is explicit in the where clause.
-              ...(viewer ? { user: viewer, overrideAccess: false as const } : {}),
-            }),
-          ),
-        )
-      : []
-
-  const hydrated = await hydratePosts(
-    sectionResults.flatMap((r) => r.docs),
-    viewer,
-  )
-  const cardById = new Map(hydrated.map((card) => [card.id, card]))
-  const sections = POST_CATEGORIES.map((entry, i) => ({
-    entry,
-    posts: (sectionResults[i]?.docs ?? [])
-      .map((doc) => cardById.get(doc.id))
-      .filter((card): card is PostCardData => Boolean(card)),
-    hasMore: sectionResults[i]?.hasNextPage ?? false,
-  })).filter((s) => s.posts.length > 0)
-
-  // Filtered view (?category=x): first page server-rendered, DiscoverFeed
-  // appends further pages via the same public-scoped action.
-  const filtered = category === 'all' ? null : await getDiscoverPosts(category, 1)
+  // First page server-rendered for every view — 'all' or a single
+  // category; DiscoverFeed appends further pages via the same action.
+  const initial = await getDiscoverPosts(category, 1)
 
   return (
     <main className="animate-page-in">
@@ -297,63 +242,14 @@ export default async function DiscoverPage({
           </div>
         </section>
 
-        {category === 'all' ? (
-          sections.length === 0 ? (
-            <div className="mt-8">
-              <EmptyState
-                icon={<ListIcon />}
-                title="No public posts yet"
-                message={`Check back soon — or be the first to post on ${settings.appName}.`}
-              />
-            </div>
-          ) : (
-            sections.map(({ entry, posts, hasMore }) => {
-              const Icon = CATEGORY_ICONS[entry.icon]
-              const tint = CATEGORY_TINTS[entry.tint]
-              return (
-                <section key={entry.value} className="mt-10">
-                  <div className="mb-3 flex items-center gap-2.5">
-                    <span
-                      className={`flex h-8 w-8 items-center justify-center rounded-xl border ${tint.chip}`}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <h2 className="text-base font-bold tracking-tight text-neutral-800">
-                      {entry.label}
-                    </h2>
-                    {hasMore && (
-                      <Link
-                        href={`/discover?category=${entry.value}`}
-                        className="ml-auto inline-flex items-center gap-0.5 text-xs font-semibold text-accent-700 transition-colors hover:text-accent-800"
-                      >
-                        See all
-                        <ChevronRightIcon className="h-3.5 w-3.5" />
-                      </Link>
-                    )}
-                  </div>
-                  {/* Masonry — CSS columns; cards stay whole via
-                      break-inside-avoid and order flows down each column. */}
-                  <div className="columns-1 gap-4 sm:columns-2">
-                    {posts.map((post) => (
-                      <div key={post.id} className="mb-4 break-inside-avoid">
-                        <DiscoverPostCard post={post} />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )
-            })
-          )
-        ) : (
-          <div className="mt-6">
-            <DiscoverFeed
-              key={category}
-              category={category}
-              initialPosts={filtered?.items ?? []}
-              initialHasMore={filtered?.hasMore ?? false}
-            />
-          </div>
-        )}
+        <div className="mt-6">
+          <DiscoverFeed
+            key={category}
+            category={category}
+            initialPosts={initial.items}
+            initialHasMore={initial.hasMore}
+          />
+        </div>
 
         {!viewer && (
           <section className="mt-14">
