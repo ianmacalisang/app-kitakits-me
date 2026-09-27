@@ -1,9 +1,11 @@
 'use server'
 
+import { sql } from '@payloadcms/db-postgres'
 import { redirect } from 'next/navigation'
 
 import { getCurrentUser } from '@/lib/auth'
 import { isPostCategory, type PostCategory } from '@/lib/categories'
+import { drizzleOf } from '@/lib/db'
 import { getPayloadClient } from '@/lib/payload'
 import {
   FEED_PAGE_SIZE,
@@ -337,6 +339,11 @@ export async function getPost(postId: number): Promise<PostCardData | null> {
 const TRENDING_POOL = 60
 const TRENDING_PAGE_SIZE = 20
 
+// Engagement score shared by trending and spotlight ranking — comments
+// weigh double, shares triple.
+const engagementScore = (post: PostCardData) =>
+  post.likeCount + post.commentCount * 2 + post.shareCount * 3
+
 // Recent posts with images ranked by engagement — powers the Explore posts
 // section when there's no query.
 export async function getTrendingPosts(page = 1): Promise<Paged<PostCardData>> {
@@ -354,12 +361,125 @@ export async function getTrendingPosts(page = 1): Promise<Paged<PostCardData>> {
     overrideAccess: false,
   })
 
-  const score = (post: PostCardData) => post.likeCount + post.commentCount * 2 + post.shareCount * 3
-  const ranked = (await hydratePosts(result.docs, user)).sort((a, b) => score(b) - score(a))
+  const ranked = (await hydratePosts(result.docs, user)).sort(
+    (a, b) => engagementScore(b) - engagementScore(a),
+  )
 
   const start = (page - 1) * TRENDING_PAGE_SIZE
   const items = ranked.slice(start, start + TRENDING_PAGE_SIZE)
   return { items, hasMore: ranked.length > start + items.length }
+}
+
+// Posts with the most comments in the last 72 hours — powers the "Hot
+// discussions" section on Explore. Ranked by recent activity rather than
+// lifetime totals, so a stale thread can't hold the spot forever.
+const HOT_DISCUSSIONS_LIMIT = 8
+
+export async function getHotDiscussions(): Promise<PostCardData[]> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+  const db = drizzleOf(payload)
+  if (!db) return []
+
+  type Row = { pid: number; recent: string | number }
+  const { rows } = (await db.execute(sql`
+    SELECT post_id AS pid, COUNT(*) AS recent
+    FROM comments
+    WHERE created_at > now() - interval '72 hours'
+    GROUP BY post_id
+    ORDER BY recent DESC
+    LIMIT 30
+  `)) as { rows: Row[] }
+
+  const ids = rows.map((row) => row.pid)
+  if (ids.length === 0) return []
+
+  const result = await payload.find({
+    collection: 'posts',
+    where: { and: [{ id: { in: ids } }, ...mediaFilterClauses('media')] },
+    limit: ids.length,
+    depth: 2,
+    user,
+    overrideAccess: false,
+  })
+
+  const recentById = new Map(rows.map((row) => [row.pid, Number(row.recent)]))
+  return (await hydratePosts(result.docs, user))
+    .sort((a, b) => (recentById.get(b.id) ?? 0) - (recentById.get(a.id) ?? 0))
+    .slice(0, HOT_DISCUSSIONS_LIMIT)
+}
+
+// Fresh Tanong posts nobody has answered yet — invites the first reply.
+const UNANSWERED_LIMIT = 8
+
+export async function getUnansweredTanong(): Promise<PostCardData[]> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+  const result = await payload.find({
+    collection: 'posts',
+    where: {
+      and: [{ category: { equals: 'tanong' } }, { commentCount: { equals: 0 } }],
+    },
+    sort: '-createdAt',
+    limit: UNANSWERED_LIMIT,
+    depth: 2,
+    user,
+    overrideAccess: false,
+  })
+
+  return hydratePosts(result.docs, user)
+}
+
+export interface CategorySpotlight {
+  category: PostCategory
+  posts: PostCardData[]
+}
+
+// Highest-scoring recent media posts grouped by category — powers the
+// "Hot in X" sections on Explore.
+const SPOTLIGHT_POOL = 120
+const SPOTLIGHT_PER_CATEGORY = 3
+const SPOTLIGHT_SECTIONS = 3
+
+export async function getCategorySpotlights(): Promise<CategorySpotlight[]> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+  const result = await payload.find({
+    collection: 'posts',
+    where: { or: [{ image: { exists: true } }, { video: { exists: true } }] },
+    sort: '-createdAt',
+    limit: SPOTLIGHT_POOL,
+    depth: 2,
+    user,
+    overrideAccess: false,
+  })
+
+  const ranked = (await hydratePosts(result.docs, user)).sort(
+    (a, b) => engagementScore(b) - engagementScore(a),
+  )
+
+  const groups = new Map<PostCategory, PostCardData[]>()
+  for (const post of ranked) {
+    const category = post.category ?? 'kwento'
+    const group = groups.get(category)
+    if (!group) groups.set(category, [post])
+    else if (group.length < SPOTLIGHT_PER_CATEGORY) group.push(post)
+  }
+
+  const groupScore = (posts: PostCardData[]) =>
+    posts.reduce((sum, post) => sum + engagementScore(post), 0)
+
+  return [...groups.entries()]
+    .filter(([, posts]) => posts.length >= 2)
+    .sort((a, b) => groupScore(b[1]) - groupScore(a[1]))
+    .slice(0, SPOTLIGHT_SECTIONS)
+    .map(([category, posts]) => ({ category, posts }))
 }
 
 const HASHTAG_RE = /#([\p{L}\p{N}_]{1,30})/gu

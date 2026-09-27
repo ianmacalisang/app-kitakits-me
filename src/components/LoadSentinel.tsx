@@ -8,10 +8,13 @@ export function LoadSentinel({
   hasMore,
   pending,
   onLoadAction,
+  rootMargin = '600px 0px',
 }: {
   hasMore: boolean
   pending: boolean
   onLoadAction: () => void
+  /** Sideways expansion for sentinels inside horizontal scroll rails. */
+  rootMargin?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const onLoadRef = useRef(onLoadAction)
@@ -27,13 +30,13 @@ export function LoadSentinel({
       (entries) => {
         if (entries[0]?.isIntersecting) onLoadRef.current()
       },
-      { rootMargin: '600px 0px' },
+      { rootMargin },
     )
     observer.observe(el)
     return () => observer.disconnect()
     // Re-observe when a load finishes — if the sentinel never left the
     // viewport the observer won't fire again on its own.
-  }, [hasMore, pending])
+  }, [hasMore, pending, rootMargin])
 
   if (!hasMore) return null
 

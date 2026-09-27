@@ -1,21 +1,26 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { type ReactNode, useEffect, useRef, useState, useTransition } from 'react'
 
-import { searchPosts } from '@/actions/posts'
+import { type CategorySpotlight, searchPosts } from '@/actions/posts'
 import { searchUsers } from '@/actions/users'
+import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
 import type { PostCardData, UserCardData } from '@/lib/serialize'
 
+import { CATEGORY_ICONS } from './CategoryChip'
 import { EmptyState } from './EmptyState'
 import { ExplorePostCard } from './ExplorePostCard'
 import { PhotoPost } from './PhotoPost'
+import { RailPostCard } from './RailPostCard'
 import { ReelPost } from './ReelPost'
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  CommentIcon,
   CompassIcon,
   ListIcon,
+  QuestionIcon,
   SearchIcon,
   SparklesIcon,
   UsersIcon,
@@ -30,6 +35,9 @@ type Section = 'people' | 'posts'
 export function ExploreSearch({
   initialQuery = '',
   trendingTags = [],
+  hotDiscussions = [],
+  unansweredPosts = [],
+  spotlights = [],
   initialUsers,
   initialUsersHasMore,
   initialPosts,
@@ -37,6 +45,9 @@ export function ExploreSearch({
 }: {
   initialQuery?: string
   trendingTags?: string[]
+  hotDiscussions?: PostCardData[]
+  unansweredPosts?: PostCardData[]
+  spotlights?: CategorySpotlight[]
   initialUsers: UserCardData[]
   initialUsersHasMore: boolean
   initialPosts: PostCardData[]
@@ -97,7 +108,7 @@ export function ExploreSearch({
                   Results for <span className="font-semibold text-neutral-800">“{query}”</span>
                 </>
               ) : (
-                'See what’s trending in the community.'
+                'Trending posts, hot discussions, and people you may know.'
               )}
             </p>
           </div>
@@ -116,9 +127,9 @@ export function ExploreSearch({
       {/* Trending hashtag chips — hidden while searching */}
       {!query && trendingTags.length > 0 && (
         <div>
-          <p className="mb-2 flex items-center gap-1 text-xs font-medium text-neutral-400">
-            <SparklesIcon className="h-3.5 w-3.5" />
-            Trending
+          <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-tight text-neutral-700 dark:text-neutral-200">
+            <SparklesIcon className="h-4 w-4 text-accent-500" />
+            Trending tags
           </p>
           <div className="flex flex-wrap gap-1.5">
             {trendingTags.map((tag) => (
@@ -151,19 +162,102 @@ export function ExploreSearch({
         </div>
       )}
 
-      <PostResults posts={posts} query={query} />
+      {/* Trending posts — horizontal rail of media tiles; a sentinel at the
+          end pages more posts in as it scrolls. */}
+      {!query && (
+        <PostRail
+          label={
+            <>
+              <SparklesIcon className="h-[18px] w-[18px] text-accent-500" />
+              Trending posts
+            </>
+          }
+          posts={posts}
+          emptyState={<EmptyState icon={<ListIcon />} title="No posts yet" />}
+          tileClass="w-72 sm:w-80"
+          hasMore={postsMore}
+          pending={morePending}
+          onLoad={() => loadMore('posts')}
+        />
+      )}
 
-      <LoadSentinel
-        hasMore={postsMore}
-        pending={morePending}
-        onLoadAction={() => loadMore('posts')}
-      />
+      {/* Discovery sections — hidden while searching, self-hiding when empty */}
+      {!query && (
+        <>
+          <SpotlightRail
+            spotlight={{ category: 'tanong', posts: unansweredPosts }}
+            label="Be the first to answer"
+            tileClass="w-72 sm:w-80"
+            aspectClass="aspect-[4/3]"
+            overlaySnippet
+            badge={
+              <span className="flex items-center gap-1 rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                <QuestionIcon className="h-3 w-3" />
+                Unanswered
+              </span>
+            }
+          />
+
+          <PostRail
+            label={
+              <>
+                <CommentIcon className="h-[18px] w-[18px] text-accent-500" />
+                Hot discussions
+              </>
+            }
+            posts={hotDiscussions}
+          />
+
+          {spotlights.map((spotlight) => (
+            <SpotlightRail key={spotlight.category} spotlight={spotlight} />
+          ))}
+        </>
+      )}
+
+      {query && (
+        <>
+          <PostResults posts={posts} query={query} />
+          <LoadSentinel
+            hasMore={postsMore}
+            pending={morePending}
+            onLoadAction={() => loadMore('posts')}
+          />
+        </>
+      )}
     </div>
   )
 }
 
-function PeopleResults({ users, query }: { users: UserCardData[]; query: string }) {
-  // Chevron buttons scroll the rail and hide at the edges (pinned-rail pattern).
+function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <div className="mb-3 mt-8 flex gap-2.5">
+      {/* Accent bar echoing the hero's gradient icon chip */}
+      <span
+        aria-hidden
+        className="w-1 shrink-0 rounded-full bg-gradient-to-b from-accent-400 to-accent-600"
+      />
+      <p className="flex min-w-0 items-center gap-2 text-base font-bold tracking-tight text-neutral-800 dark:text-neutral-100">
+        {children}
+      </p>
+    </div>
+  )
+}
+
+// Horizontal snap rail — cards scroll sideways, chevrons hide at the edges,
+// right edge fades out (same pattern as the pinned-posts rail). Shared by
+// the user and post rails; hides entirely when empty unless an emptyState
+// is given. Items start-aligned so mixed-height cards don't stretch.
+function Rail({
+  label,
+  count,
+  emptyState,
+  children,
+}: {
+  label: ReactNode
+  count: number
+  emptyState?: ReactNode
+  children: ReactNode
+}) {
   const railRef = useRef<HTMLUListElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
@@ -179,7 +273,7 @@ function PeopleResults({ users, query }: { users: UserCardData[]; query: string 
     updateRailEdges()
     window.addEventListener('resize', updateRailEdges)
     return () => window.removeEventListener('resize', updateRailEdges)
-  }, [users.length])
+  }, [count])
 
   const scrollRail = (dir: 1 | -1) => {
     railRef.current?.scrollBy({
@@ -188,40 +282,24 @@ function PeopleResults({ users, query }: { users: UserCardData[]; query: string 
     })
   }
 
+  if (count === 0 && !emptyState) return null
+
   return (
     <>
-      <p className="mb-2 mt-6 text-xs font-medium text-neutral-400">
-        {query ? 'People' : 'Suggested for you'}
-      </p>
-      {/* Horizontal snap rail — cards scroll sideways, right edge fades out
-          (same pattern as the pinned-posts rail). */}
+      <SectionLabel>{label}</SectionLabel>
       <div className="relative">
         <ul
           ref={railRef}
           onScroll={updateRailEdges}
-          className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [mask-image:linear-gradient(to_right,black_calc(100%-3rem),transparent)]"
+          className="no-scrollbar flex snap-x snap-mandatory items-start gap-3 overflow-x-auto pb-2 [mask-image:linear-gradient(to_right,black_calc(100%-3rem),transparent)]"
         >
-          {users.map((user) => (
-            <UserCoverCard key={user.id} user={user} className="w-44 shrink-0 snap-start sm:w-52" />
-          ))}
-          {users.length === 0 && (
-            <li className="w-full">
-              <EmptyState
-                icon={query ? <SearchIcon /> : <UsersIcon />}
-                title={query ? 'No people found' : 'No suggestions yet'}
-                message={
-                  query
-                    ? `Nothing matches “${query}” — try a different search.`
-                    : 'Check back soon.'
-                }
-              />
-            </li>
-          )}
+          {children}
+          {count === 0 && <li className="w-full">{emptyState}</li>}
         </ul>
         {canScrollLeft && (
           <button
             type="button"
-            aria-label="Scroll people left"
+            aria-label="Scroll left"
             onClick={() => scrollRail(-1)}
             className="glass absolute -left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-neutral-600 shadow-md transition-all hover:text-accent-600 active:scale-95"
           >
@@ -231,7 +309,7 @@ function PeopleResults({ users, query }: { users: UserCardData[]; query: string 
         {canScrollRight && (
           <button
             type="button"
-            aria-label="Scroll people right"
+            aria-label="Scroll right"
             onClick={() => scrollRail(1)}
             className="glass absolute -right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-neutral-600 shadow-md transition-all hover:text-accent-600 active:scale-95"
           >
@@ -243,38 +321,172 @@ function PeopleResults({ users, query }: { users: UserCardData[]; query: string 
   )
 }
 
+function UserRail({
+  label,
+  users,
+  emptyState,
+}: {
+  label: string
+  users: UserCardData[]
+  emptyState?: ReactNode
+}) {
+  return (
+    <Rail label={label} count={users.length} emptyState={emptyState}>
+      {users.map((user) => (
+        <UserCoverCard key={user.id} user={user} className="w-44 shrink-0 snap-start sm:w-52" />
+      ))}
+    </Rail>
+  )
+}
+
+// Rail of uniform media tiles — the queries behind these sections filter
+// to posts with an image or video, so every tile has a thumbnail. `badge`
+// stamps a pill on every tile's top-left corner (e.g. "Unanswered"). When
+// `onLoad` is given, a sentinel item sits at the rail's end and pages more
+// posts in as it scrolls into view horizontally.
+function PostRail({
+  label,
+  posts,
+  badge,
+  emptyState,
+  tileClass = 'w-52 sm:w-60',
+  aspectClass,
+  overlaySnippet = false,
+  hasMore = false,
+  pending = false,
+  onLoad,
+}: {
+  label: ReactNode
+  posts: PostCardData[]
+  badge?: ReactNode
+  emptyState?: ReactNode
+  /** Width classes per tile — pair with aspectClass to control height. */
+  tileClass?: string
+  /** Tile aspect ratio — defaults to portrait 3:4 inside RailPostCard. */
+  aspectClass?: string
+  /** Center the post's snippet over the tile — question-card treatment. */
+  overlaySnippet?: boolean
+  hasMore?: boolean
+  pending?: boolean
+  onLoad?: () => void
+}) {
+  return (
+    <Rail label={label} count={posts.length} emptyState={emptyState}>
+      {posts.map((post) => (
+        <li key={post.id} className={`shrink-0 snap-start ${tileClass}`}>
+          <RailPostCard
+            post={post}
+            badge={badge}
+            aspectClass={aspectClass}
+            overlaySnippet={overlaySnippet}
+          />
+        </li>
+      ))}
+      {onLoad && hasMore && (
+        <li className="flex shrink-0 snap-start items-center justify-center px-3">
+          <LoadSentinel
+            hasMore={hasMore}
+            pending={pending}
+            onLoadAction={onLoad}
+            rootMargin="0px 400px"
+          />
+        </li>
+      )}
+    </Rail>
+  )
+}
+
+function PeopleResults({ users, query }: { users: UserCardData[]; query: string }) {
+  return (
+    <UserRail
+      label={query ? 'People' : 'People you may know'}
+      users={users}
+      emptyState={
+        <EmptyState
+          icon={query ? <SearchIcon /> : <UsersIcon />}
+          title={query ? 'No people found' : 'No suggestions yet'}
+          message={
+            query ? `Nothing matches “${query}” — try a different search.` : 'Check back soon.'
+          }
+        />
+      }
+    />
+  )
+}
+
+// "Hot in {category}" rail — tinted category icon in the section label.
+function SpotlightRail({
+  spotlight,
+  label,
+  badge,
+  tileClass,
+  aspectClass,
+  overlaySnippet,
+}: {
+  spotlight: CategorySpotlight
+  label?: string
+  badge?: ReactNode
+  tileClass?: string
+  aspectClass?: string
+  overlaySnippet?: boolean
+}) {
+  const entry = postCategory(spotlight.category)
+  if (!entry || spotlight.posts.length === 0) return null
+  const Icon = CATEGORY_ICONS[entry.icon]
+  return (
+    <PostRail
+      label={
+        <>
+          <Icon className={`h-[18px] w-[18px] ${CATEGORY_TINTS[entry.tint].icon}`} />
+          {label ?? `Hot in ${entry.label}`}
+        </>
+      }
+      posts={spotlight.posts}
+      badge={badge}
+      tileClass={tileClass}
+      aspectClass={aspectClass}
+      overlaySnippet={overlaySnippet}
+    />
+  )
+}
+
+// Search results — vertical masonry with the classic bottom sentinel.
+// (The unqueried trending list uses the horizontal PostRail instead.)
 function PostResults({ posts, query }: { posts: PostCardData[]; query: string }) {
   return (
     <>
-      <p className="mb-2 mt-6 text-xs font-medium text-neutral-400">
-        {query ? 'Posts' : 'Trending posts'}
-      </p>
+      <SectionLabel>Posts</SectionLabel>
       {posts.length === 0 ? (
         <EmptyState
-          icon={query ? <SearchIcon /> : <ListIcon />}
-          title={query ? 'No posts found' : 'No posts yet'}
-          message={query ? `Nothing matches “${query}” — try a different search.` : undefined}
+          icon={<SearchIcon />}
+          title="No posts found"
+          message={`Nothing matches “${query}” — try a different search.`}
         />
       ) : (
-        // Masonry — CSS columns; cards stay whole via break-inside-avoid
-        // and order flows down each column (same pattern as DiscoverFeed).
-        // Same card split as the feed's media filters — videos get the
-        // reel card, images the gallery card; shares and text posts keep
-        // the compact explore card.
-        <div className="columns-1 gap-3 lg:columns-2">
-          {posts.map((post) => (
-            <div key={post.id} className="mb-3 break-inside-avoid">
-              {post.video ? (
-                <ReelPost post={post} />
-              ) : post.images.length > 0 ? (
-                <PhotoPost post={post} />
-              ) : (
-                <ExplorePostCard post={post} />
-              )}
-            </div>
-          ))}
-        </div>
+        <PostGrid posts={posts} />
       )}
     </>
+  )
+}
+
+// Masonry — CSS columns; cards stay whole via break-inside-avoid and order
+// flows down each column (same pattern as DiscoverFeed). Same card split as
+// the feed's media filters — videos get the reel card, images the gallery
+// card; shares and text posts keep the compact explore card.
+function PostGrid({ posts }: { posts: PostCardData[] }) {
+  return (
+    <div className="columns-1 gap-3 lg:columns-2">
+      {posts.map((post) => (
+        <div key={post.id} className="mb-3 break-inside-avoid">
+          {post.video ? (
+            <ReelPost post={post} />
+          ) : post.images.length > 0 ? (
+            <PhotoPost post={post} />
+          ) : (
+            <ExplorePostCard post={post} />
+          )}
+        </div>
+      ))}
+    </div>
   )
 }

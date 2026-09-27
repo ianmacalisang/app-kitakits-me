@@ -403,15 +403,12 @@ export async function updateAbout(formData: FormData): Promise<FormState> {
 const SUGGESTED_POOL = 60
 const SUGGESTED_PAGE_SIZE = 20
 
-// Discoverable members the viewer doesn't follow yet, ranked by follower
-// count — powers the Explore people tab when there's no query.
-export async function getSuggestedPeople(page = 1): Promise<Paged<UserCardData>> {
-  const user = await getCurrentUser()
-  if (!user) redirect('/login')
+type PayloadClient = Awaited<ReturnType<typeof getPayloadClient>>
 
-  const payload = await getPayloadClient()
-
-  const myFollows = await payload.find({
+// Ids of everyone the viewer follows — suggestion rankings exclude these
+// and the viewer from their candidate sets.
+async function followedIds(payload: PayloadClient, user: User): Promise<number[]> {
+  const follows = await payload.find({
     collection: 'follows',
     where: { follower: { equals: user.id } },
     limit: 0,
@@ -419,26 +416,20 @@ export async function getSuggestedPeople(page = 1): Promise<Paged<UserCardData>>
     user,
     overrideAccess: false,
   })
-  const exclude = [
-    user.id,
-    ...myFollows.docs.map((follow) =>
-      typeof follow.following === 'object' ? follow.following.id : follow.following,
-    ),
-  ]
+  return follows.docs.map((follow) =>
+    typeof follow.following === 'object' ? follow.following.id : follow.following,
+  )
+}
 
-  const result = await payload.find({
-    collection: 'users',
-    where: {
-      and: [{ discoverable: { not_equals: false } }, { id: { not_in: exclude } }],
-    },
-    sort: '-createdAt',
-    limit: SUGGESTED_POOL,
-    depth: 1,
-    user,
-    overrideAccess: false,
-  })
-
-  const ids = result.docs.map((doc) => doc.id)
+// Total incoming follows per user id — the follower-count ranking weight
+// shared by the suggestion queries.
+async function followerCountsFor(
+  payload: PayloadClient,
+  user: User,
+  ids: number[],
+): Promise<Map<number, number>> {
+  const counts = new Map<number, number>()
+  if (ids.length === 0) return counts
   const incoming = await payload.find({
     collection: 'follows',
     where: { following: { in: ids } },
@@ -447,14 +438,110 @@ export async function getSuggestedPeople(page = 1): Promise<Paged<UserCardData>>
     user,
     overrideAccess: false,
   })
-  const followerCounts = new Map<number, number>()
   for (const follow of incoming.docs) {
     const id = typeof follow.following === 'object' ? follow.following.id : follow.following
-    followerCounts.set(id, (followerCounts.get(id) ?? 0) + 1)
+    counts.set(id, (counts.get(id) ?? 0) + 1)
   }
+  return counts
+}
 
+// Discoverable members the viewer doesn't follow yet, ranked by follower
+// count — powers the Explore people tab when there's no query.
+export async function getSuggestedPeople(page = 1): Promise<Paged<UserCardData>> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+  const following = await followedIds(payload, user)
+
+  const result = await payload.find({
+    collection: 'users',
+    where: {
+      and: [{ discoverable: { not_equals: false } }, { id: { not_in: [user.id, ...following] } }],
+    },
+    sort: '-createdAt',
+    limit: SUGGESTED_POOL,
+    depth: 1,
+    user,
+    overrideAccess: false,
+  })
+
+  const followerCounts = await followerCountsFor(
+    payload,
+    user,
+    result.docs.map((doc) => doc.id),
+  )
   const ranked = [...result.docs].sort(
     (a, b) => (followerCounts.get(b.id) ?? 0) - (followerCounts.get(a.id) ?? 0),
+  )
+  const start = (page - 1) * SUGGESTED_PAGE_SIZE
+  const items = ranked.slice(start, start + SUGGESTED_PAGE_SIZE)
+
+  return {
+    items: items.map((doc: User) =>
+      toUserCardData(doc, user, false, followerCounts.get(doc.id) ?? 0),
+    ),
+    hasMore: ranked.length > start + items.length,
+  }
+}
+
+// Friends-of-friends — discoverable users followed by people the viewer
+// follows, weighted by mutual count then follower count. Falls back to the
+// plain suggestion ranking when the viewer follows nobody or has no
+// second-degree candidates.
+export async function getPeopleYouMayKnow(page = 1): Promise<Paged<UserCardData>> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+  const following = await followedIds(payload, user)
+  if (following.length === 0) return getSuggestedPeople(page)
+
+  // Each second-degree follow row is one mutual path to a candidate.
+  const secondDegree = await payload.find({
+    collection: 'follows',
+    where: {
+      and: [{ follower: { in: following } }, { following: { not_in: [user.id, ...following] } }],
+    },
+    limit: 0,
+    depth: 0,
+    user,
+    overrideAccess: false,
+  })
+
+  const mutualCounts = new Map<number, number>()
+  for (const follow of secondDegree.docs) {
+    const id = typeof follow.following === 'object' ? follow.following.id : follow.following
+    mutualCounts.set(id, (mutualCounts.get(id) ?? 0) + 1)
+  }
+  if (mutualCounts.size === 0) return getSuggestedPeople(page)
+
+  const candidateIds = [...mutualCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, SUGGESTED_POOL)
+    .map(([id]) => id)
+
+  const result = await payload.find({
+    collection: 'users',
+    where: {
+      and: [{ discoverable: { not_equals: false } }, { id: { in: candidateIds } }],
+    },
+    limit: SUGGESTED_POOL,
+    depth: 1,
+    user,
+    overrideAccess: false,
+  })
+
+  const followerCounts = await followerCountsFor(
+    payload,
+    user,
+    result.docs.map((doc) => doc.id),
+  )
+  const ranked = [...result.docs].sort(
+    (a, b) =>
+      (mutualCounts.get(b.id) ?? 0) * 5 +
+      (followerCounts.get(b.id) ?? 0) -
+      ((mutualCounts.get(a.id) ?? 0) * 5 + (followerCounts.get(a.id) ?? 0)),
   )
   const start = (page - 1) * SUGGESTED_PAGE_SIZE
   const items = ranked.slice(start, start + SUGGESTED_PAGE_SIZE)
@@ -472,7 +559,7 @@ export async function searchUsers(query: string, page = 1): Promise<Paged<UserCa
   if (!user) redirect('/login')
 
   const trimmed = query.trim()
-  if (!trimmed) return getSuggestedPeople(page)
+  if (!trimmed) return getPeopleYouMayKnow(page)
 
   const payload = await getPayloadClient()
   const result = await payload.find({
