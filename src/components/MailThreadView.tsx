@@ -182,8 +182,7 @@ export function MailThreadView({
                   <li key={a.id}>
                     <a
                       href={a.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      download={a.filename}
                       className="flex items-center gap-2 rounded-2xl border border-black/5 bg-white/60 px-3 py-2 text-xs font-medium text-neutral-700 transition-colors hover:bg-white"
                     >
                       {a.mimeType?.startsWith('image/') ? (

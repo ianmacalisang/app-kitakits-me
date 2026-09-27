@@ -90,7 +90,13 @@ export default buildConfig({
         // Mail attachments keep Payload access control: files stay on
         // UploadThing but are served through /api/mail-attachments/file/...,
         // which enforces the collection's participant-scoped read access.
-        'mail-attachments': true,
+        // Relative URL so links always hit the same origin the user is on —
+        // an absolute serverURL would send the session cookie to the wrong
+        // host whenever NEXT_PUBLIC_APP_URL doesn't match the browsed host.
+        'mail-attachments': {
+          generateFileURL: ({ filename }) =>
+            `/api/mail-attachments/file/${encodeURIComponent(filename)}`,
+        },
       },
       options: {
         token: process.env.UPLOADTHING_TOKEN,
