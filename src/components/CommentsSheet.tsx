@@ -4,11 +4,19 @@ import { memo, useCallback, useEffect, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 
 import { getComments } from '@/actions/comments'
-import type { CommentData } from '@/lib/serialize'
+import { getPost } from '@/actions/posts'
+import type { CommentData, PostCardData } from '@/lib/serialize'
+import { formatRelativeTime } from '@/lib/time'
 
+import { Avatar } from './Avatar'
+import { CategoryChip } from './CategoryChip'
 import { CommentForm } from './CommentForm'
 import { CommentList } from './CommentList'
+import { ExpandableText } from './ExpandableText'
+import { LockIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
+import { PostImages } from './PostImages'
+import { PostVideo } from './PostVideo'
 import { Spinner } from './Spinner'
 
 const CLOSE_MS = 300
@@ -20,12 +28,16 @@ export const CommentsSheet = memo(function CommentsSheet({
   onCloseAction,
   authenticated = true,
   commentsDisabled = false,
+  showPost = false,
 }: {
   postId: number
   open: boolean
   onCloseAction: () => void
   authenticated?: boolean
   commentsDisabled?: boolean
+  // Show the post itself at the top of the thread — for sheets opened
+  // somewhere the post isn't already on the page (e.g. a notification).
+  showPost?: boolean
 }) {
   const router = useRouter()
   const [closing, setClosing] = useState(false)
@@ -36,6 +48,8 @@ export const CommentsSheet = memo(function CommentsSheet({
   // Server value from getComments wins over the prop — the prop is just the
   // initial hint from PostCardData (sheets opened elsewhere have no hint).
   const [disabled, setDisabled] = useState(commentsDisabled)
+  const [post, setPost] = useState<PostCardData | null>(null)
+  const [postMissing, setPostMissing] = useState(false)
 
   // Reset loaded comments when the sheet moves to a different post.
   const [prevPostId, setPrevPostId] = useState(postId)
@@ -45,6 +59,8 @@ export const CommentsSheet = memo(function CommentsSheet({
     setCommentsPage(1)
     setCommentsMore(false)
     setDisabled(commentsDisabled)
+    setPost(null)
+    setPostMissing(false)
   }
 
   const close = useCallback(() => {
@@ -100,6 +116,20 @@ export const CommentsSheet = memo(function CommentsSheet({
     }
   }, [open, comments, postId])
 
+  // Lazy-load the post header on first open.
+  useEffect(() => {
+    if (!showPost || !open || post !== null || postMissing) return
+    let cancelled = false
+    void getPost(postId).then((result) => {
+      if (cancelled) return
+      if (result) setPost(result)
+      else setPostMissing(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [showPost, open, post, postMissing, postId])
+
   // Lock scroll and support Escape while the sheet is open.
   useEffect(() => {
     if (!open) return
@@ -147,8 +177,25 @@ export const CommentsSheet = memo(function CommentsSheet({
           <span className="w-14" />
         </div>
 
-        {/* Scrollable comment list */}
+        {/* Scrollable post context + comment list */}
         <div className="min-h-0 flex-1 overflow-y-auto px-5">
+          {showPost && (
+            <div className="border-b border-black/5">
+              {post === null ? (
+                postMissing ? (
+                  <p className="py-3 text-sm italic text-neutral-400">
+                    This post is no longer available.
+                  </p>
+                ) : (
+                  <div className="flex justify-center py-4">
+                    <Spinner />
+                  </div>
+                )
+              ) : (
+                <SheetPost post={post} />
+              )}
+            </div>
+          )}
           {comments === null ? (
             <div className="flex h-full min-h-40 items-center justify-center">
               <Spinner />
@@ -179,5 +226,65 @@ export const CommentsSheet = memo(function CommentsSheet({
       </div>
     </div>,
     document.body,
+  )
+})
+
+// Read-only post context above the thread — mirrors PostCard's header and
+// body (including the embedded card for shares) without the action row.
+const SheetPost = memo(function SheetPost({ post }: { post: PostCardData }) {
+  return (
+    <div className="pb-4 pt-3">
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          href={`/profile/${post.authorUsername}`}
+          className="flex min-w-0 items-center gap-2.5"
+        >
+          <Avatar src={post.authorAvatarUrl} name={post.authorName} size="sm" />
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold">{post.authorName}</span>
+            <span className="block truncate text-xs text-neutral-500">
+              @{post.authorUsername} · {formatRelativeTime(post.createdAt)}
+              {post.visibility === 'followers' && (
+                <LockIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
+              )}
+            </span>
+          </span>
+        </Link>
+        {post.category && <CategoryChip category={post.category} className="shrink-0" />}
+      </div>
+
+      {post.sharedPost ? (
+        // Share card — the original post embedded read-only.
+        <div className="mt-3 rounded-2xl border border-accent-900/10 bg-accent-50/50 p-3">
+          <Link
+            href={`/profile/${post.sharedPost.authorUsername}`}
+            className="flex min-w-0 items-center gap-2"
+          >
+            <Avatar
+              src={post.sharedPost.authorAvatarUrl}
+              name={post.sharedPost.authorName}
+              size="xs"
+            />
+            <p className="truncate text-xs text-neutral-500">
+              <span className="text-sm font-semibold text-neutral-900">
+                {post.sharedPost.authorName}
+              </span>{' '}
+              @{post.sharedPost.authorUsername} · {formatRelativeTime(post.sharedPost.createdAt)}
+            </p>
+          </Link>
+          {post.sharedPost.content && (
+            <ExpandableText content={post.sharedPost.content} className="mt-2 text-sm" />
+          )}
+          {post.sharedPost.imageUrls.length > 0 && <PostImages urls={post.sharedPost.imageUrls} />}
+          {post.sharedPost.video && <PostVideo video={post.sharedPost.video} />}
+        </div>
+      ) : (
+        <>
+          {post.content && <ExpandableText content={post.content} className="mt-2.5 text-sm" />}
+          <PostImages urls={post.images.map((i) => i.url)} />
+          {post.video && <PostVideo video={post.video} />}
+        </>
+      )}
+    </div>
   )
 })

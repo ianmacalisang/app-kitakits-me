@@ -251,6 +251,7 @@ export function NotificationsView({
         postId={openPostId ?? -1}
         open={openPostId !== null}
         onCloseAction={closePost}
+        showPost
       />
       <PostSheet
         postId={viewPostId ?? -1}
