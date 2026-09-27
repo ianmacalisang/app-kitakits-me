@@ -15,7 +15,15 @@ import { Avatar } from './Avatar'
 import { CommentsSheet } from './CommentsSheet'
 import { CountBadge } from './CountBadge'
 import { EmptyState } from './EmptyState'
-import { BellIcon, CheckIcon, CommentIcon, HeartIcon, QuoteIcon, UserIcon } from './icons'
+import {
+  BellIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  CommentIcon,
+  HeartIcon,
+  QuoteIcon,
+  UserIcon,
+} from './icons'
 import { PostSheet } from './PostSheet'
 import { LoadSentinel } from './LoadSentinel'
 
@@ -26,11 +34,61 @@ const typeIcon = {
   testimonial: <QuoteIcon className="h-2.5 w-2.5" />,
 }
 
+// Larger variant for the timeline icons inside expanded stacks.
+const typeIconLg = {
+  like: <HeartIcon className="h-3 w-3" filled />,
+  comment: <CommentIcon className="h-3 w-3" />,
+  follow: <UserIcon className="h-3 w-3" />,
+  testimonial: <QuoteIcon className="h-3 w-3" />,
+}
+
 const notificationText = (n: NotificationData) => {
   if (n.type === 'like') return 'liked your post'
   if (n.type === 'comment') return 'commented on your post'
   if (n.type === 'follow') return 'started following you'
   return n.testimonialEvent === 'approved' ? 'approved your testimonial' : 'wrote you a testimonial'
+}
+
+// Summary line for a same-user stack, e.g. "liked 2 of your posts and
+// commented on your post". Phrases follow recency (items arrive newest-first)
+// and post actions count distinct posts.
+const stackText = (items: NotificationData[]) => {
+  const distinctPosts = (type: 'like' | 'comment') =>
+    new Set(items.filter((n) => n.type === type).map((n) => n.postId ?? n.id)).size
+
+  const parts: { idx: number; text: string }[] = []
+  const likes = distinctPosts('like')
+  if (likes) {
+    parts.push({
+      idx: items.findIndex((n) => n.type === 'like'),
+      text: likes === 1 ? 'liked your post' : `liked ${likes} of your posts`,
+    })
+  }
+  const comments = distinctPosts('comment')
+  if (comments) {
+    parts.push({
+      idx: items.findIndex((n) => n.type === 'comment'),
+      text: comments === 1 ? 'commented on your post' : `commented on ${comments} of your posts`,
+    })
+  }
+  if (items.some((n) => n.type === 'follow')) {
+    parts.push({ idx: items.findIndex((n) => n.type === 'follow'), text: 'started following you' })
+  }
+  const testimonials = items.filter((n) => n.type === 'testimonial')
+  if (testimonials.length > 0) {
+    parts.push({
+      idx: items.findIndex((n) => n.type === 'testimonial'),
+      text:
+        testimonials.length === 1
+          ? notificationText(testimonials[0])
+          : `sent ${testimonials.length} testimonial updates`,
+    })
+  }
+
+  parts.sort((a, b) => a.idx - b.idx)
+  const phrases = parts.map((p) => p.text)
+  if (phrases.length <= 1) return phrases[0] ?? notificationText(items[0])
+  return `${phrases.slice(0, -1).join(', ')} and ${phrases[phrases.length - 1]}`
 }
 
 const typeColor = {
@@ -42,29 +100,33 @@ const typeColor = {
 
 const sectionLabel = 'mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400'
 
-type NotificationEntry =
-  | { kind: 'single'; notification: NotificationData }
-  | { kind: 'stack'; postId: number; items: NotificationData[] }
+type NotificationEntry = { actorUsername: string; items: NotificationData[] }
 
-// Notifications on the same post stack into one entry (Facebook-style): one
-// card holds every actor line with a single post snippet at the bottom. The
-// stack sits where its newest notification falls in the list. Caller passes an
-// already sectioned list, so a stack never mixes read and unread items.
+// A notification joins the actor's open stack only when it lands within this
+// window of the stack's newest item — bursts of activity stack together while
+// older visits split into their own entry.
+const STACK_WINDOW_MS = 60 * 60 * 1000 // 1 hour
+
+// Notifications from the same user stack into one expandable entry
+// (Facebook-style): the collapsed row summarizes every action, and expanding
+// reveals one line per notification with its own click target. The stack sits
+// where its newest notification falls in the list. Caller passes an already
+// sectioned list, so a stack never mixes read and unread items.
 const groupNotifications = (list: NotificationData[]): NotificationEntry[] => {
   const entries: NotificationEntry[] = []
-  const stacks = new Map<number, { kind: 'stack'; postId: number; items: NotificationData[] }>()
+  const open = new Map<string, NotificationEntry>()
   for (const notification of list) {
-    if (notification.type !== 'follow' && notification.postId !== undefined) {
-      const stack = stacks.get(notification.postId)
-      if (stack) {
-        stack.items.push(notification)
-      } else {
-        const entry = { kind: 'stack' as const, postId: notification.postId, items: [notification] }
-        stacks.set(notification.postId, entry)
-        entries.push(entry)
-      }
+    const stack = open.get(notification.actorUsername)
+    const newest = stack?.items[0]
+    const withinWindow =
+      newest !== undefined &&
+      Date.parse(newest.createdAt) - Date.parse(notification.createdAt) <= STACK_WINDOW_MS
+    if (stack && withinWindow) {
+      stack.items.push(notification)
     } else {
-      entries.push({ kind: 'single', notification })
+      const entry = { actorUsername: notification.actorUsername, items: [notification] }
+      open.set(notification.actorUsername, entry)
+      entries.push(entry)
     }
   }
   return entries
@@ -89,6 +151,8 @@ export function NotificationsView({
   const [prevInitial, setPrevInitial] = useState(notifications)
   const [openPostId, setOpenPostId] = useState<number | null>(null)
   const [viewPostId, setViewPostId] = useState<number | null>(null)
+  // Accordion: only one stack expanded at a time, keyed by its newest item id.
+  const [expandedStack, setExpandedStack] = useState<number | null>(null)
 
   // Reconcile when the server re-renders the list (e.g. router.refresh()): keep
   // pages loaded via infinite scroll if the refreshed first page still matches.
@@ -133,8 +197,21 @@ export function NotificationsView({
     })
   }
 
-  // Tapping any line of a stack marks every notification in it read — the
-  // stack is one logical notification, like Facebook's grouped alerts.
+  // Expanding a stack counts as opening it — mark every item read.
+  const markStackRead = useCallback(
+    (stack: NotificationData[]) => {
+      startTransition(async () => {
+        const unreadIds = stack.filter((n) => !n.read).map((n) => n.id)
+        await Promise.all(unreadIds.map((id) => markNotificationRead(id)))
+        router.refresh()
+      })
+    },
+    [router],
+  )
+
+  // Tapping a line in a stack opens that notification's target. Passing the
+  // whole stack marks every notification in it read — the stack is one
+  // logical notification, like Facebook's grouped alerts.
   const open = useCallback(
     (notification: NotificationData, stack?: NotificationData[]) => {
       startTransition(async () => {
@@ -158,17 +235,22 @@ export function NotificationsView({
   const closeViewPost = useCallback(() => setViewPostId(null), [])
 
   const renderEntry = (entry: NotificationEntry) =>
-    entry.kind === 'stack' && entry.items.length > 1 ? (
+    entry.items.length > 1 ? (
       <NotificationStack
-        key={`post-${entry.postId}`}
+        key={`stack-${entry.items[0].id}`}
         items={entry.items}
         pending={pending}
+        expanded={expandedStack === entry.items[0].id}
+        onToggleAction={() =>
+          setExpandedStack((cur) => (cur === entry.items[0].id ? null : entry.items[0].id))
+        }
         onOpenAction={open}
+        onReadAction={markStackRead}
       />
     ) : (
       <NotificationItem
-        key={entry.kind === 'stack' ? entry.items[0].id : entry.notification.id}
-        notification={entry.kind === 'stack' ? entry.items[0] : entry.notification}
+        key={entry.items[0].id}
+        notification={entry.items[0]}
         pending={pending}
         onOpenAction={open}
       />
@@ -321,70 +403,130 @@ const NotificationItem = memo(function NotificationItem({
   )
 })
 
-// All notifications on the same post in one card — each actor gets a line
-// (avatar with type badge, action, comment quote, timestamp) and the post
-// snippet shows once at the bottom. Every line opens the same sheet as a
-// standalone row would.
+// All notifications from the same user collapse into one expandable row — the
+// header summarizes every action ("liked 2 of your posts and commented on
+// your post") with the newest item's badge and snippet. Expanding marks the
+// stack read and reveals one line per notification, each opening its own
+// post/profile — so different posts stay reachable, like Facebook's grouped
+// alerts.
 const NotificationStack = memo(function NotificationStack({
   items,
   pending,
+  expanded,
+  onToggleAction,
   onOpenAction,
+  onReadAction,
 }: {
   items: NotificationData[]
   pending: boolean
+  expanded: boolean
+  onToggleAction: () => void
   onOpenAction: (notification: NotificationData, stack?: NotificationData[]) => void
+  onReadAction: (stack: NotificationData[]) => void
 }) {
+  const newest = items[0]
   const hasUnread = items.some((n) => !n.read)
-  const postSnippet = items.find((n) => n.postSnippet)?.postSnippet
+  const quote =
+    items.find((n) => n.commentSnippet)?.commentSnippet ??
+    items.find((n) => n.testimonialSnippet)?.testimonialSnippet
+  const context = quote ?? items.find((n) => n.postSnippet)?.postSnippet
+
+  const toggle = () => {
+    if (!expanded && hasUnread) onReadAction(items)
+    onToggleAction()
+  }
+
   return (
     <li
-      className={`relative rounded-2xl border transition-all ${
-        hasUnread ? 'glass' : 'border-transparent'
-      }`}
+      className={`rounded-2xl border transition-all ${hasUnread ? 'glass' : 'border-transparent'}`}
     >
-      {hasUnread && <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-accent-500" />}
-      <div className="flex flex-col py-1">
-        {items.map((notification) => (
-          <button
-            key={notification.id}
-            onClick={() => onOpenAction(notification, items)}
-            disabled={pending}
-            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 pr-6 text-left transition-colors hover:bg-white/60 disabled:opacity-60"
+      <button
+        onClick={toggle}
+        disabled={pending}
+        aria-expanded={expanded}
+        className="flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-colors hover:bg-white/60 disabled:opacity-60"
+      >
+        {/* Avatar with a corner type badge */}
+        <span className="relative shrink-0">
+          <Avatar src={newest.actorAvatarUrl} name={newest.actorName} />
+          <span
+            className={`absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white/80 ${typeColor[newest.type]}`}
           >
-            {/* Avatar with a corner type badge */}
-            <span className="relative shrink-0">
-              <Avatar src={notification.actorAvatarUrl} name={notification.actorName} size="sm" />
-              <span
-                className={`absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full ring-2 ring-white/80 ${typeColor[notification.type]}`}
+            {typeIcon[newest.type]}
+          </span>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm">
+            <span className="font-semibold">{newest.actorName}</span> {stackText(items)}
+          </span>
+          {context && (
+            <span
+              className={`block truncate text-xs ${
+                quote ? 'italic text-neutral-600' : 'text-neutral-500'
+              }`}
+            >
+              {quote ? `“${quote}”` : context}
+            </span>
+          )}
+          <span className="block text-xs text-neutral-500">
+            @{newest.actorUsername} · {formatRelativeTime(newest.createdAt)}
+          </span>
+        </span>
+        {hasUnread && <span className="h-2 w-2 shrink-0 rounded-full bg-accent-500" />}
+        <ChevronDownIcon
+          className={`h-4 w-4 shrink-0 text-neutral-400 transition-transform ${
+            expanded ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+      {expanded && (
+        <div className="mx-3 mb-2.5 mt-0.5 flex flex-col border-t border-neutral-200/60 dark:border-white/10">
+          {items.map((notification) => {
+            const isQuote = Boolean(notification.commentSnippet ?? notification.testimonialSnippet)
+            const lineSnippet =
+              notification.commentSnippet ??
+              notification.testimonialSnippet ??
+              notification.postSnippet
+            const action = notificationText(notification)
+            return (
+              <button
+                key={notification.id}
+                onClick={() => onOpenAction(notification, items)}
+                disabled={pending}
+                className="group flex w-full items-center gap-2 rounded-lg px-1.5 py-2.5 text-left transition-colors hover:bg-white/60 active:bg-white/80 disabled:opacity-60"
               >
-                {typeIcon[notification.type]}
-              </span>
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm">
-                <span className="font-semibold">{notification.actorName}</span>{' '}
-                {notificationText(notification)}
-              </span>
-              {notification.commentSnippet && (
-                <span className="block truncate text-xs italic text-neutral-600">
-                  “{notification.commentSnippet}”
+                {/* Timeline icon — the rail runs the full row height so
+                    consecutive rows connect into one line under the avatar. */}
+                <span className="relative flex w-7 shrink-0 justify-center self-stretch">
+                  <span className="absolute inset-y-0 w-px bg-neutral-200/80 dark:bg-white/10" />
+                  <span
+                    className={`relative z-10 my-auto flex h-6 w-6 items-center justify-center rounded-full ring-2 ring-white/80 ${typeColor[notification.type]}`}
+                  >
+                    {typeIconLg[notification.type]}
+                  </span>
                 </span>
-              )}
-              {notification.testimonialSnippet && (
-                <span className="block truncate text-xs italic text-neutral-600">
-                  “{notification.testimonialSnippet}”
+                <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
+                  <span className="shrink-0 text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                    {action.charAt(0).toUpperCase() + action.slice(1)}
+                  </span>
+                  {lineSnippet && (
+                    <span
+                      className={`min-w-0 truncate text-[11px] ${
+                        isQuote
+                          ? 'italic text-neutral-600 dark:text-neutral-300'
+                          : 'text-neutral-500 dark:text-neutral-400'
+                      }`}
+                    >
+                      {isQuote ? `“${lineSnippet}”` : lineSnippet}
+                    </span>
+                  )}
                 </span>
-              )}
-              <span className="block text-xs text-neutral-500">
-                @{notification.actorUsername} · {formatRelativeTime(notification.createdAt)}
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
-      {postSnippet && (
-        <div className="mx-3 mb-3 truncate rounded-lg bg-black/5 px-2.5 py-1.5 text-xs text-neutral-500">
-          {postSnippet}
+                <span className="shrink-0 text-[10px] tabular-nums text-neutral-400">
+                  {formatRelativeTime(notification.createdAt)}
+                </span>
+              </button>
+            )
+          })}
         </div>
       )}
     </li>
