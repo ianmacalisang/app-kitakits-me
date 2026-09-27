@@ -275,23 +275,26 @@ export function NotificationsView({
         </div>
       )}
 
-      {/* All / Unread filter */}
-      <div className={`glass ${compact ? 'mb-3' : 'mb-4'} flex rounded-full p-1`}>
-        {(['all', 'unread'] as const).map((value) => (
-          <button
-            key={value}
-            onClick={() => setFilter(value)}
-            className={`flex flex-1 items-center justify-center rounded-full py-1.5 text-sm font-medium capitalize transition-all ${
-              filter === value
-                ? 'bg-white/90 text-neutral-900 shadow-sm'
-                : 'text-neutral-500 hover:text-neutral-700'
-            }`}
-          >
-            {value}
-            {value === 'unread' && <CountBadge count={unread.length} />}
-          </button>
-        ))}
-      </div>
+      {/* All / Unread filter — full view only; the dropdown shows everything
+          since opening it is what surfaces unread items. */}
+      {!compact && (
+        <div className="glass mb-4 flex rounded-full p-1">
+          {(['all', 'unread'] as const).map((value) => (
+            <button
+              key={value}
+              onClick={() => setFilter(value)}
+              className={`flex flex-1 items-center justify-center rounded-full py-1.5 text-sm font-medium capitalize transition-all ${
+                filter === value
+                  ? 'bg-white/90 text-neutral-900 shadow-sm'
+                  : 'text-neutral-500 hover:text-neutral-700'
+              }`}
+            >
+              {value}
+              {value === 'unread' && <CountBadge count={unread.length} />}
+            </button>
+          ))}
+        </div>
+      )}
 
       {items.length === 0 ? (
         <EmptyState
@@ -300,7 +303,7 @@ export function NotificationsView({
           title="No notifications yet"
           message="When someone likes, comments, or follows you, it will show up here."
         />
-      ) : filter === 'unread' ? (
+      ) : !compact && filter === 'unread' ? (
         unread.length === 0 ? (
           <EmptyState
             icon={<CheckIcon />}

@@ -177,7 +177,10 @@ function HeaderSearch() {
         <div
           id="header-search-results"
           role="listbox"
-          className="glass-pop motion-safe:animate-menu-pop absolute inset-x-0 top-full z-20 mt-2 origin-top rounded-2xl p-1.5"
+          // Below sm the input is too narrow — pin the dropdown to the
+          // viewport edges (same inset as the floating header pill). From sm
+          // up it hugs the input instead.
+          className="glass-pop motion-safe:animate-menu-pop fixed inset-x-4 top-14 z-20 mt-2 origin-top rounded-2xl p-1.5 sm:absolute sm:inset-x-0 sm:top-full sm:mt-[18px]"
         >
           {pending && results.length === 0 ? (
             <div className="flex items-center justify-center py-4">
