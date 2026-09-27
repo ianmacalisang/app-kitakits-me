@@ -175,7 +175,7 @@ export function toPostCardData(
     savedByMe,
     saveCount,
     pinned: Boolean(post.pinned),
-    category: isPostCategory(post.category) ? post.category : 'random',
+    category: isPostCategory(post.category) ? post.category : 'kwento',
     canEdit: viewer !== null && author.id === viewer.id,
     viewerAuthenticated: viewer !== null,
     // Reposts target the embedded original when present; your own posts and

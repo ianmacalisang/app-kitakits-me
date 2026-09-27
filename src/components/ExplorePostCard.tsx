@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { memo, useCallback, useState } from 'react'
 
+import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
 import { toCdnUrl } from '@/lib/cdn'
 import type { PostCardData, PostVideoData } from '@/lib/serialize'
 import { formatRelativeTime } from '@/lib/time'
@@ -42,9 +43,14 @@ export const ExplorePostCard = memo(function ExplorePostCard({
   const imageUrls = post.sharedPost ? post.sharedPost.imageUrls : post.images.map((i) => i.url)
   const video = post.sharedPost ? post.sharedPost.video : post.video
   const snippet = post.sharedPost ? post.sharedPost.content : post.content
+  const categoryEntry = postCategory(post.category)
 
   return (
-    <article className="glass group flex flex-col rounded-3xl p-3.5 transition-transform duration-300 hover:-translate-y-0.5">
+    <article
+      className={`glass group flex flex-col rounded-3xl p-3.5 transition-transform duration-300 hover:-translate-y-0.5 ${
+        categoryEntry ? CATEGORY_TINTS[categoryEntry.tint].card : ''
+      }`}
+    >
       {/* Author header — same shape as PostCard, plus the category badge */}
       <div className="flex items-center gap-2.5">
         <Link

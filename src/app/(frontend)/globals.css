@@ -625,6 +625,9 @@ html.dark::before {
 .dark .bg-white\/90 {
   background-color: rgb(255 255 255 / 0.14);
 }
+.dark .bg-white\/95 {
+  background-color: rgb(255 255 255 / 0.15);
+}
 .dark .bg-black\/5 {
   background-color: rgb(255 255 255 / 0.08);
 }

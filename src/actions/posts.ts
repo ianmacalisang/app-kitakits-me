@@ -81,7 +81,7 @@ export async function createPost(_prev: FormState, formData: FormData): Promise<
   const content = String(formData.get('content') ?? '').trim()
   const visibility = formData.get('visibility') === 'followers' ? 'followers' : 'public'
   const rawCategory = formData.get('category')
-  const category = isPostCategory(rawCategory) ? rawCategory : 'random'
+  const category = isPostCategory(rawCategory) ? rawCategory : 'kwento'
   const imageIds = await uploadImages(payload, user, formData.getAll('image'))
   const videoId = await ownedVideoId(payload, user, formData.get('video'))
 
@@ -114,7 +114,7 @@ export async function updatePost(postId: number, formData: FormData): Promise<Fo
   const content = String(formData.get('content') ?? '').trim()
   const visibility = formData.get('visibility') === 'followers' ? 'followers' : 'public'
   const rawCategory = formData.get('category')
-  const category = isPostCategory(rawCategory) ? rawCategory : null
+  const category = isPostCategory(rawCategory) ? rawCategory : 'kwento'
   const keepIds = formData
     .getAll('keepImage')
     .map((v) => Number(v))
@@ -210,7 +210,7 @@ export async function sharePost(
   } else {
     await payload.create({
       collection: 'posts',
-      data: { author: user.id, sharedPost: targetId, visibility: 'public' },
+      data: { author: user.id, category: 'kwento', sharedPost: targetId, visibility: 'public' },
       user,
       overrideAccess: false,
     })

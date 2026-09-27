@@ -7,6 +7,8 @@ import { toCdnUrl } from '@/lib/cdn'
 import type { PostCardData } from '@/lib/serialize'
 import { formatRelativeTime } from '@/lib/time'
 
+import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
+
 import { Avatar } from './Avatar'
 import { CategoryChip } from './CategoryChip'
 import { BlurImage } from './BlurImage'
@@ -38,9 +40,14 @@ export const PhotoPost = memo(function PhotoPost({ post }: { post: PostCardData 
   const images = post.images
   const urls = images.map((i) => i.url)
   const many = images.length > 1
+  const categoryEntry = postCategory(post.category)
 
   return (
-    <article className="glass overflow-hidden rounded-3xl transition-transform duration-300 hover:-translate-y-0.5">
+    <article
+      className={`glass overflow-hidden rounded-3xl transition-transform duration-300 hover:-translate-y-0.5 ${
+        categoryEntry ? CATEGORY_TINTS[categoryEntry.tint].card : ''
+      }`}
+    >
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3">
         <Link href={`/profile/${post.authorUsername}`} className="flex min-w-0 items-center gap-3">

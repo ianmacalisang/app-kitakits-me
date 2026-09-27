@@ -38,12 +38,7 @@ export function CategoryPicker({
 
   return (
     <div>
-      <div className="flex items-baseline justify-between">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">Category</p>
-        <p className="text-[11px] text-neutral-400">
-          {value ? 'Tap again to remove' : 'Defaults to Random'}
-        </p>
-      </div>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">Category</p>
       <div className="relative mt-1.5">
         <div
           ref={railRef}
@@ -59,7 +54,7 @@ export function CategoryPicker({
                 key={c.value}
                 type="button"
                 aria-pressed={active}
-                onClick={() => onChange(active ? null : c.value)}
+                onClick={() => onChange(c.value)}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
                   active ? tint.chipActive : tint.chip
                 }`}

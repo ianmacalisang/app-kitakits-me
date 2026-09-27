@@ -6,6 +6,7 @@ import { memo, useCallback, useEffect, useMemo, useState, useTransition } from '
 import { createPortal } from 'react-dom'
 
 import { deletePost, togglePin } from '@/actions/posts'
+import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
 import type { PostCardData } from '@/lib/serialize'
 import { formatRelativeTime } from '@/lib/time'
 
@@ -126,8 +127,14 @@ export const PostCard = memo(function PostCard({ post }: { post: PostCardData })
     })
   }
 
+  const categoryEntry = postCategory(post.category)
+
   return (
-    <article className="glass rounded-3xl p-4 transition-transform duration-300 hover:-translate-y-0.5">
+    <article
+      className={`glass rounded-3xl p-4 transition-transform duration-300 hover:-translate-y-0.5 ${
+        categoryEntry ? CATEGORY_TINTS[categoryEntry.tint].card : ''
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
         <Link href={`/profile/${post.authorUsername}`} className="flex min-w-0 items-center gap-3">
           <Avatar src={post.authorAvatarUrl} name={post.authorName} />

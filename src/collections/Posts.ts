@@ -68,7 +68,8 @@ export const Posts: CollectionConfig = {
       name: 'category',
       type: 'select',
       options: POST_CATEGORIES.map((c) => ({ label: c.label, value: c.value })),
-      defaultValue: 'random',
+      defaultValue: 'kwento',
+      required: true,
       index: true,
     },
     {

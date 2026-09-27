@@ -32,13 +32,13 @@ export function mediaFilterClauses(mediaFilter?: MediaFilter): Where[] {
   }
 }
 
-// Where-clauses restricting a feed to one post category. 'random' also
+// Where-clauses restricting a feed to one post category. 'kwento' also
 // matches posts with no category set — the serializer presents uncategorized
-// posts as Random, so the filter must treat them the same way.
+// posts as Kwento (the default), so the filter must treat them the same way.
 export function categoryFilterClauses(category?: PostCategory | 'all'): Where[] {
   if (!category || !isPostCategory(category)) return []
-  if (category === 'random') {
-    return [{ or: [{ category: { equals: 'random' } }, { category: { exists: false } }] }]
+  if (category === 'kwento') {
+    return [{ or: [{ category: { equals: 'kwento' } }, { category: { exists: false } }] }]
   }
   return [{ category: { equals: category } }]
 }

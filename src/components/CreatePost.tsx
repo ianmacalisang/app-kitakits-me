@@ -7,7 +7,7 @@ import { Upload } from 'tus-js-client'
 
 import { createPost } from '@/actions/posts'
 import { createVideoUpload, discardVideo, markVideoUploaded } from '@/actions/videos'
-import { type PostCategory } from '@/lib/categories'
+import { CATEGORY_TINTS, type PostCategory, postCategory } from '@/lib/categories'
 import { toast } from '@/lib/events'
 import { compressImage } from '@/lib/image'
 
@@ -49,7 +49,7 @@ export const CreatePost = memo(function CreatePost({
   const [images, setImages] = useState<{ file: File; url: string }[]>([])
   const [video, setVideo] = useState<PickedVideo | null>(null)
   const [visibility, setVisibility] = useState<'public' | 'followers'>('public')
-  const [category, setCategory] = useState<PostCategory | null>('random')
+  const [category, setCategory] = useState<PostCategory | null>('kwento')
   const [audienceOpen, setAudienceOpen] = useState(false)
   const [pending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
@@ -161,6 +161,8 @@ export const CreatePost = memo(function CreatePost({
     })
   }
 
+  const categoryEntry = postCategory(category)
+
   const close = useCallback(() => {
     if (closing) return
     setClosing(true)
@@ -218,7 +220,7 @@ export const CreatePost = memo(function CreatePost({
         setContent('')
         setError(null)
         setVisibility('public')
-        setCategory('random')
+        setCategory('kwento')
         toast('Posted!')
         router.refresh()
         close()
@@ -248,7 +250,6 @@ export const CreatePost = memo(function CreatePost({
               className={`absolute inset-0 bg-accent-950/40 backdrop-blur-sm ${
                 closing ? 'motion-safe:animate-fade-out' : 'motion-safe:animate-fade-in'
               }`}
-              onClick={close}
             />
             <div
               className={`glass relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-y-auto rounded-t-[28px] px-5 pb-5 pt-2 sm:rounded-[28px] sm:pt-4 ${
@@ -328,6 +329,10 @@ export const CreatePost = memo(function CreatePost({
                       )}
                     </div>
 
+                    <div className="mt-2">
+                      <CategoryPicker value={category} onChange={setCategory} />
+                    </div>
+
                     <textarea
                       name="content"
                       value={content}
@@ -335,13 +340,15 @@ export const CreatePost = memo(function CreatePost({
                       maxLength={MAX_CHARS}
                       rows={3}
                       autoFocus
-                      placeholder={`Share a kwento, ${name.split(' ')[0]}…`}
-                      className="field-sizing-content mt-2 min-h-[96px] w-full resize-none bg-transparent text-[15px] leading-relaxed outline-none placeholder:text-neutral-400"
+                      placeholder={(
+                        categoryEntry?.prompt ?? "What's on your mind, {name}…"
+                      ).replace('{name}', name.split(' ')[0])}
+                      className={`field-sizing-content mt-1.5 min-h-[96px] w-full resize-none rounded-2xl border bg-white/95 px-3 py-2.5 text-[15px] leading-relaxed outline-none transition-colors placeholder:text-neutral-400 ${
+                        categoryEntry
+                          ? CATEGORY_TINTS[categoryEntry.tint].card
+                          : 'border-neutral-200/60'
+                      }`}
                     />
-
-                    <div className="mt-2">
-                      <CategoryPicker value={category} onChange={setCategory} />
-                    </div>
                   </div>
                 </div>
 
