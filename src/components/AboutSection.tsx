@@ -495,7 +495,7 @@ const AboutBlock = ({
                   aria-hidden
                   className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-accent-500/80 via-accent-400/50 to-transparent transition-transform duration-300 group-hover:scale-x-110"
                 />
-                <dd className="order-1 bg-gradient-to-br from-accent-600 to-accent-500 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-4xl">
+                <dd className="order-1 bg-gradient-to-br from-accent-600 to-accent-500 bg-clip-text text-3xl font-bold tracking-tight text-transparent dark:from-accent-300 dark:to-accent-400 sm:text-4xl">
                   <StatValue value={item.value} />
                 </dd>
                 <dt className="order-2 text-[11px] font-semibold uppercase leading-snug tracking-widest text-neutral-500">
