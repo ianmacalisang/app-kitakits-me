@@ -27,14 +27,7 @@ const fmtDuration = (s: number) => {
 // by post type: videos get a thumbnail + play affordance, images get the
 // count-aware grid from PostImages, text posts stand on the snippet alone.
 // Tapping the card opens the full post in a PostSheet.
-export const ExplorePostCard = memo(function ExplorePostCard({
-  post,
-  wide = false,
-}: {
-  post: PostCardData
-  // Full-width row in the explore grid — media tiles switch to a cinematic aspect.
-  wide?: boolean
-}) {
+export const ExplorePostCard = memo(function ExplorePostCard({ post }: { post: PostCardData }) {
   const [postOpen, setPostOpen] = useState(false)
   const closePost = useCallback(() => setPostOpen(false), [])
   const openPost = useCallback(() => setPostOpen(true), [])
@@ -88,9 +81,9 @@ export const ExplorePostCard = memo(function ExplorePostCard({
           className="relative mt-2.5 block w-full overflow-hidden rounded-2xl border border-black/5 text-left"
         >
           {video && imageUrls.length === 0 ? (
-            <VideoTile video={video} wide={wide} />
+            <VideoTile video={video} />
           ) : (
-            <ImageGrid urls={imageUrls} wide={wide} />
+            <ImageGrid urls={imageUrls} />
           )}
 
           {post.sharedPost && (
@@ -149,11 +142,11 @@ export const ExplorePostCard = memo(function ExplorePostCard({
 
 // Video post — thumbnail with a centered play affordance, duration and play
 // count badges. Still a preview: playback happens inside the PostSheet.
-function VideoTile({ video, wide }: { video: PostVideoData; wide: boolean }) {
+function VideoTile({ video }: { video: PostVideoData }) {
   const ready = video.status === 'ready'
 
   return (
-    <div className={`relative w-full bg-neutral-900 ${wide ? 'aspect-video' : 'aspect-[4/3]'}`}>
+    <div className="relative aspect-[4/3] w-full bg-neutral-900">
       {ready && video.thumbnailUrl ? (
         <BlurImage
           src={video.thumbnailUrl}
@@ -190,10 +183,10 @@ function VideoTile({ video, wide }: { video: PostVideoData; wide: boolean }) {
 // Image post — count-aware grid matching PostImages:
 //   1 → single cover · 2 → side-by-side · 3 → large left + two stacked ·
 //   4+ → 2×2 with a "+N" overlay on the last tile
-function ImageGrid({ urls, wide }: { urls: string[]; wide: boolean }) {
+function ImageGrid({ urls }: { urls: string[] }) {
   const shown = urls.slice(0, 4)
   const extra = urls.length - shown.length
-  const aspect = wide ? 'aspect-video' : 'aspect-[4/3]'
+  const aspect = 'aspect-[4/3]'
 
   if (shown.length === 1) {
     return (

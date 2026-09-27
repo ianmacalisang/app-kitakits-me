@@ -9,6 +9,8 @@ import type { PostCardData, UserCardData } from '@/lib/serialize'
 
 import { EmptyState } from './EmptyState'
 import { ExplorePostCard } from './ExplorePostCard'
+import { PhotoPost } from './PhotoPost'
+import { ReelPost } from './ReelPost'
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -241,26 +243,6 @@ function PeopleResults({ users, query }: { users: UserCardData[]; query: string 
   )
 }
 
-// Row spans for the two-column grid: video posts, 3+ image mosaics, and
-// text-only posts take a full row; single/two-image posts pair up. A lone
-// half-width card (wide item next or list ends) is promoted to full width so
-// no column is ever left empty — grid order is preserved.
-function rowSpans(posts: PostCardData[]) {
-  const items = posts.map((post) => {
-    const imageCount = post.sharedPost ? post.sharedPost.imageUrls.length : post.images.length
-    const video = post.sharedPost ? post.sharedPost.video : post.video
-    return { post, wide: imageCount === 0 || imageCount >= 3 || !!video }
-  })
-
-  for (let i = 0; i < items.length; i++) {
-    if (items[i].wide) continue
-    const next = items[i + 1]
-    if (next && !next.wide) i++
-    else items[i].wide = true
-  }
-  return items
-}
-
 function PostResults({ posts, query }: { posts: PostCardData[]; query: string }) {
   return (
     <>
@@ -274,10 +256,21 @@ function PostResults({ posts, query }: { posts: PostCardData[]; query: string })
           message={query ? `Nothing matches “${query}” — try a different search.` : undefined}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {rowSpans(posts).map(({ post, wide }) => (
-            <div key={post.id} className={wide ? 'lg:col-span-2' : ''}>
-              <ExplorePostCard post={post} wide={wide} />
+        // Masonry — CSS columns; cards stay whole via break-inside-avoid
+        // and order flows down each column (same pattern as DiscoverFeed).
+        // Same card split as the feed's media filters — videos get the
+        // reel card, images the gallery card; shares and text posts keep
+        // the compact explore card.
+        <div className="columns-1 gap-3 lg:columns-2">
+          {posts.map((post) => (
+            <div key={post.id} className="mb-3 break-inside-avoid">
+              {post.video ? (
+                <ReelPost post={post} />
+              ) : post.images.length > 0 ? (
+                <PhotoPost post={post} />
+              ) : (
+                <ExplorePostCard post={post} />
+              )}
             </div>
           ))}
         </div>
