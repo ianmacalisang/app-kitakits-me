@@ -6,13 +6,14 @@ import { getDiscoverPosts } from '@/actions/discover'
 import type { PostCategory } from '@/lib/categories'
 import type { PostCardData } from '@/lib/serialize'
 
+import { DiscoverPostCard } from './DiscoverPostCard'
 import { EmptyState } from './EmptyState'
 import { ListIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
-import { PostCard } from './PostCard'
 
-// Paginated feed for a single Discover category — full-size post cards in a
-// single column, like the home feed. Cards link to public @handle profiles.
+// Paginated feed for a single Discover category — content-only public cards
+// (reel / photo / quote by media type) in a single column. Author links go to
+// the public @handle pages.
 export function DiscoverFeed({
   category,
   initialPosts,
@@ -50,9 +51,14 @@ export function DiscoverFeed({
           message="Nothing public in this category — check back soon."
         />
       ) : (
-        <div className="flex flex-col gap-4">
+        // Masonry — CSS columns; cards stay whole via break-inside-avoid
+        // and order flows down each column. The sentinel stays outside so
+        // it isn't laid out as a masonry item.
+        <div className="columns-1 gap-4 sm:columns-2">
           {posts.map((post) => (
-            <PostCard key={post.id} post={post} isPublicPage />
+            <div key={post.id} className="mb-4 break-inside-avoid">
+              <DiscoverPostCard post={post} />
+            </div>
           ))}
         </div>
       )}

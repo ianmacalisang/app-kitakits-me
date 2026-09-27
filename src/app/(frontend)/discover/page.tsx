@@ -5,10 +5,10 @@ import { getDiscoverPosts } from '@/actions/discover'
 import { BrandMark } from '@/components/Branding'
 import { CATEGORY_ICONS } from '@/components/CategoryChip'
 import { DiscoverFeed } from '@/components/DiscoverFeed'
+import { DiscoverPostCard } from '@/components/DiscoverPostCard'
 import { EmptyState } from '@/components/EmptyState'
 import { ChevronRightIcon, CompassIcon, ListIcon } from '@/components/icons'
 import { LandingUserSearch } from '@/components/LandingUserSearch'
-import { PostCard } from '@/components/PostCard'
 import { getCurrentUser } from '@/lib/auth'
 import {
   CATEGORY_TINTS,
@@ -331,9 +331,13 @@ export default async function DiscoverPage({
                       </Link>
                     )}
                   </div>
-                  <div className="flex flex-col gap-4">
+                  {/* Masonry — CSS columns; cards stay whole via
+                      break-inside-avoid and order flows down each column. */}
+                  <div className="columns-1 gap-4 sm:columns-2">
                     {posts.map((post) => (
-                      <PostCard key={post.id} post={post} isPublicPage />
+                      <div key={post.id} className="mb-4 break-inside-avoid">
+                        <DiscoverPostCard post={post} />
+                      </div>
                     ))}
                   </div>
                 </section>
