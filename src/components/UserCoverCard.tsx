@@ -8,9 +8,10 @@ import { Avatar } from './Avatar'
 import { BlurImage } from './BlurImage'
 import { FollowButton } from './FollowButton'
 
-// Cover-banner user card — cover image, overlapping avatar, follower count.
-// Used by Explore and the profile Connections lists. On the public /@handle
-// page it links to public profiles and hides the follow button.
+// Compact cover-card — the cover image fills the whole card and the
+// avatar, name, and follow button float on a scrim. Used by Explore and
+// the profile Connections lists. On the public /@handle page it links to
+// public profiles and hides the follow button.
 export const UserCoverCard = memo(function UserCoverCard({
   user,
   isPublicPage = false,
@@ -24,23 +25,36 @@ export const UserCoverCard = memo(function UserCoverCard({
   const href = isPublicPage ? `/@${user.username}` : `/profile/${user.username}`
   return (
     <li
-      className={`glass flex flex-col overflow-hidden rounded-2xl transition-transform duration-300 hover:-translate-y-0.5 ${className}`}
+      className={`glass group relative flex flex-col overflow-hidden rounded-2xl transition-transform duration-300 hover:-translate-y-0.5 ${className}`}
     >
-      <Link
-        href={href}
-        aria-label={user.name}
-        className="block h-20 bg-gradient-to-br from-accent-500 via-accent-500 to-accent-700 sm:h-24"
-      >
-        {cover ? <BlurImage src={cover} alt="" className="h-full w-full object-cover" /> : null}
-      </Link>
-      <div className="flex flex-1 flex-col items-center px-4 pb-4 text-center">
-        <Link href={href} className="relative -mt-10 inline-flex rounded-full ring-2 ring-white/70">
-          <Avatar src={user.avatarUrl} name={user.name} size="lg" />
+      {/* Cover fills the whole card */}
+      {cover ? (
+        <BlurImage
+          src={cover}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-br from-accent-500 via-accent-500 to-accent-700" />
+      )}
+      {/* Scrim — keeps the overlaid text readable */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/25 to-black/70" />
+
+      {/* Whole-card link — sits behind the content; the overlay below is
+          pointer-events-none except on its own links/button. */}
+      <Link href={href} aria-label={user.name} className="absolute inset-0" />
+
+      <div className="pointer-events-none relative mt-auto flex flex-col items-center px-3 pb-3 pt-14 text-center">
+        <Link
+          href={href}
+          className="pointer-events-auto inline-flex rounded-full ring-2 ring-white/70"
+        >
+          <Avatar src={user.avatarUrl} name={user.name} size="md" />
         </Link>
-        <Link href={href} className="mt-2 block max-w-full hover:underline">
-          <p className="truncate text-base font-semibold">{user.name}</p>
+        <Link href={href} className="pointer-events-auto mt-1.5 block max-w-full hover:underline">
+          <p className="truncate text-sm font-semibold text-white drop-shadow-sm">{user.name}</p>
         </Link>
-        <p className="w-full truncate text-sm text-neutral-500">
+        <p className="w-full truncate text-xs text-white/75">
           @{user.username}
           {user.followerCount !== undefined && (
             <>
@@ -50,7 +64,7 @@ export const UserCoverCard = memo(function UserCoverCard({
           )}
         </p>
         {!isPublicPage && !user.isSelf && (
-          <div className="mt-auto w-full pt-3 [&_button]:w-full [&_button]:py-2">
+          <div className="pointer-events-auto mt-2.5 w-full [&_button]:w-full [&_button]:py-1.5 [&_button]:text-xs">
             <FollowButton targetUserId={user.id} initialFollowing={user.isFollowing} />
           </div>
         )}

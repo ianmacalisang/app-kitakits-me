@@ -29,9 +29,9 @@ export function FollowButton({
     <button
       onClick={handleClick}
       disabled={pending}
-      className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-all disabled:opacity-50 ${
+      className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-all ${
         following
-          ? 'border border-red-500/25 bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:text-red-400'
+          ? 'bg-red-500 text-white shadow-md shadow-red-500/30 hover:bg-red-600'
           : 'btn-primary'
       }`}
     >
