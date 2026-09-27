@@ -168,10 +168,23 @@ export function OnboardingWizard({
   const [previewCover, setPreviewCover] = useState(initial.coverUrl)
   const [previewBio, setPreviewBio] = useState(initial.bio)
   const [previewWebsite, setPreviewWebsite] = useState(initial.website)
+  // Public-profile toggle lives inside PrivacySettings — mirror it here so
+  // the design step's "public profile is off" note reflects the live value.
+  const [previewPublicProfile, setPreviewPublicProfile] = useState(initial.publicProfile)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<UserCardData[] | null>(null)
   const searchSeq = useRef(0)
   const last = steps.length - 1
+
+  // ProfileMedia hands ownership of its blob preview URLs to these states —
+  // revoke them when the wizard unmounts (the step component can't, it
+  // unmounts between steps while the previews are still needed).
+  useEffect(() => {
+    return () => {
+      if (previewAvatar?.startsWith('blob:')) URL.revokeObjectURL(previewAvatar)
+      if (previewCover?.startsWith('blob:')) URL.revokeObjectURL(previewCover)
+    }
+  }, [previewAvatar, previewCover])
 
   const shown = suggestions.filter((p) => !followedIds.has(p.id)).slice(0, 8)
   const searching = query.trim().length > 0
@@ -412,6 +425,9 @@ export function OnboardingWizard({
                   commentPermission: initial.commentPermission,
                   testimonialPermission: initial.testimonialPermission,
                 }}
+                onChangeAction={(key, value) => {
+                  if (key === 'publicProfile') setPreviewPublicProfile(value)
+                }}
               />
               <div className="mt-5 flex items-center gap-2">
                 {backButton}
@@ -461,7 +477,7 @@ export function OnboardingWizard({
                 onBackgroundChange={setDesignBg}
               />
 
-              {!initial.publicProfile && (
+              {!previewPublicProfile && (
                 <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
                   Your public profile is off — turn it on in the previous step to share this page.
                   You can still design it now.

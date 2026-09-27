@@ -47,16 +47,21 @@ export function ProfileMedia({
   const cover = coverPreview ?? coverUrl
   const avatar = avatarPreview ?? avatarUrl
 
-  // Revoke object-URL previews when they're replaced or the component unmounts.
+  // Revoke object-URL previews only when replaced by a newer upload — NOT on
+  // unmount. The URL is handed to the parent via onMediaChange, and revoking
+  // it here would break the parent's copy (e.g. the onboarding design
+  // preview). The parent owns cleanup.
+  const coverPreviewRef = useRef<string | null>(null)
   useEffect(() => {
-    return () => {
-      if (coverPreview) URL.revokeObjectURL(coverPreview)
-    }
+    const stale = coverPreviewRef.current
+    coverPreviewRef.current = coverPreview
+    if (stale && stale !== coverPreview) URL.revokeObjectURL(stale)
   }, [coverPreview])
+  const avatarPreviewRef = useRef<string | null>(null)
   useEffect(() => {
-    return () => {
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview)
-    }
+    const stale = avatarPreviewRef.current
+    avatarPreviewRef.current = avatarPreview
+    if (stale && stale !== avatarPreview) URL.revokeObjectURL(stale)
   }, [avatarPreview])
 
   const upload = (kind: 'avatar' | 'cover', file: File | null | undefined) => {

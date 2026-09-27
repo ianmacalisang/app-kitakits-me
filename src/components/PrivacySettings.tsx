@@ -15,6 +15,7 @@ const PERMISSIONS: { value: Permission; label: string }[] = [
 export function PrivacySettings({
   initial,
   username,
+  onChangeAction,
 }: {
   initial: {
     isPrivate: boolean
@@ -24,6 +25,9 @@ export function PrivacySettings({
     testimonialPermission: Permission
   }
   username: string
+  // Reports each toggle's new value so parents (e.g. the onboarding wizard)
+  // can reflect it live; also fires with the rolled-back value on failure.
+  onChangeAction?: (key: 'isPrivate' | 'discoverable' | 'publicProfile', value: boolean) => void
 }) {
   const [isPrivate, setIsPrivate] = useState(initial.isPrivate)
   const [discoverable, setDiscoverable] = useState(initial.discoverable)
@@ -53,7 +57,11 @@ export function PrivacySettings({
     set: (value: boolean) => void,
   ) => {
     set(!current)
-    save({ [key]: !current }, () => set(current))
+    onChangeAction?.(key, !current)
+    save({ [key]: !current }, () => {
+      set(current)
+      onChangeAction?.(key, current)
+    })
   }
 
   const copyShareLink = async () => {
