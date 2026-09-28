@@ -9,6 +9,7 @@ import { sendGuestMail, sendMail } from '@/actions/mail'
 import { MailboxIcon, MailIcon, SendIcon } from './icons'
 import { MailEditor } from './MailEditor'
 import { Spinner } from './Spinner'
+import { useSheetDragClose } from './useSheetDrag'
 
 const CLOSE_MS = 300
 const bodyIsEmpty = (html: string) => html.replace(/<[^>]+>/g, '').trim() === ''
@@ -48,6 +49,8 @@ export function PublicMailButton({
       setError(null)
     }, CLOSE_MS)
   }, [closing])
+
+  const sheetDrag = useSheetDragClose(close)
 
   // Lock scroll and support Escape while the sheet is open.
   useEffect(() => {
@@ -143,14 +146,18 @@ export function PublicMailButton({
               onClick={close}
             />
             <div
-              className={`glass relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-y-auto rounded-t-[28px] px-5 pb-5 pt-2 sm:rounded-[28px] sm:pt-4 ${
+              {...sheetDrag}
+              className={`glass relative flex h-dvh w-full max-w-lg flex-col overflow-y-auto overscroll-none rounded-t-[28px] px-5 pb-5 pt-2 sm:h-auto sm:max-h-[85vh] sm:rounded-[28px] sm:pt-4 ${
                 closing
                   ? 'motion-safe:animate-sheet-down sm:motion-safe:animate-dialog-out'
                   : 'motion-safe:animate-sheet-up sm:motion-safe:animate-dialog-in'
               }`}
             >
               {/* iOS sheet drag handle (mobile) */}
-              <div className="mx-auto mb-2 h-1.5 w-10 shrink-0 rounded-full bg-neutral-300/80 sm:hidden" />
+              <div
+                data-sheet-handle
+                className="mx-auto mb-2 h-1.5 w-10 shrink-0 rounded-full bg-neutral-300/80 sm:hidden"
+              />
 
               {sent ? (
                 <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
@@ -172,7 +179,10 @@ export function PublicMailButton({
               ) : (
                 <form onSubmit={handleSubmit}>
                   {/* Header: Close / title / Send */}
-                  <div className="flex items-center justify-between border-b border-black/5 pb-3">
+                  <div
+                    data-sheet-handle
+                    className="flex items-center justify-between border-b border-black/5 pb-3"
+                  >
                     <button
                       type="button"
                       onClick={close}

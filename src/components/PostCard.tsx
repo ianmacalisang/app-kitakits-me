@@ -21,6 +21,7 @@ import { ShareButton } from './ShareButton'
 import { PostEditForm } from './PostEditForm'
 import { PostImages } from './PostImages'
 import { PostVideo } from './PostVideo'
+import { useSheetDragClose } from './useSheetDrag'
 
 const CLOSE_MS = 300
 
@@ -54,6 +55,8 @@ export const PostCard = memo(function PostCard({
       setEditClosing(false)
     }, CLOSE_MS)
   }, [editClosing])
+
+  const sheetDrag = useSheetDragClose(closeEdit)
 
   const closeDelete = useCallback(() => {
     if (deleteClosing || deleting) return
@@ -319,15 +322,22 @@ export const PostCard = memo(function PostCard({
               onClick={closeEdit}
             />
             <div
-              className={`glass relative flex h-[70dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] sm:h-auto sm:max-h-[85vh] sm:rounded-[28px] ${
+              {...sheetDrag}
+              className={`glass relative flex h-dvh w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] sm:h-auto sm:max-h-[85vh] sm:rounded-[28px] ${
                 editClosing
                   ? 'motion-safe:animate-sheet-down sm:motion-safe:animate-dialog-out'
                   : 'motion-safe:animate-sheet-up sm:motion-safe:animate-dialog-in'
               }`}
             >
-              <div className="mx-auto mb-1 mt-2 h-1.5 w-10 shrink-0 rounded-full bg-neutral-300/80 sm:hidden" />
+              <div
+                data-sheet-handle
+                className="mx-auto mb-1 mt-2 h-1.5 w-10 shrink-0 rounded-full bg-neutral-300/80 sm:hidden"
+              />
 
-              <div className="flex shrink-0 items-center justify-between border-b border-black/5 px-5 pb-3 pt-1 sm:pt-3">
+              <div
+                data-sheet-handle
+                className="flex shrink-0 items-center justify-between border-b border-black/5 px-5 pb-3 pt-1 sm:pt-3"
+              >
                 <button
                   type="button"
                   onClick={closeEdit}
@@ -339,7 +349,10 @@ export const PostCard = memo(function PostCard({
                 <span className="w-14" />
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              <div
+                data-sheet-scroll
+                className="min-h-0 flex-1 overflow-y-auto overscroll-none px-5 py-4"
+              >
                 <PostEditForm
                   postId={post.id}
                   initialContent={post.content ?? ''}

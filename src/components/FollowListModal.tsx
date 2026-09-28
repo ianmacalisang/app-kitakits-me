@@ -11,6 +11,7 @@ import { UsersIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
 import { Spinner } from './Spinner'
 import { UserCard } from './UserCard'
+import { useSheetDragClose } from './useSheetDrag'
 
 const CLOSE_MS = 300
 
@@ -44,6 +45,8 @@ export function FollowListModal({
       setClosing(false)
     }, CLOSE_MS)
   }, [closing])
+
+  const sheetDrag = useSheetDragClose(close)
 
   const loadMore = useCallback(() => {
     if (morePending) return
@@ -118,17 +121,24 @@ export function FollowListModal({
               onClick={close}
             />
             <div
-              className={`glass relative flex h-[70dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] sm:h-auto sm:max-h-[85vh] sm:rounded-[28px] ${
+              {...sheetDrag}
+              className={`glass relative flex h-dvh w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] sm:h-auto sm:max-h-[85vh] sm:rounded-[28px] ${
                 closing
                   ? 'motion-safe:animate-sheet-down sm:motion-safe:animate-dialog-out'
                   : 'motion-safe:animate-sheet-up sm:motion-safe:animate-dialog-in'
               }`}
             >
               {/* iOS sheet drag handle (mobile) */}
-              <div className="mx-auto mb-1 mt-2 h-1.5 w-10 shrink-0 rounded-full bg-neutral-300/80 sm:hidden" />
+              <div
+                data-sheet-handle
+                className="mx-auto mb-1 mt-2 h-1.5 w-10 shrink-0 rounded-full bg-neutral-300/80 sm:hidden"
+              />
 
               {/* Header: Cancel / title / spacer */}
-              <div className="flex shrink-0 items-center justify-between border-b border-black/5 px-5 pb-3 pt-1 sm:pt-3">
+              <div
+                data-sheet-handle
+                className="flex shrink-0 items-center justify-between border-b border-black/5 px-5 pb-3 pt-1 sm:pt-3"
+              >
                 <button
                   type="button"
                   onClick={close}
@@ -141,7 +151,7 @@ export function FollowListModal({
               </div>
 
               {/* Scrollable user list */}
-              <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <div data-sheet-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-none p-5">
                 {users === null ? (
                   <div className="flex h-full min-h-40 items-center justify-center">
                     <Spinner />

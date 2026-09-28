@@ -346,9 +346,11 @@ body::after {
   @apply bg-accent-500/10 text-accent-600 transition-colors hover:bg-accent-500/20;
 }
 
-/* iOS-style sheet/dialog + backdrop animations */
+/* iOS-style sheet/dialog + backdrop animations. The *-in utilities end at the
+   element's natural state so they need no fill — leaving it off keeps inline
+   transform/opacity (drag-to-dismiss) working once the entrance finishes. */
 @utility animate-sheet-up {
-  animation: sheet-up 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: sheet-up 0.32s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @utility animate-sheet-down {
@@ -356,7 +358,7 @@ body::after {
 }
 
 @utility animate-dialog-in {
-  animation: dialog-in 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: dialog-in 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @utility animate-dialog-out {
@@ -364,7 +366,7 @@ body::after {
 }
 
 @utility animate-fade-in {
-  animation: fade-in 0.2s ease-out both;
+  animation: fade-in 0.2s ease-out;
 }
 
 @utility animate-fade-out {
@@ -380,10 +382,9 @@ body::after {
   }
 }
 
+/* No `from` — starts from the element's current transform so drag-to-dismiss
+   continues smoothly from wherever the finger released. */
 @keyframes sheet-down {
-  from {
-    transform: translateY(0);
-  }
   to {
     transform: translateY(100%);
   }
@@ -400,11 +401,9 @@ body::after {
   }
 }
 
+/* No `from` — starts from the element's current transform/opacity so a
+   drag-dismissed sheet doesn't snap back before animating out. */
 @keyframes dialog-out {
-  from {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
   to {
     transform: translateY(20px) scale(0.96);
     opacity: 0;
@@ -420,10 +419,8 @@ body::after {
   }
 }
 
+/* No `from` — fades from the current opacity (may be mid-drag dimmed). */
 @keyframes fade-out {
-  from {
-    opacity: 1;
-  }
   to {
     opacity: 0;
   }

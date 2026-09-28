@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Poppins } from 'next/font/google'
 import React from 'react'
 
@@ -14,6 +14,14 @@ const poppins = Poppins({
   variable: '--font-poppins',
   display: 'swap',
 })
+
+// Lock the viewport scale — app-like fixed layout, no pinch/double-tap zoom.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings()

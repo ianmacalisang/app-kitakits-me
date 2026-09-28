@@ -12,6 +12,7 @@ import type {
 
 import { ChevronRightIcon, PaletteIcon } from './icons'
 import { ProfileDesignForm, type DesignPreviewData } from './ProfileDesignForm'
+import { useSheetDragClose } from './useSheetDrag'
 
 const CLOSE_MS = 300
 
@@ -46,6 +47,8 @@ export function ProfileDesignSheet({
       setClosing(false)
     }, CLOSE_MS)
   }, [closing])
+
+  const sheetDrag = useSheetDragClose(close)
 
   // Lock scroll and support Escape while the sheet is open.
   useEffect(() => {
@@ -90,17 +93,24 @@ export function ProfileDesignSheet({
               }`}
             />
             <div
-              className={`glass relative flex h-[80dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] sm:h-auto sm:max-h-[85vh] sm:rounded-[28px] ${
+              {...sheetDrag}
+              className={`glass relative flex h-dvh w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] sm:h-auto sm:max-h-[85vh] sm:rounded-[28px] ${
                 closing
                   ? 'motion-safe:animate-sheet-down sm:motion-safe:animate-dialog-out'
                   : 'motion-safe:animate-sheet-up sm:motion-safe:animate-dialog-in'
               }`}
             >
               {/* iOS sheet drag handle (mobile) */}
-              <div className="mx-auto mb-1 mt-2 h-1.5 w-10 shrink-0 rounded-full bg-neutral-300/80 sm:hidden" />
+              <div
+                data-sheet-handle
+                className="mx-auto mb-1 mt-2 h-1.5 w-10 shrink-0 rounded-full bg-neutral-300/80 sm:hidden"
+              />
 
               {/* Header: Cancel / title / spacer */}
-              <div className="flex shrink-0 items-center justify-between border-b border-black/5 px-5 pb-3 pt-1 sm:pt-3">
+              <div
+                data-sheet-handle
+                className="flex shrink-0 items-center justify-between border-b border-black/5 px-5 pb-3 pt-1 sm:pt-3"
+              >
                 <button
                   type="button"
                   onClick={close}
@@ -112,7 +122,7 @@ export function ProfileDesignSheet({
                 <span className="w-14" />
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <div data-sheet-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-none p-5">
                 <ProfileDesignForm
                   publicProfile={publicProfile}
                   initial={initial}
