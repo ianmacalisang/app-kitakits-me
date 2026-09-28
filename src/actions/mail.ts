@@ -412,6 +412,40 @@ export async function markThreadRead(threadId: number) {
   revalidateNavCounts(user.id)
 }
 
+export async function markAllThreadsRead() {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+  const result = await payload.find({
+    collection: 'threads',
+    where: {
+      and: [{ visibleTo: { contains: user.id } }, { unreadFor: { contains: user.id } }],
+    },
+    limit: 500,
+    depth: 0,
+    user,
+    overrideAccess: false,
+  })
+
+  for (const doc of result.docs) {
+    const unreadFor = (Array.isArray(doc.unreadFor) ? doc.unreadFor : [])
+      .map((p: unknown) =>
+        typeof p === 'object' && p !== null ? (p as { id: number }).id : (p as number),
+      )
+      .filter((id): id is number => typeof id === 'number' && id !== user.id)
+
+    // System write — non-admin users can't update threads directly.
+    await payload.update({
+      collection: 'threads',
+      id: doc.id,
+      data: { unreadFor },
+    })
+  }
+
+  revalidateNavCounts(user.id)
+}
+
 export async function deleteThread(threadId: number) {
   const user = await getCurrentUser()
   if (!user) redirect('/login')

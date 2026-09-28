@@ -3,14 +3,22 @@
 import { useRouter } from 'next/navigation'
 import { memo, useCallback, useEffect, useRef, useState, useTransition } from 'react'
 
-import { deleteDraft, getDrafts, getThreads, searchMailThreads } from '@/actions/mail'
+import {
+  deleteDraft,
+  getDrafts,
+  getThreads,
+  markAllThreadsRead,
+  markThreadRead,
+  searchMailThreads,
+} from '@/actions/mail'
+import { getNavBadgeCounts } from '@/actions/nav'
 import type { DraftData, ThreadData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
 import { ComposeMail } from './ComposeMail'
 import { CountBadge } from './CountBadge'
 import { EmptyState } from './EmptyState'
-import { ComposeIcon, MailboxIcon, SearchIcon, TrashIcon, XIcon } from './icons'
+import { CheckIcon, ComposeIcon, MailboxIcon, SearchIcon, TrashIcon, XIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
 import { RelativeTime } from './RelativeTime'
 import { Spinner } from './Spinner'
@@ -22,6 +30,25 @@ const BOX_THUMB: Record<Box, string> = {
   sent: 'translate-x-full',
   drafts: 'translate-x-[200%]',
 }
+
+// Threads the user has opened this session, keyed by the lastMessageAt they
+// saw. Coming back from a thread can re-render this list from a stale Router
+// Cache payload, so a server-reported `unread` is only trusted again once the
+// timestamp moves past what was marked read — i.e. a genuinely new message.
+const readMarkers = new Map<number, string | null>()
+
+const applyReadMarkers = (list: ThreadData[]): ThreadData[] =>
+  list.map((thread) => {
+    if (!thread.unread) {
+      readMarkers.delete(thread.id)
+      return thread
+    }
+    if (readMarkers.has(thread.id) && readMarkers.get(thread.id) === thread.lastMessageAt) {
+      return { ...thread, unread: false }
+    }
+    readMarkers.delete(thread.id)
+    return thread
+  })
 
 export function MailboxView({
   threads,
@@ -36,7 +63,7 @@ export function MailboxView({
 }) {
   const router = useRouter()
   const [box, setBox] = useState<Box>('inbox')
-  const [items, setItems] = useState(threads)
+  const [items, setItems] = useState(() => applyReadMarkers(threads))
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(initialHasMore)
   const [draftItems, setDraftItems] = useState(drafts)
@@ -63,6 +90,15 @@ export function MailboxView({
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const seq = useRef(0)
 
+  // Inbox tab badge — the authoritative unread count, covering threads past
+  // the loaded page. Refetched whenever server thread props refresh.
+  const [unreadCount, setUnreadCount] = useState<number | null>(null)
+  useEffect(() => {
+    getNavBadgeCounts().then((counts) => {
+      if (counts) setUnreadCount(counts.unreadMail)
+    })
+  }, [threads])
+
   useEffect(() => {
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current)
@@ -79,7 +115,7 @@ export function MailboxView({
     startSearch(async () => {
       const result = await searchMailThreads(q)
       if (id !== seq.current) return
-      setSearchResults(result)
+      setSearchResults(applyReadMarkers(result))
     })
   }
 
@@ -118,14 +154,15 @@ export function MailboxView({
   // keep pages loaded via infinite scroll if the refreshed first page matches.
   if (box === 'inbox' && prevInitial !== threads) {
     setPrevInitial(threads)
+    const normalized = applyReadMarkers(threads)
     const sameHead =
-      threads.length > 0 &&
-      items.length >= threads.length &&
-      threads.every((t, i) => items[i].id === t.id)
+      normalized.length > 0 &&
+      items.length >= normalized.length &&
+      normalized.every((t, i) => items[i].id === t.id)
     if (sameHead) {
-      setItems([...threads, ...items.slice(threads.length)])
+      setItems([...normalized, ...items.slice(normalized.length)])
     } else {
-      setItems(threads)
+      setItems(normalized)
       setPage(1)
       setHasMore(initialHasMore)
     }
@@ -139,7 +176,7 @@ export function MailboxView({
     if (box === 'sent') {
       startTransition(async () => {
         const result = await getThreads('sent', 1)
-        setItems(result.items)
+        setItems(applyReadMarkers(result.items))
         setPage(1)
         setHasMore(result.hasMore)
       })
@@ -165,7 +202,7 @@ export function MailboxView({
       try {
         const result = await getThreads(next, 1)
         if (requestedBox.current !== next) return
-        setItems(result.items)
+        setItems(applyReadMarkers(result.items))
         setPage(1)
         setHasMore(result.hasMore)
       } finally {
@@ -194,17 +231,45 @@ export function MailboxView({
     startMoreTransition(async () => {
       const next = page + 1
       const result = await getThreads(box, next)
+      const fresh = applyReadMarkers(result.items)
       setItems((prev) => {
         const seen = new Set(prev.map((t) => t.id))
-        return [...prev, ...result.items.filter((t) => !seen.has(t.id))]
+        return [...prev, ...fresh.filter((t) => !seen.has(t.id))]
       })
       setPage(next)
       setHasMore(result.hasMore)
     })
   }, [morePending, page, box])
 
+  const markAllRead = () => {
+    const clearAll = (list: ThreadData[]) =>
+      list.map((t) => {
+        if (!t.unread) return t
+        readMarkers.set(t.id, t.lastMessageAt)
+        return { ...t, unread: false }
+      })
+    setItems(clearAll)
+    setSearchResults((prev) => (prev ? clearAll(prev) : prev))
+    setUnreadCount(0)
+    startTransition(async () => {
+      await markAllThreadsRead()
+      router.refresh()
+    })
+  }
+
   const open = useCallback(
     (thread: ThreadData) => {
+      if (thread.unread) {
+        // Mark read now — waiting for the thread page's effect meant a quick
+        // trip back could hit a cached list still showing the unread dot.
+        readMarkers.set(thread.id, thread.lastMessageAt)
+        const clearUnread = (list: ThreadData[]) =>
+          list.map((t) => (t.id === thread.id ? { ...t, unread: false } : t))
+        setItems(clearUnread)
+        setSearchResults((prev) => (prev ? clearUnread(prev) : prev))
+        setUnreadCount((c) => (c === null ? c : Math.max(0, c - 1)))
+        void markThreadRead(thread.id)
+      }
       router.push(`/mailbox/${thread.id}`)
     },
     [router],
@@ -248,6 +313,17 @@ export function MailboxView({
             ) : null}
           </span>
         </div>
+        {(unreadCount ?? 0) > 0 && (
+          <button
+            onClick={markAllRead}
+            disabled={pending}
+            title="Mark all as read"
+            aria-label="Mark all as read"
+            className="btn-accent-soft flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-opacity disabled:opacity-50"
+          >
+            <CheckIcon className="h-4 w-4" />
+          </button>
+        )}
         <button
           onClick={() => openCompose(null)}
           className="btn-primary flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm"
@@ -290,6 +366,9 @@ export function MailboxView({
                 }`}
               >
                 {value}
+                {value === 'inbox' && (
+                  <CountBadge count={unreadCount ?? 0} onAccent={box === value} />
+                )}
                 {value === 'drafts' && (
                   <CountBadge count={draftItems.length} onAccent={box === value} />
                 )}
@@ -369,21 +448,47 @@ const MailRow = memo(function MailRow({
       <button
         onClick={() => onOpenAction(thread)}
         className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-all ${
-          thread.unread ? 'glass hover:bg-white' : 'border-transparent hover:bg-white/60'
+          thread.unread
+            ? 'glass border-accent-500/25 hover:bg-white'
+            : 'border-transparent hover:bg-white/60'
         }`}
       >
-        <Avatar src={thread.otherAvatarUrl} name={thread.otherName} />
+        {/* Unread dot rides the avatar corner — same pattern as the type
+            badge on notification rows. */}
+        <span className="relative shrink-0">
+          <Avatar src={thread.otherAvatarUrl} name={thread.otherName} />
+          {thread.unread && (
+            <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-accent-500 ring-2 ring-white/80" />
+          )}
+        </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline justify-between gap-2">
-            <span className={`truncate text-sm ${thread.unread ? 'font-bold' : 'font-semibold'}`}>
-              {box === 'sent' ? `To: ${thread.otherName}` : thread.otherName}
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className={`truncate text-sm ${thread.unread ? 'font-bold' : 'font-semibold'}`}>
+                {box === 'sent' ? `To: ${thread.otherName}` : thread.otherName}
+              </span>
+              {thread.isGuest && (
+                <span className="shrink-0 rounded-full bg-black/5 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-500 ring-1 ring-inset ring-black/10">
+                  Guest
+                </span>
+              )}
             </span>
-            <span
-              className={`shrink-0 text-xs ${
-                thread.unread ? 'font-semibold text-accent-600' : 'text-neutral-500'
-              }`}
-            >
-              {thread.lastMessageAt ? <RelativeTime iso={thread.lastMessageAt} /> : ''}
+            <span className="flex shrink-0 items-center gap-1.5">
+              {thread.messageCount > 1 && (
+                <span
+                  title={`${thread.messageCount} messages`}
+                  className="rounded-full bg-black/5 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-neutral-500"
+                >
+                  {thread.messageCount}
+                </span>
+              )}
+              <span
+                className={`text-xs ${
+                  thread.unread ? 'font-semibold text-accent-600' : 'text-neutral-500'
+                }`}
+              >
+                {thread.lastMessageAt ? <RelativeTime iso={thread.lastMessageAt} /> : ''}
+              </span>
             </span>
           </span>
           <span
@@ -398,7 +503,6 @@ const MailRow = memo(function MailRow({
             {thread.snippet}
           </span>
         </span>
-        {thread.unread && <span className="h-2 w-2 shrink-0 rounded-full bg-accent-500" />}
       </button>
     </li>
   )
@@ -428,8 +532,8 @@ const DraftRow = memo(function DraftRow({
         {draft.recipient ? (
           <Avatar src={draft.recipient.avatarUrl} name={draft.recipient.name} />
         ) : (
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/5 text-neutral-400">
-            <MailboxIcon className="h-5 w-5" />
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-500/10 text-accent-500">
+            <ComposeIcon className="h-5 w-5" />
           </span>
         )}
         <span className="min-w-0 flex-1">
@@ -442,7 +546,9 @@ const DraftRow = memo(function DraftRow({
           <span className="block truncate text-sm text-neutral-700">
             {draft.subject || '(no subject)'}
           </span>
-          <span className="block truncate text-xs text-neutral-500">
+          <span
+            className={`block truncate text-xs text-neutral-500 ${draft.snippet ? '' : 'italic'}`}
+          >
             {draft.snippet ?? 'Empty draft'}
           </span>
         </span>

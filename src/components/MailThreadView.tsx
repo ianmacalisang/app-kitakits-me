@@ -51,12 +51,13 @@ export function MailThreadView({
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevCount = useRef(messages.length)
 
-  // Opening the thread marks the whole conversation read (Gmail-style).
+  // Opening the thread marks the whole conversation read (Gmail-style), and
+  // keeps marking it if a new message lands while the thread is open.
   useEffect(() => {
     if (!thread.unread) return
     void markThreadRead(thread.id).then(() => router.refresh())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [thread.id])
+  }, [thread.id, thread.unread])
 
   // Scroll to the newest message when one lands.
   useEffect(() => {
