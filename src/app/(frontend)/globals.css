@@ -652,6 +652,19 @@ body::after {
   }
 }
 
+/* Chat "how it works" connector — thin dashes drifting left→right so the
+   timeline reads as a flow. The pattern period is 12px, so shifting the
+   position by exactly that loops seamlessly. */
+@utility animate-dash-flow {
+  animation: dash-flow 1s linear infinite;
+}
+
+@keyframes dash-flow {
+  to {
+    background-position-x: 12px;
+  }
+}
+
 /* ------------------------------------------------------------------
    Dark theme — activated by the `dark` class on <html> (user's theme
    preference on their account) or a scoped `.dark` container (the design

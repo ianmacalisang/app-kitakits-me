@@ -64,11 +64,15 @@ export default async function InvitePage() {
       <ol className="glass relative grid grid-cols-3 rounded-2xl px-3 pb-4 pt-3.5">
         <span
           aria-hidden
-          className="absolute left-[16.67%] right-[16.67%] top-8 border-t border-dashed border-accent-300/70"
+          className="motion-safe:animate-dash-flow absolute left-[16.67%] right-[16.67%] top-8 h-px"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(to right, var(--color-accent-400) 0 6px, transparent 6px 12px)',
+          }}
         />
         {STEPS.map(({ icon: Icon, label }) => (
           <li key={label} className="relative flex flex-col items-center gap-1.5 text-center">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent-600 to-accent-900 text-white shadow-md shadow-accent-900/25 ring-4 ring-white/80">
+            <span className="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent-600 to-accent-900 text-white shadow-md shadow-accent-900/25 ring-4 ring-white/80 dark:ring-neutral-900">
               <Icon className="h-4 w-4" />
             </span>
             <span className="text-[11px] font-semibold leading-tight text-neutral-700">

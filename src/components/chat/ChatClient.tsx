@@ -3,9 +3,27 @@
 import { Avatar } from '../Avatar'
 import { EmptyState } from '../EmptyState'
 import { Spinner } from '../Spinner'
-import { ChatIcon, LockIcon } from '../icons'
+import { ChatIcon, LockIcon, UsersIcon } from '../icons'
 import { useChat } from './ChatProvider'
 import { ChatRoom, pairKey } from './ChatRoom'
+
+const STEPS = [
+  {
+    icon: UsersIcon,
+    label: 'A mutual comes online',
+    hint: 'Chat only works with mutual follows who are online now',
+  },
+  {
+    icon: ChatIcon,
+    label: 'They accept your invite',
+    hint: 'Nothing starts until the other person says yes',
+  },
+  {
+    icon: LockIcon,
+    label: 'Nothing is stored',
+    hint: 'Chats vanish when they end — or when you log out',
+  },
+]
 
 // /chat body — lists online mutual follows and live rooms; selecting one swaps
 // the list for the conversation (single-pane, mobile-first like the rest of
@@ -44,11 +62,38 @@ export function ChatClient() {
         <p className="mt-1 text-sm text-neutral-500">Log out, and your chats are gone.</p>
       </div>
 
-      <p className="flex items-start gap-2 text-xs leading-relaxed text-neutral-400">
-        <LockIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-        Nothing is stored — chats disappear when they end, and the other person has to accept your
-        invite first.
-      </p>
+      {/* How it works — three steps on a dashed timeline; the ring on each
+          disc keeps the connector hidden behind it. */}
+      <section className="flex flex-col gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
+          How it works
+        </h2>
+        <ol className="glass relative grid grid-cols-3 gap-1 rounded-3xl px-3 pb-5 pt-4">
+          <span
+            aria-hidden
+            className="motion-safe:animate-dash-flow absolute left-[16.67%] right-[16.67%] top-9 h-px"
+            style={{
+              backgroundImage:
+                'repeating-linear-gradient(to right, var(--color-accent-400) 0 6px, transparent 6px 12px)',
+            }}
+          />
+          {STEPS.map(({ icon: Icon, label, hint }) => (
+            <li key={label} className="relative flex flex-col items-center gap-2 text-center">
+              <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-accent-600 to-accent-900 text-white shadow-md shadow-accent-900/25 ring-4 ring-white/80 dark:ring-neutral-900">
+                <Icon className="h-4 w-4" />
+              </span>
+              <span className="flex flex-col gap-0.5">
+                <span className="text-[11px] font-semibold leading-tight text-neutral-800 dark:text-neutral-100">
+                  {label}
+                </span>
+                <span className="text-[10px] leading-snug text-neutral-500 dark:text-neutral-400">
+                  {hint}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       {chat.status === 'connecting' && (
         <div className="glass flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-neutral-500">
