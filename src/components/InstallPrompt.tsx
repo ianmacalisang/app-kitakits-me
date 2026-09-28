@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 
 import { BrandMark, useBranding } from './Branding'
-import { DownloadIcon, PlusIcon, ShareIcon, XIcon } from './icons'
+import { DownloadIcon, PlusIcon, XIcon } from './icons'
 
 const DISMISS_KEY = 'pwa-install-dismissed'
 const INSTALLED_KEY = 'pwa-installed'
@@ -73,11 +73,22 @@ export function InstallPrompt() {
   }
 
   const install = async () => {
-    if (!deferred) return
-    await deferred.prompt()
-    await deferred.userChoice.catch(() => null)
-    setDeferred(null)
+    if (deferred) {
+      await deferred.prompt()
+      await deferred.userChoice.catch(() => null)
+      setDeferred(null)
+      return
+    }
+    // iOS has no programmatic install — the native share sheet is the closest
+    // we can get: "Add to Home Screen" lives one tap inside it.
+    if (navigator.share) {
+      await navigator
+        .share({ title: appName, url: `${window.location.origin}/home` })
+        .catch(() => {})
+    }
   }
+
+  const canInstall = !!deferred || (showIOS && typeof navigator.share === 'function')
 
   if (!deferred && !showIOS) return null
 
@@ -89,9 +100,7 @@ export function InstallPrompt() {
           <p className="text-sm font-semibold">Install {appName}</p>
           {showIOS && !deferred ? (
             <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-xs text-neutral-500 dark:text-neutral-400">
-              Tap
-              <ShareIcon className="inline h-3.5 w-3.5" />
-              Share, then
+              Tap Install, then choose
               <PlusIcon className="inline h-3.5 w-3.5" />
               Add to Home Screen
             </p>
@@ -101,7 +110,7 @@ export function InstallPrompt() {
             </p>
           )}
         </div>
-        {deferred && (
+        {canInstall && (
           <button
             type="button"
             onClick={install}
