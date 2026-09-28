@@ -65,16 +65,41 @@ export default buildConfig({
   db: postgresAdapter({
     pool: {
       connectionString: process.env.DATABASE_URL || '',
-      // Keep enough connections open to handle concurrent requests without
-      // waiting, but don't over-allocate on shared database hosts.
-      min: 2,
-      max: parseInt(process.env.DB_POOL_MAX ?? '20', 10),
-      // Release idle connections quickly to avoid holding slots unnecessarily.
-      idleTimeoutMillis: 30_000,
+      // Shows up in pg_stat_activity so connections can be attributed per app.
+      application_name: process.env.DB_APP_NAME || 'kitakits-app',
+      // Serverless (Vercel): each isolate gets its own pool, and frozen
+      // isolates can't run timers — never hold idle connections open.
+      min: 0,
+      max: parseInt(process.env.DB_POOL_MAX ?? '5', 10),
+      allowExitOnIdle: true,
+      idleTimeoutMillis: 10_000,
       // Fail fast if the pool is exhausted rather than queuing indefinitely.
       connectionTimeoutMillis: 5_000,
+      // Detect sockets killed by the server/NAT instead of trusting them on
+      // checkout — the default is no TCP keepalive at all.
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10_000,
+      // Recycle clients so DB restarts or pooler changes don't strand sockets.
+      maxUses: 1000,
+      maxLifetimeSeconds: 300,
+      // Fail stuck work instead of pinning a pool slot forever. Keep this
+      // generous — it also applies to `payload migrate`.
+      query_timeout: parseInt(process.env.DB_QUERY_TIMEOUT_MS ?? '30000', 10),
+      statement_timeout: parseInt(process.env.DB_STATEMENT_TIMEOUT_MS ?? '30000', 10),
+      idle_in_transaction_session_timeout: 10_000,
     },
   }),
+  onInit: (payload) => {
+    // pg.Pool emits 'error' when a server-killed idle client surfaces; without
+    // a listener the unhandled event crashes the isolate. The pool evicts the
+    // dead client itself — we just need to swallow and log.
+    const pool = (
+      payload.db as unknown as {
+        pool?: { on: (event: 'error', cb: (err: Error) => void) => void }
+      }
+    ).pool
+    pool?.on('error', (err) => payload.logger.error({ err, msg: 'Idle Postgres client error' }))
+  },
   email: resendAdapter({
     defaultFromAddress: process.env.EMAIL_FROM_ADDRESS || 'noreply@kitakits.ph',
     defaultFromName: process.env.EMAIL_FROM_NAME || 'Kitakits',
