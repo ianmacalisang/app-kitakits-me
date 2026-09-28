@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import React from 'react'
 
 import { AppNav } from '@/components/AppNav'
+import { InstallPrompt } from '@/components/InstallPrompt'
 import { ToastHost } from '@/components/ToastHost'
 import { getCurrentUser } from '@/lib/auth'
 import { getCachedNavBadgeCounts } from '@/lib/nav-cache'
@@ -35,6 +36,7 @@ export default async function AppLayout(props: { children: React.ReactNode }) {
         <div className="mx-auto w-full max-w-3xl px-4 pb-28 pt-24">{props.children}</div>
       </main>
       <ToastHost />
+      <InstallPrompt />
     </div>
   )
 }

@@ -21,6 +21,10 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+  ],
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -32,6 +36,11 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: settings.metaDescription,
     openGraph: settings.ogImageUrl ? { images: [{ url: settings.ogImageUrl }] } : undefined,
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: settings.appName,
+    },
   }
 }
 

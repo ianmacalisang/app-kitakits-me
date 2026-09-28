@@ -404,6 +404,8 @@ export function AppNav({
 
   const handleLogout = () => {
     setMenuOpen(false)
+    // Drop cached pages/media so the next user of this device can't read them.
+    navigator.serviceWorker?.controller?.postMessage('CLEAR_CACHES')
     startTransition(async () => {
       await logout()
     })
