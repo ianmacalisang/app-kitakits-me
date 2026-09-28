@@ -39,10 +39,15 @@ export function ChatClient() {
 
   return (
     <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-xl font-bold">Quick Chat</h1>
+        <p className="mt-1 text-sm text-neutral-500">Log out, and your chats are gone.</p>
+      </div>
+
       <p className="flex items-start gap-2 text-xs leading-relaxed text-neutral-400">
         <LockIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-        Chats aren’t saved — messages disappear when the conversation ends, and the other person has
-        to accept your invite before a chat starts.
+        Nothing is stored — chats disappear when they end, and the other person has to accept your
+        invite first.
       </p>
 
       {chat.status === 'connecting' && (
