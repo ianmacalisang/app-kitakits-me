@@ -138,7 +138,7 @@ export function ChatClient() {
           <EmptyState
             icon={<ChatIcon />}
             title={chat.status === 'online' ? 'No mutuals online' : 'Looking for mutuals…'}
-            message="You can only live-chat people you follow who also follow you back — and only while they're online."
+            message="Live chat is available with mutual follows who are currently online."
             compact
           />
         ) : (
