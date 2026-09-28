@@ -355,10 +355,14 @@ export function AppNav({
     setMenuOpen(false)
   }
 
-  // Pending chat invites come from the WS session (client-side only) — no
-  // server badge count needed since nothing is persisted.
+  // Chat badge = pending invites + unread room messages, all from the WS
+  // session (client-side only) — nothing is persisted server-side.
   const chat = useChat()
   const chatInviteCount = chat?.incoming.length ?? 0
+  const chatUnreadCount = chat
+    ? [...chat.rooms.values()].reduce((sum, room) => sum + room.unread, 0)
+    : 0
+  const chatBadgeCount = chatInviteCount + chatUnreadCount
 
   const links: {
     href: string
@@ -563,9 +567,9 @@ export function AppNav({
           >
             <span className="relative">
               <ChatIcon className="h-6 w-6" />
-              {chatInviteCount ? (
+              {chatBadgeCount ? (
                 <span className="absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                  {chatInviteCount > 99 ? '99+' : chatInviteCount}
+                  {chatBadgeCount > 99 ? '99+' : chatBadgeCount}
                 </span>
               ) : null}
             </span>

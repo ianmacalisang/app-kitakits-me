@@ -88,7 +88,13 @@ export function ChatClient() {
                       <span className="block truncate text-sm font-semibold">
                         {peer?.name ?? 'Chat'}
                       </span>
-                      <span className="block truncate text-xs text-neutral-500">
+                      <span
+                        className={`block truncate text-xs ${
+                          room.unread > 0
+                            ? 'font-semibold text-neutral-900 dark:text-neutral-100'
+                            : 'text-neutral-500'
+                        }`}
+                      >
                         {room.ended
                           ? 'Chat ended'
                           : last
@@ -96,9 +102,19 @@ export function ChatClient() {
                             : 'No messages yet'}
                       </span>
                     </span>
+                    {room.unread > 0 && (
+                      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                        {room.unread > 99 ? '99+' : room.unread}
+                      </span>
+                    )}
                     {room.peerInRoom && (
                       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
                         Live
+                      </span>
+                    )}
+                    {!room.peerInRoom && room.peerLeftAt > 0 && !room.ended && (
+                      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+                        Left
                       </span>
                     )}
                   </button>

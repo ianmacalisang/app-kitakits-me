@@ -95,7 +95,7 @@ const FEATURES: Feature[] = [
     icon: MailboxIcon,
     title: 'Mail, hindi DMs',
     description:
-      'Rich, thoughtful na messages na may attachments — parang sulat, hindi chat bubble.',
+      'Rich, thoughtful na messages na may attachments — hindi ito chat app pero pwede din.',
     preview: (
       <div className="flex flex-col gap-1.5">
         <MiniRow>
@@ -126,7 +126,7 @@ const FEATURES: Feature[] = [
   },
   {
     icon: CompassIcon,
-    title: 'Hanapin ang tropa mo',
+    title: 'Sureball friends',
     description:
       'Mag-search at mag-explore ng totoong posts at profiles sa community — walang promoted, walang boosted.',
     preview: (

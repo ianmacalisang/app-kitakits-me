@@ -39,7 +39,7 @@ const MUTUALS_MAX = 500
 /** @type {Map<number, {info: object, mutuals: Set<number>, sockets: Set<import('ws').WebSocket>}>} */
 const online = new Map()
 
-/** @type {Map<string, {key: string, members: Set<number>, sockets: Map<number, Set<import('ws').WebSocket>>, left: Set<number>, buffer: object[], seq: number, purgeTimer: NodeJS.Timeout | null}>} */
+/** @type {Map<string, {key: string, members: Set<number>, info: Map<number, object>, sockets: Map<number, Set<import('ws').WebSocket>>, left: Set<number>, buffer: object[], seq: number, purgeTimer: NodeJS.Timeout | null}>} */
 const rooms = new Map()
 
 /** @type {Map<string, {from: number, to: number, timer: NodeJS.Timeout}>} */
@@ -180,6 +180,7 @@ const activateRoom = (key, memberIds) => {
     room = {
       key,
       members: new Set(memberIds),
+      info: new Map(),
       sockets: new Map(),
       left: new Set(),
       buffer: [],
@@ -189,6 +190,19 @@ const activateRoom = (key, memberIds) => {
     rooms.set(key, room)
   }
   return room
+}
+
+// The other member's public info + live membership for a `joined` frame —
+// live presence first, then whatever the room remembers from activation
+// (peer may be offline on reconnect), then a renderable placeholder.
+const roomPeer = (room, selfId) => {
+  const peerId = [...room.members].find((m) => m !== selfId)
+  if (peerId == null) return { peer: null, peerIn: false }
+  return {
+    peer: online.get(peerId)?.info ??
+      room.info.get(peerId) ?? { id: peerId, name: 'Someone', username: '', avatarUrl: null },
+    peerIn: userHasSocketInRoom(room, peerId),
+  }
 }
 
 const handleAuth = async (ws, ticket) => {
@@ -239,9 +253,9 @@ const handleAuth = async (ws, ticket) => {
       // Rooms the user explicitly left don't auto-rejoin on reconnect.
       if (!room.members.has(id) || room.left.has(id)) continue
       addSocketToRoom(room, ws)
-      const peerId = [...room.members].find((m) => m !== id)
-      const peer = peerId != null ? (online.get(peerId)?.info ?? { id: peerId }) : null
-      send(ws, { type: 'joined', room: room.key, peer, history: room.buffer })
+      room.info.set(id, entry.info)
+      const { peer, peerIn } = roomPeer(room, id)
+      send(ws, { type: 'joined', room: room.key, peer, peerIn, history: room.buffer })
       broadcastToRoom(room, { type: 'peer:joined', room: room.key, userId: id })
     }
   } catch {
@@ -276,7 +290,9 @@ const handleInvite = (ws, to) => {
   if (room?.members.has(from)) {
     addSocketToRoom(room, ws)
     room.left.delete(from)
-    send(ws, { type: 'joined', room: key, peer: targetEntry.info, history: room.buffer })
+    room.info.set(from, publicInfo(ws.user))
+    const { peer, peerIn } = roomPeer(room, from)
+    send(ws, { type: 'joined', room: key, peer, peerIn, history: room.buffer })
     return
   }
 
@@ -309,11 +325,11 @@ const activateForPair = (key, a, b) => {
   for (const uid of [a, b]) {
     const entry = online.get(uid)
     if (!entry) continue
-    const peerId = uid === a ? b : a
-    const peer = online.get(peerId)?.info ?? { id: peerId }
+    room.info.set(uid, entry.info)
     for (const socket of entry.sockets) {
       addSocketToRoom(room, socket)
-      send(socket, { type: 'joined', room: key, peer, history: room.buffer })
+      const { peer, peerIn } = roomPeer(room, uid)
+      send(socket, { type: 'joined', room: key, peer, peerIn, history: room.buffer })
     }
   }
 }
@@ -338,9 +354,9 @@ const handleJoin = (ws, key) => {
   const room = rooms.get(key)
   if (!room || !room.members.has(ws.user.id)) return
   addSocketToRoom(room, ws)
-  const peerId = [...room.members].find((m) => m !== ws.user.id)
-  const peer = peerId != null ? (online.get(peerId)?.info ?? { id: peerId }) : null
-  send(ws, { type: 'joined', room: key, peer, history: room.buffer })
+  room.info.set(ws.user.id, ws.user)
+  const { peer, peerIn } = roomPeer(room, ws.user.id)
+  send(ws, { type: 'joined', room: key, peer, peerIn, history: room.buffer })
   broadcastToRoom(room, { type: 'peer:joined', room: key, userId: ws.user.id })
 }
 
@@ -379,11 +395,13 @@ const handleLeave = (ws, key) => {
   if (!room || !room.members.has(ws.user.id)) return
   const userId = ws.user.id
   room.left.add(userId)
+  // Broadcast before detaching the leaver's sockets so their other tabs see
+  // the notice too.
+  broadcastToRoom(room, { type: 'peer:left', room: key, userId })
   for (const socket of room.sockets.get(userId) ?? []) {
     socket.rooms.delete(key)
   }
   room.sockets.delete(userId)
-  broadcastToRoom(room, { type: 'peer:left', room: key, userId })
   ws.rooms.delete(key)
   maybePurgeRoom(room)
 }

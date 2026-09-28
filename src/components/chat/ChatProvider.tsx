@@ -24,6 +24,10 @@ export interface RoomState {
   messages: ChatMessage[]
   peerInRoom: boolean
   peerTyping: boolean
+  /** Last time the peer left (0 = they're here). Drives the "left" notice. */
+  peerLeftAt: number
+  /** Peer messages received while the room wasn't open. */
+  unread: number
   ended: boolean
 }
 
@@ -43,6 +47,8 @@ interface ChatContextValue {
   incoming: PendingInvite[]
   outgoing: Map<string, ChatUser>
   activeRoom: string | null
+  /** Set when a peer accepts one of our outgoing invites — drives a toast. */
+  acceptedAlert: { room: string; user: ChatUser } | null
   invite: (to: number) => void
   accept: (room: string) => void
   decline: (room: string) => void
@@ -51,6 +57,7 @@ interface ChatContextValue {
   typing: (room: string) => void
   leave: (room: string) => void
   openRoom: (room: string | null) => void
+  clearAcceptedAlert: () => void
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null)
@@ -72,6 +79,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // only carries "started typing", the client derives the stop.
   const typingTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   const unmountedRef = useRef(false)
+  // Mutable mirrors used inside the WS handler — state values would churn
+  // the connect effect's deps and force a reconnect on every change.
+  const selfIdRef = useRef<number | null>(null)
+  const activeRoomRef = useRef<string | null>(null)
+  // Mirror of `outgoing` for the same reason — the handler reads it to tell
+  // "accepted invite" apart from a plain rejoin on `joined`.
+  const outgoingRef = useRef(new Map<string, ChatUser>())
 
   const [status, setStatus] = useState<ChatStatus>(enabled ? 'connecting' : 'disabled')
   const [self, setSelf] = useState<ChatUser | null>(null)
@@ -80,6 +94,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [incoming, setIncoming] = useState<PendingInvite[]>([])
   const [outgoing, setOutgoing] = useState<Map<string, ChatUser>>(new Map())
   const [activeRoom, setActiveRoom] = useState<string | null>(null)
+  const [acceptedAlert, setAcceptedAlert] = useState<{
+    room: string
+    user: ChatUser
+  } | null>(null)
 
   const patchRoom = useCallback((key: string, patch: Partial<RoomState>) => {
     setRooms((prev) => {
@@ -117,6 +135,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           retriesRef.current = 0
           setStatus('online')
           setSelf(msg.self as ChatUser)
+          selfIdRef.current = (msg.self as ChatUser).id
           setOnlineMap(new Map((msg.online as ChatUser[]).map((u) => [u.id, u])))
           break
         }
@@ -144,7 +163,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
         case 'invite:sent': {
           const room = String(msg.room)
-          setOutgoing((prev) => new Map(prev).set(room, msg.to as ChatUser))
+          const next = new Map(outgoingRef.current).set(room, msg.to as ChatUser)
+          outgoingRef.current = next
+          setOutgoing(next)
           break
         }
         case 'invite:declined':
@@ -152,36 +173,61 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         case 'invite:cancelled': {
           const room = String(msg.room)
           setIncoming((prev) => prev.filter((i) => i.room !== room))
-          setOutgoing((prev) => {
-            if (!prev.has(room)) return prev
-            const next = new Map(prev)
+          if (outgoingRef.current.has(room)) {
+            const next = new Map(outgoingRef.current)
             next.delete(room)
-            return next
-          })
+            outgoingRef.current = next
+            setOutgoing(next)
+          }
           break
         }
         case 'joined': {
           const key = String(msg.room)
+          const incomingPeer = msg.peer as ChatUser | null
           setRooms((prev) => {
             const next = new Map(prev)
             const existing = next.get(key)
+            // A bare {id} placeholder (peer offline) must not clobber real
+            // info a previous `joined` already gave us.
+            const peer = incomingPeer?.name ? incomingPeer : (existing?.peer ?? incomingPeer)
+            const history = (msg.history as ChatMessage[]) ?? existing?.messages ?? []
+            // History replayed on join/reconnect — entries we haven't seen
+            // that came from the peer count as unread (unless looking now).
+            const seen = new Set((existing?.messages ?? []).map((m) => m.id))
+            const newUnread =
+              key === activeRoomRef.current
+                ? 0
+                : history.filter((m) => !seen.has(m.id) && m.from !== selfIdRef.current).length
             next.set(key, {
               key,
-              peer: (msg.peer as ChatUser) ?? existing?.peer ?? null,
-              messages: (msg.history as ChatMessage[]) ?? existing?.messages ?? [],
-              peerInRoom: true,
+              peer,
+              messages: history,
+              // Server reports whether the peer actually has sockets in the
+              // room; default true so an older server build still works.
+              peerInRoom: msg.peerIn !== false,
               peerTyping: false,
+              peerLeftAt: msg.peerIn === false ? Date.now() : 0,
+              unread: newUnread,
               ended: false,
             })
             return next
           })
           setIncoming((prev) => prev.filter((i) => i.room !== key))
-          setOutgoing((prev) => {
-            if (!prev.has(key)) return prev
-            const next = new Map(prev)
+          // `joined` for a room we still have a pending outgoing invite on =
+          // the peer just accepted it. Surface an alert unless we're already
+          // looking at that room. (Stale entries can't false-positive: the
+          // entry is deleted here on the first join and invites die with it.)
+          const acceptedBy = outgoingRef.current.get(key)
+          if (acceptedBy) {
+            const next = new Map(outgoingRef.current)
             next.delete(key)
-            return next
-          })
+            outgoingRef.current = next
+            setOutgoing(next)
+            if (key !== activeRoomRef.current) {
+              const alertUser = incomingPeer?.name ? incomingPeer : acceptedBy
+              setAcceptedAlert({ room: key, user: alertUser })
+            }
+          }
           break
         }
         case 'msg': {
@@ -196,8 +242,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               ts: Number(msg.ts ?? Date.now()),
             }
             if (room.messages.some((m) => m.id === entry.id)) return prev
+            const viewing = key === activeRoomRef.current
+            const fromPeer = entry.from !== selfIdRef.current
             const next = new Map(prev)
-            next.set(key, { ...room, messages: [...room.messages, entry] })
+            next.set(key, {
+              ...room,
+              messages: [...room.messages, entry],
+              unread: viewing ? 0 : room.unread + (fromPeer ? 1 : 0),
+            })
             return next
           })
           // A delivered message supersedes any in-flight typing flag.
@@ -216,11 +268,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           break
         }
         case 'peer:joined': {
-          patchRoom(String(msg.room), { peerInRoom: true })
+          patchRoom(String(msg.room), { peerInRoom: true, peerLeftAt: 0 })
           break
         }
         case 'peer:left': {
-          patchRoom(String(msg.room), { peerInRoom: false, peerTyping: false })
+          patchRoom(String(msg.room), {
+            peerInRoom: false,
+            peerTyping: false,
+            peerLeftAt: Date.now(),
+          })
           break
         }
         case 'room:ended': {
@@ -325,7 +381,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   )
   const typing = useCallback((room: string) => send_({ type: 'typing', room }), [send_])
   const leave = useCallback((room: string) => send_({ type: 'leave', room }), [send_])
-  const openRoom = useCallback((room: string | null) => setActiveRoom(room), [])
+  const openRoom = useCallback(
+    (room: string | null) => {
+      activeRoomRef.current = room
+      setActiveRoom(room)
+      // Opening counts as reading.
+      if (room) patchRoom(room, { unread: 0 })
+    },
+    [patchRoom],
+  )
+
+  const clearAcceptedAlert = useCallback(() => setAcceptedAlert(null), [])
 
   const value: ChatContextValue = {
     enabled,
@@ -336,6 +402,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     incoming,
     outgoing,
     activeRoom,
+    acceptedAlert,
     invite,
     accept,
     decline,
@@ -344,6 +411,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     typing,
     leave,
     openRoom,
+    clearAcceptedAlert,
   }
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>

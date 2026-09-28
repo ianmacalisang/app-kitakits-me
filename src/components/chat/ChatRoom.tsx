@@ -78,7 +78,7 @@ export function ChatRoom({ room }: { room: RoomState }) {
           >
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
-          {peer && <Avatar src={peer.avatarUrl} name={peer.name} size="sm" />}
+          {peer && <Avatar src={peer.avatarUrl} name={peer.name || '?'} size="sm" />}
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{peer?.name ?? 'Chat'}</p>
             <p className="flex items-center gap-1.5 text-xs text-neutral-500">
@@ -102,6 +102,18 @@ export function ChatRoom({ room }: { room: RoomState }) {
                       : 'Offline'}
             </p>
           </div>
+          {!room.ended && (
+            <button
+              type="button"
+              onClick={() => {
+                chat.leave(room.key)
+                chat.openRoom(null)
+              }}
+              className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-500/10"
+            >
+              Leave
+            </button>
+          )}
         </div>
 
         <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4">
@@ -136,6 +148,12 @@ export function ChatRoom({ room }: { room: RoomState }) {
               )
             })}
           </ul>
+          {room.peerLeftAt > 0 && !room.ended && (
+            <p className="mt-3 text-center text-xs text-neutral-400">
+              {peer?.name?.split(' ')[0] ?? 'They'} left the chat — new messages wait for them to
+              come back.
+            </p>
+          )}
           {room.peerTyping && !room.ended && (
             <div className="mt-1.5 flex justify-start" aria-live="polite">
               <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-neutral-100 px-3.5 py-2.5 dark:bg-white/10">

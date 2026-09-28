@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import React from 'react'
 
 import { AppNav } from '@/components/AppNav'
+import { AcceptedBanner } from '@/components/chat/AcceptedBanner'
 import { ChatProvider } from '@/components/chat/ChatProvider'
 import { InviteBanner } from '@/components/chat/InviteBanner'
 import { InstallPrompt } from '@/components/InstallPrompt'
@@ -41,6 +42,7 @@ export default async function AppLayout(props: { children: React.ReactNode }) {
         <ToastHost />
         <InstallPrompt />
         <InviteBanner />
+        <AcceptedBanner />
       </ChatProvider>
     </div>
   )
