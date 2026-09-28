@@ -192,7 +192,14 @@ const activateRoom = (key, memberIds) => {
 }
 
 const handleAuth = async (ws, ticket) => {
-  if (ws.user || typeof ticket !== 'string' || !SECRET) return
+  // No shared secret configured — fail loudly instead of letting the auth
+  // timer reap the socket 5s later with no explanation.
+  if (!SECRET) {
+    send(ws, { type: 'error', code: 'server', message: 'Chat service is misconfigured.' })
+    ws.close(4002, 'no secret configured')
+    return
+  }
+  if (ws.user || typeof ticket !== 'string') return
   try {
     const { payload } = await jwtVerify(ticket, SECRET_BYTES, { algorithms: ['HS256'] })
     const id = Number(payload.uid)
@@ -476,6 +483,8 @@ setInterval(() => {
 
 server.listen(PORT, () => {
   console.log(`[chat] ws listening on :${PORT}`)
+  if (!SECRET)
+    console.warn('[chat] WARNING: CHAT_TICKET_SECRET/PAYLOAD_SECRET unset — all auth will fail')
 })
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
