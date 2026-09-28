@@ -124,7 +124,7 @@ export function ChatClient() {
                       chat.join(room.key)
                       chat.openRoom(room.key)
                     }}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-neutral-50/60"
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/60"
                   >
                     <span className="relative shrink-0">
                       <Avatar src={peer?.avatarUrl} name={peer?.name ?? '?'} size="md" />
