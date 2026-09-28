@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import React from 'react'
 
 import { AppNav } from '@/components/AppNav'
+import { ChatProvider } from '@/components/chat/ChatProvider'
+import { InviteBanner } from '@/components/chat/InviteBanner'
 import { InstallPrompt } from '@/components/InstallPrompt'
 import { ToastHost } from '@/components/ToastHost'
 import { getCurrentUser } from '@/lib/auth'
@@ -23,20 +25,23 @@ export default async function AppLayout(props: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <AppNav
-        name={user.name}
-        username={user.username}
-        avatarUrl={avatarUrl(fullUser)}
-        unreadCount={unread}
-        unreadMailCount={unreadMail}
-        pendingTestimonialCount={pendingTestimonials}
-        theme={fullUser.theme ?? 'light'}
-      />
-      <main>
-        <div className="mx-auto w-full max-w-3xl px-4 pb-28 pt-24">{props.children}</div>
-      </main>
-      <ToastHost />
-      <InstallPrompt />
+      <ChatProvider>
+        <AppNav
+          name={user.name}
+          username={user.username}
+          avatarUrl={avatarUrl(fullUser)}
+          unreadCount={unread}
+          unreadMailCount={unreadMail}
+          pendingTestimonialCount={pendingTestimonials}
+          theme={fullUser.theme ?? 'light'}
+        />
+        <main>
+          <div className="mx-auto w-full max-w-3xl px-4 pb-28 pt-24">{props.children}</div>
+        </main>
+        <ToastHost />
+        <InstallPrompt />
+        <InviteBanner />
+      </ChatProvider>
     </div>
   )
 }

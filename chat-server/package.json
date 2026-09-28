@@ -1,0 +1,11 @@
+{
+  "name": "kitakits-chat-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Ephemeral WebSocket chat service — in-memory presence + rooms, ticket auth, no database.",
+  "dependencies": {
+    "jose": "5.10.0",
+    "ws": "8.21.3"
+  }
+}

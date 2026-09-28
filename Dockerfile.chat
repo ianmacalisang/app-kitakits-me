@@ -1,0 +1,24 @@
+# Standalone image for the ephemeral chat WebSocket service (chat-server/).
+# Deploy as a second Coolify service on its own domain (e.g. ws.kitakits.me) —
+# Traefik terminates TLS and upgrades wss:// automatically. The service has its
+# own tiny dependency set (ws + jose only) and never connects to the database.
+
+FROM node:22.17.0-alpine AS deps
+WORKDIR /app
+COPY chat-server/package.json chat-server/package-lock.json ./
+RUN npm ci --omit=dev
+
+FROM node:22.17.0-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+COPY --from=deps /app/node_modules ./node_modules
+COPY chat-server/server.mjs ./server.mjs
+USER nextjs
+EXPOSE 3001
+ENV WS_PORT=3001
+# Coolify health checks hit this inside the container — busybox wget ships
+# with the alpine base, no extra deps needed.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -qO- http://localhost:3001/health > /dev/null || exit 1
+CMD ["node", "server.mjs"]

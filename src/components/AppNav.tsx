@@ -11,9 +11,11 @@ import type { UserCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
 import { BrandMark } from './Branding'
+import { useChat } from './chat/ChatProvider'
 import { CreatePost } from './CreatePost'
 import { NotificationsMenu } from './NotificationsMenu'
 import {
+  ChatIcon,
   ChevronDownIcon,
   CompassIcon,
   HomeIcon,
@@ -348,6 +350,11 @@ export function AppNav({
     setMenuOpen(false)
   }
 
+  // Pending chat invites come from the WS session (client-side only) — no
+  // server badge count needed since nothing is persisted.
+  const chat = useChat()
+  const chatInviteCount = chat?.incoming.length ?? 0
+
   const links: {
     href: string
     label: string
@@ -433,7 +440,7 @@ export function AppNav({
   return (
     <>
       {/* Top header — floating pill matching the bottom dock */}
-      <div className="fixed inset-x-4 top-4 z-30 mx-auto flex max-w-3xl items-center gap-2">
+      <div className="group/header fixed inset-x-4 top-4 z-30 mx-auto flex max-w-3xl items-center gap-2">
         <header className="glass min-w-0 flex-1 rounded-full">
           <div className="flex h-14 w-full items-center justify-between px-4">
             <Logo />
@@ -532,7 +539,30 @@ export function AppNav({
           </div>
         </header>
 
-        <NotificationsMenu unreadCount={badges.unread} />
+        {/* Chat + notification pills — on small screens these collapse while
+            the search input is focused, letting the header span full width */}
+        <div className="flex shrink-0 items-center gap-2 max-sm:group-has-[form:focus-within]/header:hidden">
+          <Link
+            href="/chat"
+            prefetch
+            aria-label="Chat"
+            title="Chat"
+            aria-current={pathname === '/chat' ? 'page' : undefined}
+            className={`glass relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition-colors ${
+              pathname === '/chat' ? 'text-accent-600' : 'text-neutral-700 hover:text-accent-600'
+            }`}
+          >
+            <span className="relative">
+              <ChatIcon className="h-6 w-6" />
+              {chatInviteCount ? (
+                <span className="absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {chatInviteCount > 99 ? '99+' : chatInviteCount}
+                </span>
+              ) : null}
+            </span>
+          </Link>
+          <NotificationsMenu unreadCount={badges.unread} />
+        </div>
       </div>
 
       {/* Floating bottom dock — matches the content column width */}

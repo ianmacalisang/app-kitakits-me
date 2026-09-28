@@ -8,6 +8,7 @@
     "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build",
     "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
     "devsafe": "rm -rf .next && cross-env NODE_OPTIONS=--no-deprecation next dev",
+    "dev:chat": "node --env-file=.env chat-server/server.mjs",
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
     "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
     "lint": "cross-env NODE_OPTIONS=--no-deprecation eslint .",
@@ -30,6 +31,7 @@
     "dotenv": "16.4.7",
     "graphql": "^16.8.1",
     "hls.js": "^1.7.3",
+    "jose": "^5.10.0",
     "next": "16.3.3",
     "payload": "3.90.1",
     "qr-scanner": "^1.4.2",
@@ -39,7 +41,8 @@
     "sanitize-html": "^2.17.7",
     "sharp": "0.35.4",
     "tus-js-client": "^4.3.1",
-    "uploadthing": "^7.3.0"
+    "uploadthing": "^7.3.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@playwright/test": "1.58.2",
