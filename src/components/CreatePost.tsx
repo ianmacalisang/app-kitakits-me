@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import { Upload } from 'tus-js-client'
 
 import { createPost } from '@/actions/posts'
+import { updateDefaultPostVisibility } from '@/actions/users'
 import { createVideoUpload, discardVideo, markVideoUploaded } from '@/actions/videos'
 import { CATEGORY_TINTS, type PostCategory, postCategory } from '@/lib/categories'
 import { toast } from '@/lib/events'
@@ -14,7 +15,16 @@ import { compressImage } from '@/lib/image'
 import { Avatar } from './Avatar'
 import { CategoryPicker } from './CategoryPicker'
 import { BlurImage } from './BlurImage'
-import { ChevronDownIcon, EyeIcon, ImageIcon, PlusIcon, UserIcon, VideoIcon, XIcon } from './icons'
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  EyeIcon,
+  ImageIcon,
+  PlusIcon,
+  UserIcon,
+  VideoIcon,
+  XIcon,
+} from './icons'
 import { Spinner } from './Spinner'
 import { useSheetDragClose } from './useSheetDrag'
 
@@ -22,6 +32,8 @@ const CLOSE_MS = 300
 const MAX_IMAGES = 4
 const MAX_CHARS = 2000
 const MAX_VIDEO_BYTES = 256 * 1024 * 1024
+const RING_R = 9
+const RING_C = 2 * Math.PI * RING_R
 
 interface PickedVideo {
   previewUrl: string
@@ -38,9 +50,11 @@ const AUDIENCE = [
 export const CreatePost = memo(function CreatePost({
   avatarUrl,
   name,
+  defaultVisibility,
 }: {
   avatarUrl?: string
   name: string
+  defaultVisibility: 'public' | 'followers'
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -49,7 +63,7 @@ export const CreatePost = memo(function CreatePost({
   const [content, setContent] = useState('')
   const [images, setImages] = useState<{ file: File; url: string }[]>([])
   const [video, setVideo] = useState<PickedVideo | null>(null)
-  const [visibility, setVisibility] = useState<'public' | 'followers'>('public')
+  const [visibility, setVisibility] = useState<'public' | 'followers'>(defaultVisibility)
   const [category, setCategory] = useState<PostCategory | null>('kwento')
   const [audienceOpen, setAudienceOpen] = useState(false)
   const [pending, startTransition] = useTransition()
@@ -58,6 +72,13 @@ export const CreatePost = memo(function CreatePost({
   const videoRef = useRef<HTMLInputElement>(null)
   const uploadRef = useRef<Upload | null>(null)
   const audienceRef = useRef<HTMLDivElement>(null)
+
+  // Saved on the user record so the choice follows the account across
+  // browsers. Fire-and-forget — local state already reflects the pick.
+  const chooseVisibility = (value: 'public' | 'followers') => {
+    setVisibility(value)
+    void updateDefaultPostVisibility(value)
+  }
 
   const addFiles = (files: FileList | null) => {
     if (!files) return
@@ -164,6 +185,11 @@ export const CreatePost = memo(function CreatePost({
 
   const categoryEntry = postCategory(category)
 
+  const remaining = MAX_CHARS - content.length
+  const fill = Math.min(1, content.length / MAX_CHARS)
+  const canPost =
+    Boolean(content.trim()) || images.length > 0 || (video?.videoId != null && !video.uploading)
+
   const close = useCallback(() => {
     if (closing) return
     setClosing(true)
@@ -222,7 +248,6 @@ export const CreatePost = memo(function CreatePost({
         })
         setContent('')
         setError(null)
-        setVisibility('public')
         setCategory('kwento')
         toast('Posted!')
         router.refresh()
@@ -288,29 +313,26 @@ export const CreatePost = memo(function CreatePost({
                   <h2 className="text-[15px] font-semibold">New Post</h2>
                   <button
                     type="submit"
-                    disabled={
-                      pending ||
-                      Boolean(video?.uploading) ||
-                      (!content.trim() && images.length === 0 && !video?.videoId)
-                    }
-                    className="btn-primary flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm"
+                    disabled={pending || !canPost || Boolean(video?.uploading)}
+                    className="btn-primary flex min-w-[76px] items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-sm"
                   >
                     {pending && <Spinner className="h-3.5 w-3.5" />}
                     {pending ? 'Posting…' : 'Post'}
                   </button>
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                {/* Identity row */}
+                <div className="flex items-center gap-3 pt-4">
                   <Avatar src={avatarUrl} name={name} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-semibold leading-tight">{name}</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-[15px] font-semibold leading-tight">{name}</p>
 
                     {/* Audience picker */}
                     <div ref={audienceRef} className="relative mt-1 w-fit">
                       <button
                         type="button"
                         onClick={() => setAudienceOpen((v) => !v)}
-                        className="flex items-center gap-1 rounded-full bg-accent-500/10 py-1 pl-2.5 pr-2 text-xs font-medium text-accent-700 transition-colors hover:bg-accent-500/20"
+                        className="flex items-center gap-1 rounded-full bg-accent-500/10 py-1 pl-2.5 pr-2 text-xs font-medium text-accent-700 transition-colors hover:bg-accent-500/20 active:scale-95"
                       >
                         {visibility === 'public' ? (
                           <EyeIcon className="h-3.5 w-3.5" />
@@ -321,13 +343,13 @@ export const CreatePost = memo(function CreatePost({
                         <ChevronDownIcon className="h-3 w-3 opacity-60" />
                       </button>
                       {audienceOpen && (
-                        <div className="glass absolute left-0 top-full z-20 mt-1.5 w-44 rounded-2xl p-1.5">
+                        <div className="glass-pop absolute left-0 top-full z-20 mt-1.5 w-44 rounded-2xl p-1.5 motion-safe:animate-menu-pop">
                           {AUDIENCE.map(({ value, label, Icon }) => (
                             <button
                               key={value}
                               type="button"
                               onClick={() => {
-                                setVisibility(value)
+                                chooseVisibility(value)
                                 setAudienceOpen(false)
                               }}
                               className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-white/70"
@@ -335,87 +357,120 @@ export const CreatePost = memo(function CreatePost({
                               <Icon className="h-4 w-4 text-neutral-500" />
                               {label}
                               {visibility === value && (
-                                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent-500" />
+                                <CheckIcon className="ml-auto h-3.5 w-3.5 text-accent-600" />
                               )}
                             </button>
                           ))}
                         </div>
                       )}
                     </div>
-
-                    <div className="mt-2">
-                      <CategoryPicker value={category} onChange={setCategory} />
-                    </div>
-
-                    <textarea
-                      name="content"
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      maxLength={MAX_CHARS}
-                      rows={3}
-                      autoFocus
-                      placeholder={(
-                        categoryEntry?.prompt ?? "What's on your mind, {name}…"
-                      ).replace('{name}', name.split(' ')[0])}
-                      className={`field-sizing-content mt-1.5 min-h-[96px] w-full resize-none rounded-2xl border bg-white/95 px-3 py-2.5 text-[15px] leading-relaxed outline-none transition-colors placeholder:text-neutral-400 ${
-                        categoryEntry
-                          ? CATEGORY_TINTS[categoryEntry.tint].card
-                          : 'border-neutral-200/60'
-                      }`}
-                    />
                   </div>
                 </div>
 
-                {video && (
-                  <div className="ml-[52px] mt-2">
-                    <div className="relative aspect-video overflow-hidden rounded-2xl border border-black/5 bg-neutral-950">
-                      <video
-                        src={video.previewUrl}
-                        muted
-                        playsInline
-                        className="h-full w-full object-contain"
-                      />
-                      {video.uploading && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/50 text-white">
-                          <Spinner className="h-5 w-5" />
-                          <span className="text-xs font-medium">
-                            Uploading video… {video.progress}%
-                          </span>
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={removeVideo}
-                        className="absolute right-1.5 top-1.5 rounded-full bg-neutral-900/80 p-1 text-white backdrop-blur"
-                        aria-label="Remove video"
-                      >
-                        <XIcon className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {/* Composer card — textarea and attachments share one tinted
+                    surface so the whole thing reads as a single unit */}
+                <div
+                  className={`mt-3 rounded-3xl border bg-white/80 transition-shadow focus-within:ring-4 focus-within:ring-accent-500/10 ${
+                    categoryEntry
+                      ? CATEGORY_TINTS[categoryEntry.tint].card
+                      : 'border-neutral-200/60'
+                  }`}
+                >
+                  <textarea
+                    name="content"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (
+                        (e.metaKey || e.ctrlKey) &&
+                        e.key === 'Enter' &&
+                        canPost &&
+                        !video?.uploading
+                      )
+                        formRef.current?.requestSubmit()
+                    }}
+                    maxLength={MAX_CHARS}
+                    rows={3}
+                    autoFocus
+                    placeholder={(categoryEntry?.prompt ?? "What's on your mind, {name}…").replace(
+                      '{name}',
+                      name.split(' ')[0],
+                    )}
+                    className="field-sizing-content min-h-[110px] w-full resize-none bg-transparent px-4 pt-3.5 text-[15px] leading-relaxed outline-none placeholder:text-neutral-400"
+                  />
 
-                {images.length > 0 && (
-                  <div className="ml-[52px] mt-2 flex flex-wrap gap-2">
-                    {images.map((item, i) => (
-                      <div key={item.url} className="relative h-24 w-24">
-                        <BlurImage
-                          src={item.url}
-                          alt="Selected image"
-                          className="h-full w-full rounded-xl border border-black/5 object-cover"
+                  {video && (
+                    <div className="px-3 pb-3">
+                      <div className="relative aspect-video overflow-hidden rounded-2xl border border-black/5 bg-neutral-950">
+                        <video
+                          src={video.previewUrl}
+                          muted
+                          playsInline
+                          className="h-full w-full object-contain"
                         />
+                        {video.uploading && (
+                          <>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/50 text-white">
+                              <Spinner className="h-5 w-5" />
+                              <span className="text-xs font-medium">
+                                Uploading video… {video.progress}%
+                              </span>
+                            </div>
+                            <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20">
+                              <div
+                                className="h-full bg-white/90 transition-[width] duration-200"
+                                style={{ width: `${video.progress}%` }}
+                              />
+                            </div>
+                          </>
+                        )}
                         <button
                           type="button"
-                          onClick={() => removeImage(i)}
-                          className="absolute -right-1.5 -top-1.5 rounded-full bg-neutral-900/80 p-1 text-white backdrop-blur"
-                          aria-label="Remove image"
+                          onClick={removeVideo}
+                          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur transition-transform hover:scale-105 active:scale-95"
+                          aria-label="Remove video"
                         >
                           <XIcon className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    </div>
+                  )}
+
+                  {images.length > 0 && (
+                    <div
+                      className={`grid gap-2 px-3 pb-3 ${
+                        images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                      }`}
+                    >
+                      {images.map((item, i) => (
+                        <div
+                          key={item.url}
+                          className={`relative overflow-hidden rounded-2xl border border-black/5 ${
+                            images.length === 1 ? 'aspect-[4/3] max-h-72' : 'aspect-square'
+                          }`}
+                        >
+                          <BlurImage
+                            src={item.url}
+                            alt="Selected image"
+                            className="h-full w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(i)}
+                            className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur transition-transform hover:scale-105 active:scale-95"
+                            aria-label="Remove image"
+                          >
+                            <XIcon className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-3">
+                  <CategoryPicker value={category} onChange={setCategory} />
+                </div>
 
                 {error && (
                   <p className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-600">
@@ -432,7 +487,8 @@ export const CreatePost = memo(function CreatePost({
                 <div className="mt-4 flex items-center justify-between gap-3 border-t border-black/5 pt-3">
                   <div className="flex items-center gap-2">
                     <label
-                      className={`btn-accent-soft flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                      aria-label={images.length >= MAX_IMAGES ? 'Max 4 images' : 'Add images'}
+                      className={`btn-accent-soft flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-transform active:scale-90 ${
                         images.length >= MAX_IMAGES || video !== null
                           ? 'cursor-not-allowed opacity-40'
                           : 'cursor-pointer'
@@ -454,7 +510,8 @@ export const CreatePost = memo(function CreatePost({
                       />
                     </label>
                     <label
-                      className={`btn-accent-soft flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                      aria-label="Add video (max 256MB)"
+                      className={`btn-accent-soft flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-transform active:scale-90 ${
                         images.length > 0 || video !== null
                           ? 'cursor-not-allowed opacity-40'
                           : 'cursor-pointer'
@@ -476,13 +533,46 @@ export const CreatePost = memo(function CreatePost({
                     </label>
                   </div>
 
-                  <span
-                    className={`text-xs tabular-nums ${
-                      content.length >= MAX_CHARS ? 'text-amber-600' : 'text-neutral-400'
-                    }`}
-                  >
-                    {content.length}/{MAX_CHARS}
-                  </span>
+                  {/* Character ring — fills as you type, amber near the cap,
+                      red when full; remaining count appears once you're close */}
+                  <div className="flex items-center gap-2" aria-hidden>
+                    {remaining <= 200 && (
+                      <span
+                        className={`text-xs font-medium tabular-nums ${
+                          remaining <= 0 ? 'text-red-500' : 'text-amber-600'
+                        }`}
+                      >
+                        {remaining}
+                      </span>
+                    )}
+                    <svg viewBox="0 0 24 24" className="h-6 w-6 -rotate-90">
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r={RING_R}
+                        fill="none"
+                        strokeWidth="2.5"
+                        className="stroke-neutral-500/20"
+                      />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r={RING_R}
+                        fill="none"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeDasharray={RING_C}
+                        strokeDashoffset={RING_C * (1 - fill)}
+                        className={`transition-[stroke-dashoffset] duration-150 ${
+                          remaining <= 0
+                            ? 'stroke-red-500'
+                            : remaining <= 200
+                              ? 'stroke-amber-500'
+                              : 'stroke-accent-400'
+                        }`}
+                      />
+                    </svg>
+                  </div>
                 </div>
               </form>
             </div>

@@ -281,6 +281,10 @@ export interface User {
   testimonialPermission?: ('everyone' | 'followers' | 'off') | null;
   theme?: ('system' | 'light' | 'dark') | null;
   /**
+   * Audience preselected in the post composer.
+   */
+  defaultPostVisibility?: ('public' | 'followers') | null;
+  /**
    * Set when the user finishes the onboarding flow.
    */
   onboardedAt?: string | null;
@@ -780,6 +784,7 @@ export interface UsersSelect<T extends boolean = true> {
   commentPermission?: T;
   testimonialPermission?: T;
   theme?: T;
+  defaultPostVisibility?: T;
   onboardedAt?: T;
   role?: T;
   updatedAt?: T;

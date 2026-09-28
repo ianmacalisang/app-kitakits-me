@@ -35,6 +35,7 @@ export default async function AppLayout(props: { children: React.ReactNode }) {
           unreadMailCount={unreadMail}
           pendingTestimonialCount={pendingTestimonials}
           theme={fullUser.theme ?? 'light'}
+          defaultPostVisibility={fullUser.defaultPostVisibility ?? 'public'}
         />
         <main>
           <div className="mx-auto w-full max-w-3xl px-4 pb-28 pt-24">{props.children}</div>

@@ -372,6 +372,18 @@ export const Users: CollectionConfig = {
       defaultValue: 'light',
     },
     {
+      name: 'defaultPostVisibility',
+      type: 'select',
+      options: [
+        { label: 'Public', value: 'public' },
+        { label: 'Followers only', value: 'followers' },
+      ],
+      defaultValue: 'public',
+      admin: {
+        description: 'Audience preselected in the post composer.',
+      },
+    },
+    {
       name: 'onboardedAt',
       type: 'date',
       admin: {

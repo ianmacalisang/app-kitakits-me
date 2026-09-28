@@ -10,7 +10,17 @@
 // intercepted), /admin, and /api responses (auth-sensitive REST endpoints).
 // Bump VERSION to force a full cache refresh on the next activate.
 
-const VERSION = 'v2'
+const VERSION = 'v3'
+
+// Dev hosts — `next dev` chunks under /_next aren't content-hashed, so any
+// caching strategy serves stale code after every edit (stale server-action
+// references surface as "module factory is not available"). Bypass the worker
+// entirely; production builds still get the full caching behavior.
+const DEV_HOST =
+  self.location.hostname === 'localhost' ||
+  self.location.hostname === '127.0.0.1' ||
+  self.location.hostname.endsWith('.local') ||
+  /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(self.location.hostname)
 const STATIC_CACHE = `kitakits-static-${VERSION}`
 const PAGES_CACHE = `kitakits-pages-${VERSION}`
 const MEDIA_CACHE = `kitakits-media-${VERSION}`
@@ -102,6 +112,8 @@ const staleWhileRevalidate = (event, request, cacheName) => {
 }
 
 self.addEventListener('fetch', (event) => {
+  if (DEV_HOST) return
+
   const { request } = event
 
   if (request.method !== 'GET') return

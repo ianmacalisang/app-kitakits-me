@@ -46,6 +46,7 @@ interface AppNavProps {
   unreadMailCount: number
   pendingTestimonialCount: number
   theme: Theme
+  defaultPostVisibility: 'public' | 'followers'
 }
 
 function Logo() {
@@ -246,6 +247,7 @@ export function AppNav({
   unreadMailCount,
   pendingTestimonialCount,
   theme: themeProp,
+  defaultPostVisibility,
 }: AppNavProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -603,7 +605,7 @@ export function AppNav({
             </DockLink>
           ))}
         </div>
-        <CreatePost avatarUrl={avatarUrl} name={name} />
+        <CreatePost avatarUrl={avatarUrl} name={name} defaultVisibility={defaultPostVisibility} />
         <div className="flex flex-1 justify-around">
           {links.slice(2).map(({ href, label, icon: Icon, badge }) => (
             <DockLink key={href} href={href} label={label} active={pathname === href} badge={badge}>

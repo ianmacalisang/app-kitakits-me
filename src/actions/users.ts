@@ -253,6 +253,31 @@ export async function updateTheme(theme: 'light' | 'dark' | 'system'): Promise<F
   return { success: true }
 }
 
+// Composer audience preference — saved per user so the last choice carries
+// across browsers and devices.
+export async function updateDefaultPostVisibility(
+  visibility: 'public' | 'followers',
+): Promise<FormState> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+
+  try {
+    await payload.update({
+      collection: 'users',
+      id: user.id,
+      data: { defaultPostVisibility: visibility },
+      user,
+      overrideAccess: false,
+    })
+  } catch (err) {
+    return { error: errorMessage(err, 'Could not save your audience preference.') }
+  }
+
+  return { success: true }
+}
+
 export async function completeOnboarding(next?: string): Promise<FormState> {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
