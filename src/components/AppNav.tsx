@@ -252,6 +252,10 @@ export function AppNav({
   const [pending, startTransition] = useTransition()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  // The dropdown lives outside the glass header (whose backdrop-filter would
+  // otherwise become its containing block), so outside clicks have to check
+  // it separately from the avatar button.
+  const menuPopRef = useRef<HTMLDivElement>(null)
   const [theme, setTheme] = useState<Theme>(themeProp)
 
   // Keep the selector in sync when the server-rendered prop changes.
@@ -330,7 +334,8 @@ export function AppNav({
   useEffect(() => {
     if (!menuOpen) return
     const close = (e: MouseEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false)
+      const t = e.target as Node
+      if (!menuRef.current?.contains(t) && !menuPopRef.current?.contains(t)) setMenuOpen(false)
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setMenuOpen(false)
@@ -446,7 +451,7 @@ export function AppNav({
             <Logo />
             <HeaderSearch />
 
-            <div className="relative shrink-0" ref={menuRef}>
+            <div className="shrink-0" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen((open) => !open)}
                 className={`flex items-center gap-1 rounded-full p-1 pr-1.5 transition-colors ${
@@ -463,81 +468,85 @@ export function AppNav({
                   }`}
                 />
               </button>
-
-              {menuOpen && (
-                <div
-                  role="menu"
-                  aria-label="Account"
-                  className="glass-pop motion-safe:animate-menu-pop absolute right-0 top-full z-20 mt-2 w-64 origin-top-right rounded-2xl p-1.5"
-                >
-                  <Link
-                    href={`/profile/${username}`}
-                    onClick={() => setMenuOpen(false)}
-                    role="menuitem"
-                    className="flex items-center gap-3 rounded-xl px-2.5 py-2.5 transition-colors hover:bg-white/70"
-                  >
-                    <Avatar src={avatarUrl} name={name} size="md" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold leading-tight">
-                        {name}
-                      </span>
-                      <span className="block truncate text-xs leading-tight text-neutral-500">
-                        View profile
-                      </span>
-                    </span>
-                  </Link>
-                  <Link
-                    href="/settings"
-                    onClick={() => setMenuOpen(false)}
-                    role="menuitem"
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-white/70"
-                  >
-                    <SettingsIcon className="h-4 w-4" />
-                    Settings
-                  </Link>
-                  <div className="mt-1 border-t border-black/5 p-1.5 pb-1 pt-2">
-                    <p className="px-1.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
-                      Theme
-                    </p>
-                    <div className="flex rounded-xl bg-black/5 p-1">
-                      {(['light', 'dark'] as const).map((t) => {
-                        const active = theme === t
-                        const Icon = THEME_ICONS[t]
-                        return (
-                          <button
-                            key={t}
-                            type="button"
-                            onClick={() => chooseTheme(t)}
-                            aria-pressed={active}
-                            className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] font-medium capitalize transition ${
-                              active
-                                ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100 dark:shadow-none'
-                                : 'text-neutral-500 hover:text-neutral-700'
-                            }`}
-                          >
-                            <Icon className="h-3.5 w-3.5" />
-                            {t}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                  <div className="mt-1 border-t border-black/5 pt-1">
-                    <button
-                      onClick={handleLogout}
-                      disabled={pending}
-                      role="menuitem"
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-50"
-                    >
-                      <LogoutIcon className="h-4 w-4" />
-                      Logout
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </header>
+
+        {/* Account dropdown — a direct child of the outer fixed bar so it
+            positions against the bar: the glass header's backdrop-filter would
+            otherwise be its containing block and `right-0` would pin to the
+            pill's edge. Centered under the bar on small screens; on sm+ the
+            right edge matches the bell — 1rem in from the screen. */}
+        {menuOpen && (
+          <div
+            ref={menuPopRef}
+            role="menu"
+            aria-label="Account"
+            className="glass-pop motion-safe:animate-menu-pop absolute left-1/2 top-full z-20 mt-2 w-64 max-w-[calc(100vw-2rem)] origin-top -translate-x-1/2 rounded-2xl p-1.5 sm:left-auto sm:right-0 sm:translate-x-0 sm:origin-top-right"
+          >
+            <Link
+              href={`/profile/${username}`}
+              onClick={() => setMenuOpen(false)}
+              role="menuitem"
+              className="flex items-center gap-3 rounded-xl px-2.5 py-2.5 transition-colors hover:bg-white/70"
+            >
+              <Avatar src={avatarUrl} name={name} size="md" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold leading-tight">{name}</span>
+                <span className="block truncate text-xs leading-tight text-neutral-500">
+                  View profile
+                </span>
+              </span>
+            </Link>
+            <Link
+              href="/settings"
+              onClick={() => setMenuOpen(false)}
+              role="menuitem"
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-white/70"
+            >
+              <SettingsIcon className="h-4 w-4" />
+              Settings
+            </Link>
+            <div className="mt-1 border-t border-black/5 p-1.5 pb-1 pt-2">
+              <p className="px-1.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+                Theme
+              </p>
+              <div className="flex rounded-xl bg-black/5 p-1">
+                {(['light', 'dark'] as const).map((t) => {
+                  const active = theme === t
+                  const Icon = THEME_ICONS[t]
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => chooseTheme(t)}
+                      aria-pressed={active}
+                      className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] font-medium capitalize transition ${
+                        active
+                          ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100 dark:shadow-none'
+                          : 'text-neutral-500 hover:text-neutral-700'
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {t}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="mt-1 border-t border-black/5 pt-1">
+              <button
+                onClick={handleLogout}
+                disabled={pending}
+                role="menuitem"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-50"
+              >
+                <LogoutIcon className="h-4 w-4" />
+                Logout
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Chat + notification pills — on small screens these collapse while
             the search input is focused, letting the header span full width */}

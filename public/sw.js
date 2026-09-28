@@ -10,7 +10,7 @@
 // intercepted), /admin, and /api responses (auth-sensitive REST endpoints).
 // Bump VERSION to force a full cache refresh on the next activate.
 
-const VERSION = 'v1'
+const VERSION = 'v2'
 const STATIC_CACHE = `kitakits-static-${VERSION}`
 const PAGES_CACHE = `kitakits-pages-${VERSION}`
 const MEDIA_CACHE = `kitakits-media-${VERSION}`
@@ -109,6 +109,11 @@ self.addEventListener('fetch', (event) => {
   if (request.headers.has('range')) return
 
   const url = new URL(request.url)
+
+  // Next.js prefetches (RSC flight probes) are speculative — they abort all
+  // the time, and responding with a network error just logs scary warnings.
+  // Let them hit the network directly, untouched.
+  if (request.headers.has('next-router-prefetch')) return
 
   if (url.origin === self.location.origin) {
     // Payload admin and API responses are auth-sensitive — always live.

@@ -3,7 +3,7 @@
 import { Avatar } from '../Avatar'
 import { EmptyState } from '../EmptyState'
 import { Spinner } from '../Spinner'
-import { ChatIcon } from '../icons'
+import { ChatIcon, LockIcon } from '../icons'
 import { useChat } from './ChatProvider'
 import { ChatRoom, pairKey } from './ChatRoom'
 
@@ -35,12 +35,16 @@ export function ChatClient() {
   const roomPeerIds = new Set(roomList.map((r) => r.peer?.id).filter(Boolean))
 
   // Mutuals who are online but don't have a room yet — invite targets.
-  const inviteable = chat.online.filter(
-    (u) => u.id !== selfId && !roomPeerIds.has(u.id),
-  )
+  const inviteable = chat.online.filter((u) => u.id !== selfId && !roomPeerIds.has(u.id))
 
   return (
     <div className="flex flex-col gap-6">
+      <p className="flex items-start gap-2 text-xs leading-relaxed text-neutral-400">
+        <LockIcon className="mt-px h-3.5 w-3.5 shrink-0" />
+        Chats aren’t saved — messages disappear when the conversation ends, and the other person has
+        to accept your invite before a chat starts.
+      </p>
+
       {chat.status === 'connecting' && (
         <div className="glass flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-neutral-500">
           <Spinner className="h-4 w-4 text-neutral-400" /> Connecting to chat…
@@ -57,7 +61,7 @@ export function ChatClient() {
           <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
             Conversations
           </h2>
-          <ul className="glass divide-y divide-neutral-200/60 overflow-hidden rounded-3xl">
+          <ul className="glass divide-y divide-neutral-200/60 overflow-hidden rounded-3xl dark:divide-white/10">
             {roomList.map((room) => {
               const peer = room.peer
               const last = room.messages.at(-1)
@@ -75,7 +79,7 @@ export function ChatClient() {
                     <span className="relative shrink-0">
                       <Avatar src={peer?.avatarUrl} name={peer?.name ?? '?'} size="md" />
                       <span
-                        className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${
+                        className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-neutral-900 ${
                           room.peerInRoom || peerOnline ? 'bg-emerald-500' : 'bg-neutral-300'
                         }`}
                       />
@@ -93,7 +97,7 @@ export function ChatClient() {
                       </span>
                     </span>
                     {room.peerInRoom && (
-                      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
+                      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
                         Live
                       </span>
                     )}
@@ -117,14 +121,14 @@ export function ChatClient() {
             compact
           />
         ) : (
-          <ul className="glass divide-y divide-neutral-200/60 overflow-hidden rounded-3xl">
+          <ul className="glass divide-y divide-neutral-200/60 overflow-hidden rounded-3xl dark:divide-white/10">
             {inviteable.map((user) => {
               const pending = chat.outgoing.has(pairKey(selfId ?? 0, user.id))
               return (
                 <li key={user.id} className="flex items-center gap-3 px-4 py-3">
                   <span className="relative shrink-0">
                     <Avatar src={user.avatarUrl} name={user.name} size="md" />
-                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-neutral-900" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">{user.name}</span>
@@ -136,7 +140,7 @@ export function ChatClient() {
                     type="button"
                     disabled={pending || chat.status !== 'online'}
                     onClick={() => chat.invite(user.id)}
-                    className="shrink-0 rounded-full bg-accent-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-accent-700 disabled:opacity-50"
+                    className="shrink-0 rounded-full bg-accent-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-accent-700 disabled:opacity-50 dark:bg-accent-200 dark:text-accent-900 dark:hover:bg-accent-100"
                   >
                     {pending ? 'Waiting…' : 'Chat'}
                   </button>

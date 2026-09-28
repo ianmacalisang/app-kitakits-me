@@ -37,14 +37,14 @@ export function InviteBanner() {
         <button
           type="button"
           onClick={onAccept}
-          className="rounded-full bg-accent-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-accent-700"
+          className="rounded-full bg-accent-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-accent-700 dark:bg-accent-200 dark:text-accent-900 dark:hover:bg-accent-100"
         >
           Accept
         </button>
         <button
           type="button"
           onClick={() => chat.decline(invite.room)}
-          className="rounded-full px-3 py-1.5 text-sm font-medium text-neutral-500 transition hover:text-neutral-800"
+          className="rounded-full px-3 py-1.5 text-sm font-medium text-neutral-500 transition hover:text-neutral-800 dark:hover:text-neutral-200"
         >
           Decline
         </button>
