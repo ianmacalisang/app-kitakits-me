@@ -42,6 +42,11 @@ export function MailboxView({
   const [draftItems, setDraftItems] = useState(drafts)
   const [pending, startTransition] = useTransition()
   const [morePending, startMoreTransition] = useTransition()
+  // Tab-switch loading — shows a spinner in place of the list while the new
+  // box's first page loads. requestedBox tracks the latest tab asked for so a
+  // slow response from a superseded tab can't clobber the current one.
+  const [switching, setSwitching] = useState(false)
+  const requestedBox = useRef<Box>('inbox')
   const [prevInitial, setPrevInitial] = useState(threads)
   const [prevDrafts, setPrevDrafts] = useState(drafts)
   const [composeOpen, setComposeOpen] = useState(Boolean(composeTo))
@@ -143,18 +148,29 @@ export function MailboxView({
 
   const switchBox = (next: Box) => {
     if (next === box) return
+    requestedBox.current = next
     setBox(next)
+    setSwitching(true)
     if (next === 'drafts') {
       startTransition(async () => {
-        setDraftItems(await getDrafts())
+        try {
+          setDraftItems(await getDrafts())
+        } finally {
+          if (requestedBox.current === next) setSwitching(false)
+        }
       })
       return
     }
     startTransition(async () => {
-      const result = await getThreads(next, 1)
-      setItems(result.items)
-      setPage(1)
-      setHasMore(result.hasMore)
+      try {
+        const result = await getThreads(next, 1)
+        if (requestedBox.current !== next) return
+        setItems(result.items)
+        setPage(1)
+        setHasMore(result.hasMore)
+      } finally {
+        if (requestedBox.current === next) setSwitching(false)
+      }
     })
   }
 
@@ -283,7 +299,11 @@ export function MailboxView({
         </>
       )}
 
-      {searchResults !== null ? null : box === 'drafts' ? (
+      {searchResults !== null ? null : switching ? (
+        <div className="flex justify-center py-16">
+          <Spinner />
+        </div>
+      ) : box === 'drafts' ? (
         draftItems.length === 0 ? (
           <EmptyState
             icon={<MailboxIcon />}
@@ -319,7 +339,7 @@ export function MailboxView({
       )}
 
       <LoadSentinel
-        hasMore={searchResults === null && box !== 'drafts' && hasMore}
+        hasMore={!switching && searchResults === null && box !== 'drafts' && hasMore}
         pending={morePending}
         onLoadAction={loadMore}
       />

@@ -13,9 +13,10 @@ const nextConfig: NextConfig = {
   ...(process.env.BUILD_STANDALONE === '1' ? { output: 'standalone' as const } : {}),
   experimental: {
     // Keep the router cache alive for dynamic pages so navigating back is
-    // instant. 0 would disable it entirely; Payload admin warns above 0
-    // but that warning only matters for the /admin route which is excluded
-    // from the frontend cache anyway.
+    // instant. 0 would disable it entirely. Payload warns about non-zero
+    // values because the router cache is global and also applies to /admin
+    // client-side navigations — accepted trade-off; Payload calls
+    // router.refresh() after mutations which mitigates most staleness.
     staleTimes: {
       dynamic: 30,
       static: 180,

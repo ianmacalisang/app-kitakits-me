@@ -711,7 +711,7 @@ export default async function LandingPage() {
             aria-hidden="true"
           />
           <h2 className="relative text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            Tara, tambay na.
+            Tara, tambay na!
           </h2>
           <p className="relative mx-auto mt-3 max-w-md text-sm leading-relaxed text-accent-50/90">
             Walang algorithms. Walang persona. Ikaw at ang kwento mo lang — claim mo na ang handle

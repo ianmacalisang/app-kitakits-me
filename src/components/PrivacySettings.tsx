@@ -162,7 +162,7 @@ export function PrivacySettings({
                 disabled={pending}
                 className={`flex-1 rounded-full py-1.5 text-xs font-medium transition-all disabled:opacity-50 ${
                   permission === value
-                    ? 'bg-white text-neutral-900 shadow-sm'
+                    ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100 dark:shadow-none'
                     : 'text-neutral-500 hover:text-neutral-700'
                 }`}
               >
@@ -186,7 +186,7 @@ export function PrivacySettings({
                 disabled={pending}
                 className={`flex-1 rounded-full py-1.5 text-xs font-medium transition-all disabled:opacity-50 ${
                   testimonialPermission === value
-                    ? 'bg-white text-neutral-900 shadow-sm'
+                    ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100 dark:shadow-none'
                     : 'text-neutral-500 hover:text-neutral-700'
                 }`}
               >
