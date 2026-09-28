@@ -80,7 +80,8 @@ export function InstallPrompt() {
       return
     }
     // iOS has no programmatic install — the native share sheet is the closest
-    // we can get: "Add to Home Screen" lives one tap inside it.
+    // we can get: "Add to Home Screen" lives inside it (behind "View More"
+    // on iOS 26's collapsed actions list).
     if (navigator.share) {
       await navigator
         .share({ title: appName, url: `${window.location.origin}/home` })
@@ -100,7 +101,7 @@ export function InstallPrompt() {
           <p className="text-sm font-semibold">Install {appName}</p>
           {showIOS && !deferred ? (
             <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-xs text-neutral-500 dark:text-neutral-400">
-              Tap Install, then choose
+              Tap Install, tap View More if needed, then choose
               <PlusIcon className="inline h-3.5 w-3.5" />
               Add to Home Screen
             </p>
