@@ -9,7 +9,6 @@ import {
   markNotificationsRead,
 } from '@/actions/notifications'
 import type { NotificationData } from '@/lib/serialize'
-import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { CommentsSheet } from './CommentsSheet'
@@ -26,6 +25,7 @@ import {
 } from './icons'
 import { PostSheet } from './PostSheet'
 import { LoadSentinel } from './LoadSentinel'
+import { RelativeTime } from './RelativeTime'
 
 const typeIcon = {
   like: <HeartIcon className="h-2.5 w-2.5" filled />,
@@ -388,7 +388,7 @@ const NotificationItem = memo(function NotificationItem({
               </span>
             )}
           <span className="block text-xs text-neutral-500">
-            @{notification.actorUsername} · {formatRelativeTime(notification.createdAt)}
+            @{notification.actorUsername} · <RelativeTime iso={notification.createdAt} />
           </span>
         </span>
         {!notification.read && <span className="h-2 w-2 shrink-0 rounded-full bg-accent-500" />}
@@ -460,7 +460,7 @@ const NotificationStack = memo(function NotificationStack({
             </span>
           )}
           <span className="block text-xs text-neutral-500">
-            @{newest.actorUsername} · {formatRelativeTime(newest.createdAt)}
+            @{newest.actorUsername} · <RelativeTime iso={newest.createdAt} />
           </span>
         </span>
         {hasUnread && <span className="h-2 w-2 shrink-0 rounded-full bg-accent-500" />}
@@ -512,7 +512,7 @@ const NotificationStack = memo(function NotificationStack({
                   )}
                 </span>
                 <span className="shrink-0 text-[10px] tabular-nums text-neutral-400">
-                  {formatRelativeTime(notification.createdAt)}
+                  <RelativeTime iso={notification.createdAt} />
                 </span>
               </button>
             )

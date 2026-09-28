@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 import { getCurrentUser, getRequestOrigin } from '@/lib/auth'
+import { safeConnectPath } from '@/lib/connect-path'
 import { getPayloadClient } from '@/lib/payload'
 import { checkRate, rateLimitIP } from '@/lib/rate-limit'
 
@@ -65,7 +66,9 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
     return { error: 'Invalid email or password.', values }
   }
 
-  redirect('/home')
+  // `next` only ever points back into the connect flow — anything else is
+  // dropped so it can't become an open redirect.
+  redirect(safeConnectPath(formData.get('next')) ?? '/home')
 }
 
 export async function register(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -110,7 +113,10 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
     redirect('/login')
   }
 
-  redirect('/onboarding')
+  // A connect invite carries the pending path through onboarding so the new
+  // account lands back on /connect/<username> and auto-connects.
+  const next = safeConnectPath(formData.get('next'))
+  redirect(next ? `/onboarding?next=${encodeURIComponent(next)}` : '/onboarding')
 }
 
 export async function requestPasswordReset(

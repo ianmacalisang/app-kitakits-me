@@ -7,7 +7,6 @@ import { getComments } from '@/actions/comments'
 import { getPost } from '@/actions/posts'
 import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
 import type { CommentData, PostCardData } from '@/lib/serialize'
-import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { CategoryChip, RepostBadge } from './CategoryChip'
@@ -18,6 +17,7 @@ import { LockIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
 import { PostImages } from './PostImages'
 import { PostVideo } from './PostVideo'
+import { RelativeTime } from './RelativeTime'
 import { Spinner } from './Spinner'
 import { useSheetDragClose } from './useSheetDrag'
 
@@ -255,7 +255,7 @@ const SheetPost = memo(function SheetPost({ post }: { post: PostCardData }) {
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold">{post.authorName}</span>
             <span className="block truncate text-xs text-neutral-500">
-              @{post.authorUsername} · {formatRelativeTime(post.createdAt)}
+              @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
               {post.visibility === 'followers' && (
                 <LockIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
               )}
@@ -292,7 +292,7 @@ const SheetPost = memo(function SheetPost({ post }: { post: PostCardData }) {
                 <span className="text-sm font-semibold text-neutral-900">
                   {post.sharedPost.authorName}
                 </span>{' '}
-                @{post.sharedPost.authorUsername} · {formatRelativeTime(post.sharedPost.createdAt)}
+                @{post.sharedPost.authorUsername} · <RelativeTime iso={post.sharedPost.createdAt} />
               </p>
             </Link>
             <CategoryChip category={post.sharedPost.category} className="shrink-0" />

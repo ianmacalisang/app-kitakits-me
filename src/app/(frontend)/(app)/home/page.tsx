@@ -1,6 +1,16 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 
 import { HomeTabs } from '@/components/HomeTabs'
+import {
+  ActivityIcon,
+  BookmarkIcon,
+  ChevronRightIcon,
+  HomeIcon,
+  QrCodeIcon,
+} from '@/components/icons'
+import { PostListSkeleton } from '@/components/PostListSkeleton'
 import { getFollowingActivities } from '@/lib/activities'
 import { getCurrentUser } from '@/lib/auth'
 import { isPostCategory, type PostCategory } from '@/lib/categories'
@@ -19,7 +29,75 @@ export const metadata = { title: 'Home' }
 
 const MEDIA_FILTERS = new Set<MediaFilter>(['all', 'media', 'images', 'videos'])
 
-export default async function HomePage({
+// Static shell — renders instantly; only the post list area suspends so the
+// QR card and tab chrome are visible while feed data loads.
+export default function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ media?: string; category?: string }>
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <h1 className="sr-only">Home</h1>
+      <Link
+        href="/invite"
+        className="glass group flex items-center gap-3.5 rounded-3xl p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-300/60 hover:shadow-lg hover:shadow-accent-600/10"
+      >
+        <span className="btn-accent-soft flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl">
+          <QrCodeIcon className="h-5 w-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-neutral-800">
+            Met someone at a party?
+          </span>
+          <span className="block text-xs text-neutral-500">
+            Show your code or scan theirs — you&apos;ll follow each other instantly.
+          </span>
+        </span>
+        <ChevronRightIcon className="h-4 w-4 shrink-0 text-neutral-400 transition-transform group-hover:translate-x-0.5" />
+      </Link>
+      <Suspense fallback={<HomeFeedFallback />}>
+        <HomeFeed searchParams={searchParams} />
+      </Suspense>
+    </div>
+  )
+}
+
+// Suspense fallback: a non-interactive replica of the HomeTabs pill (Feed
+// active) over the post skeletons, so only the list area shows a loader.
+function HomeFeedFallback() {
+  const tabs = [
+    { label: 'Feed', icon: HomeIcon },
+    { label: 'Activities', icon: ActivityIcon },
+    { label: 'Saved', icon: BookmarkIcon },
+  ]
+  return (
+    <section aria-busy="true" aria-label="Loading home feed">
+      <div className="mb-3">
+        <div className="glass relative flex rounded-full p-1">
+          <span
+            aria-hidden
+            className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-full bg-gradient-to-br from-accent-500 to-accent-600 shadow-md shadow-accent-600/30"
+          />
+          {tabs.map(({ label, icon: Icon }, i) => (
+            <span
+              key={label}
+              className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-sm font-semibold ${
+                i === 0 ? 'text-white' : 'text-neutral-500'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+      <PostListSkeleton />
+    </section>
+  )
+}
+
+async function HomeFeed({
   searchParams,
 }: {
   searchParams: Promise<{ media?: string; category?: string }>
@@ -76,19 +154,16 @@ export default async function HomePage({
   const cards = await hydratePosts(posts.docs, user)
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="sr-only">Home</h1>
-      <HomeTabs
-        feedPosts={cards}
-        feedHasMore={posts.hasNextPage}
-        initialMediaFilter={mediaFilter}
-        initialCategory={categoryFilter}
-        activityItems={activities.items}
-        activityHasMore={activities.hasMore}
-        savedPosts={saved.posts}
-        savedHasMore={saved.hasMore}
-        savedCount={saved.total}
-      />
-    </div>
+    <HomeTabs
+      feedPosts={cards}
+      feedHasMore={posts.hasNextPage}
+      initialMediaFilter={mediaFilter}
+      initialCategory={categoryFilter}
+      activityItems={activities.items}
+      activityHasMore={activities.hasMore}
+      savedPosts={saved.posts}
+      savedHasMore={saved.hasMore}
+      savedCount={saved.total}
+    />
   )
 }

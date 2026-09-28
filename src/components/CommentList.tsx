@@ -3,11 +3,11 @@ import { memo, useState, useTransition } from 'react'
 
 import { deleteComment, updateComment } from '@/actions/comments'
 import type { CommentData } from '@/lib/serialize'
-import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { EmptyState } from './EmptyState'
 import { CommentIcon } from './icons'
+import { RelativeTime } from './RelativeTime'
 
 export function CommentList({
   comments,
@@ -79,7 +79,7 @@ const CommentItem = memo(function CommentItem({
           >
             {comment.authorName}
           </Link>{' '}
-          · {formatRelativeTime(comment.createdAt)}
+          · <RelativeTime iso={comment.createdAt} />
         </p>
         {editing ? (
           <div className="mt-1 flex gap-2">

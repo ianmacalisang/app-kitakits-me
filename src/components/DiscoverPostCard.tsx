@@ -6,7 +6,6 @@ import { memo, useCallback, useRef, useState } from 'react'
 import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
 import { toCdnUrl } from '@/lib/cdn'
 import type { PostCardData } from '@/lib/serialize'
-import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { BlurImage } from './BlurImage'
@@ -14,6 +13,7 @@ import { CategoryChip } from './CategoryChip'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons'
 import { ImageLightbox } from './ImageLightbox'
 import { PostVideo } from './PostVideo'
+import { RelativeTime } from './RelativeTime'
 import { TestimonialQuote } from './TestimonialQuote'
 
 // Content-only post card for the public Discover page — no like/comment/
@@ -57,7 +57,7 @@ function ReelCard({ post, cardTint }: { post: PostCardData; cardTint: string }) 
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-white">{post.authorName}</p>
             <p className="truncate text-xs text-white/60">
-              @{post.authorUsername} · {formatRelativeTime(post.createdAt)}
+              @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
             </p>
           </div>
         </Link>
@@ -197,7 +197,7 @@ function PhotoCard({ post, cardTint }: { post: PostCardData; cardTint: string })
           </p>
         )}
         <p className="mt-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
-          {formatRelativeTime(post.createdAt)}
+          <RelativeTime iso={post.createdAt} />
         </p>
       </div>
 
@@ -227,7 +227,7 @@ function QuoteCard({ post, cardTint }: { post: PostCardData; cardTint: string })
           <div className="min-w-0">
             <p className="truncate text-[13px] font-semibold leading-tight">{post.authorName}</p>
             <p className="truncate text-[11px] leading-tight text-neutral-500">
-              @{post.authorUsername} · {formatRelativeTime(post.createdAt)}
+              @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
             </p>
           </div>
         </Link>

@@ -3,13 +3,21 @@ import { redirect } from 'next/navigation'
 import { BrandMark } from '@/components/Branding'
 import { LoginForm } from '@/components/forms'
 import { getCurrentUser } from '@/lib/auth'
+import { safeConnectPath } from '@/lib/connect-path'
 import { getSiteSettings } from '@/lib/settings'
 
 export const metadata = { title: 'Log in' }
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>
+}) {
+  const { next } = await searchParams
+  const safeNext = safeConnectPath(next)
+
   const user = await getCurrentUser()
-  if (user) redirect('/home')
+  if (user) redirect(safeNext ?? '/home')
 
   const settings = await getSiteSettings()
 
@@ -24,7 +32,7 @@ export default async function LoginPage() {
           <h2 className="mb-4 text-center text-sm font-semibold text-neutral-700">
             {settings.loginPrompt}
           </h2>
-          <LoginForm />
+          <LoginForm next={safeNext ?? undefined} />
         </div>
       </div>
     </main>

@@ -91,11 +91,12 @@ function PasswordField({
   )
 }
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [state, formAction, pending] = useActionState(login, {})
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
+      {next && <input type="hidden" name="next" value={next} />}
       <div>
         <label htmlFor="email" className={labelClass}>
           Email
@@ -278,7 +279,7 @@ const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,30}$/
 
 type UsernameStatus = 'idle' | 'invalid' | 'checking' | 'available' | 'taken'
 
-export function RegisterForm() {
+export function RegisterForm({ next }: { next?: string }) {
   const [state, formAction, pending] = useActionState(register, {})
   const [username, setUsername] = useState('')
   const [checked, setChecked] = useState<{ username: string; available: boolean } | null>(null)
@@ -329,6 +330,7 @@ export function RegisterForm() {
         if (password !== confirm || usernameStatus === 'taken') e.preventDefault()
       }}
     >
+      {next && <input type="hidden" name="next" value={next} />}
       <div>
         <label htmlFor="name" className={labelClass}>
           Name

@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useCallback, useState } from 'react'
 
 import type { PostCardData } from '@/lib/serialize'
-import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { CategoryChip } from './CategoryChip'
@@ -12,6 +11,7 @@ import { CommentsSheet } from './CommentsSheet'
 import { CommentIcon, LockIcon } from './icons'
 import { LikeButton } from './LikeButton'
 import { PostVideo } from './PostVideo'
+import { RelativeTime } from './RelativeTime'
 import { SaveButton } from './SaveButton'
 import { ShareButton } from './ShareButton'
 
@@ -83,7 +83,7 @@ export function ReelPost({ post }: { post: PostCardData }) {
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-white">{post.authorName}</p>
             <p className="truncate text-xs text-white/60">
-              @{post.authorUsername} · {formatRelativeTime(post.createdAt)}
+              @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
               {post.visibility === 'followers' && (
                 <LockIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
               )}

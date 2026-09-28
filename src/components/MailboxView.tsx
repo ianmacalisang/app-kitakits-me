@@ -5,7 +5,6 @@ import { memo, useCallback, useEffect, useRef, useState, useTransition } from 'r
 
 import { deleteDraft, getDrafts, getThreads, searchMailThreads } from '@/actions/mail'
 import type { DraftData, ThreadData } from '@/lib/serialize'
-import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { ComposeMail } from './ComposeMail'
@@ -13,6 +12,7 @@ import { CountBadge } from './CountBadge'
 import { EmptyState } from './EmptyState'
 import { ComposeIcon, MailboxIcon, SearchIcon, TrashIcon, XIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
+import { RelativeTime } from './RelativeTime'
 import { Spinner } from './Spinner'
 
 type Box = 'inbox' | 'sent' | 'drafts'
@@ -363,7 +363,7 @@ const MailRow = memo(function MailRow({
                 thread.unread ? 'font-semibold text-accent-600' : 'text-neutral-500'
               }`}
             >
-              {thread.lastMessageAt ? formatRelativeTime(thread.lastMessageAt) : ''}
+              {thread.lastMessageAt ? <RelativeTime iso={thread.lastMessageAt} /> : ''}
             </span>
           </span>
           <span
@@ -416,7 +416,7 @@ const DraftRow = memo(function DraftRow({
           <span className="flex items-baseline justify-between gap-2">
             <span className="truncate text-sm font-semibold">{toLabel}</span>
             <span className="shrink-0 text-xs text-neutral-500">
-              {formatRelativeTime(draft.updatedAt)}
+              <RelativeTime iso={draft.updatedAt} />
             </span>
           </span>
           <span className="block truncate text-sm text-neutral-700">

@@ -5,7 +5,6 @@ import { memo, useCallback, useMemo, useState, useTransition } from 'react'
 
 import { loadMoreActivities } from '@/actions/activities'
 import type { ActivityData } from '@/lib/serialize'
-import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { CommentsSheet } from './CommentsSheet'
@@ -21,6 +20,7 @@ import {
 import { LoadSentinel } from './LoadSentinel'
 import { PostCard } from './PostCard'
 import { PostSheet } from './PostSheet'
+import { RelativeTime } from './RelativeTime'
 
 const typeIcon = {
   like: <HeartIcon className="h-3 w-3" filled />,
@@ -353,7 +353,7 @@ const PostActivityStack = memo(function PostActivityStack({
                   </span>
                 )}
                 <span className="mt-0.5 block text-[11px] text-neutral-400">
-                  @{activity.actorUsername} · {formatRelativeTime(activity.createdAt)}
+                  @{activity.actorUsername} · <RelativeTime iso={activity.createdAt} />
                 </span>
               </span>
 
@@ -406,7 +406,7 @@ const ActivityItem = memo(function ActivityItem({
               </span>
             ) : null}
             <span className="mt-1 block text-[11px] text-neutral-400">
-              @{activity.actorUsername} · {formatRelativeTime(activity.createdAt)}
+              @{activity.actorUsername} · <RelativeTime iso={activity.createdAt} />
             </span>
           </span>
 

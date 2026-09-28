@@ -13,13 +13,13 @@ import {
   updateTestimonial,
 } from '@/actions/testimonials'
 import type { Paged, TestimonialData } from '@/lib/serialize'
-import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { CountBadge } from './CountBadge'
 import { EmptyState } from './EmptyState'
 import { CheckIcon, ComposeIcon, QuoteIcon, TrashIcon, XIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
+import { RelativeTime } from './RelativeTime'
 import { StatusBadge, TestimonialForm } from './TestimonialsPanel'
 import { TestimonialQuote } from './TestimonialQuote'
 
@@ -163,7 +163,7 @@ export function TestimonialsView({
                       {t.authorName}
                     </Link>
                     <p className="truncate text-xs text-neutral-500">
-                      @{t.authorUsername} · {formatRelativeTime(t.createdAt)}
+                      @{t.authorUsername} · <RelativeTime iso={t.createdAt} />
                     </p>
                   </div>
                 </div>
@@ -218,7 +218,7 @@ export function TestimonialsView({
                       {t.authorName}
                     </Link>
                     <p className="truncate text-xs text-neutral-500">
-                      @{t.authorUsername} · {formatRelativeTime(t.createdAt)}
+                      @{t.authorUsername} · <RelativeTime iso={t.createdAt} />
                     </p>
                   </div>
                   {t.status === 'rejected' && (
@@ -283,7 +283,7 @@ export function TestimonialsView({
                       </Link>
                     </p>
                     <p className="truncate text-xs text-neutral-500">
-                      @{t.recipientUsername} · {formatRelativeTime(t.createdAt)}
+                      @{t.recipientUsername} · <RelativeTime iso={t.createdAt} />
                     </p>
                   </div>
                   <StatusBadge status={t.status} />

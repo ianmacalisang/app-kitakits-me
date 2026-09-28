@@ -6,7 +6,6 @@ import { memo, useCallback, useState } from 'react'
 import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
 import { toCdnUrl } from '@/lib/cdn'
 import type { PostCardData, PostVideoData } from '@/lib/serialize'
-import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { BlurImage } from './BlurImage'
@@ -14,6 +13,7 @@ import { CategoryChip, RepostBadge } from './CategoryChip'
 import { CommentIcon, LockIcon, PlayIcon, ShareIcon, VideoIcon } from './icons'
 import { LikeButton } from './LikeButton'
 import { PostSheet } from './PostSheet'
+import { RelativeTime } from './RelativeTime'
 
 const fmtDuration = (s: number) => {
   if (!Number.isFinite(s) || s < 0) return '0:00'
@@ -56,7 +56,7 @@ export const ExplorePostCard = memo(function ExplorePostCard({ post }: { post: P
           <div className="min-w-0">
             <p className="truncate text-[13px] font-semibold leading-tight">{post.authorName}</p>
             <p className="truncate text-[11px] leading-tight text-neutral-500">
-              @{post.authorUsername} · {formatRelativeTime(post.createdAt)}
+              @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
               {post.visibility === 'followers' && (
                 <LockIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
               )}

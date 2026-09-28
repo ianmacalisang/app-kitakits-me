@@ -8,7 +8,6 @@ import { createPortal } from 'react-dom'
 import { deletePost, togglePin } from '@/actions/posts'
 import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
 import type { PostCardData } from '@/lib/serialize'
-import { formatRelativeTime } from '@/lib/time'
 
 import { Avatar } from './Avatar'
 import { CategoryChip, RepostBadge } from './CategoryChip'
@@ -16,6 +15,7 @@ import { CommentsSheet } from './CommentsSheet'
 import { CommentIcon, LockIcon, PinIcon, TrashIcon } from './icons'
 import { ExpandableText } from './ExpandableText'
 import { LikeButton } from './LikeButton'
+import { RelativeTime } from './RelativeTime'
 import { SaveButton } from './SaveButton'
 import { ShareButton } from './ShareButton'
 import { PostEditForm } from './PostEditForm'
@@ -122,7 +122,7 @@ export const PostCard = memo(function PostCard({
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{post.authorName}</p>
             <p className="truncate text-xs text-neutral-500">
-              @{post.authorUsername} · {formatRelativeTime(post.createdAt)}
+              @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
               {post.visibility === 'followers' && (
                 <LockIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
               )}
@@ -204,7 +204,7 @@ export const PostCard = memo(function PostCard({
                 <span className="text-sm font-semibold text-neutral-900">
                   {post.sharedPost.authorName}
                 </span>{' '}
-                @{post.sharedPost.authorUsername} · {formatRelativeTime(post.sharedPost.createdAt)}
+                @{post.sharedPost.authorUsername} · <RelativeTime iso={post.sharedPost.createdAt} />
               </p>
             </Link>
             <CategoryChip category={post.sharedPost.category} className="shrink-0" />

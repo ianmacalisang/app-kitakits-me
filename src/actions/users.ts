@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 
 import { getCurrentUser } from '@/lib/auth'
+import { safeConnectPath } from '@/lib/connect-path'
 import { getPayloadClient } from '@/lib/payload'
 import {
   isProfileAccent,
@@ -252,7 +253,7 @@ export async function updateTheme(theme: 'light' | 'dark' | 'system'): Promise<F
   return { success: true }
 }
 
-export async function completeOnboarding(): Promise<FormState> {
+export async function completeOnboarding(next?: string): Promise<FormState> {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
@@ -270,7 +271,7 @@ export async function completeOnboarding(): Promise<FormState> {
     return { error: errorMessage(err, 'Could not finish onboarding.') }
   }
 
-  redirect('/home')
+  redirect(safeConnectPath(next) ?? '/home')
 }
 
 const MAX_ABOUT_BLOCKS = 25

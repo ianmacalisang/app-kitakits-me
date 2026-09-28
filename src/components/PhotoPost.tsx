@@ -5,7 +5,6 @@ import { memo, useCallback, useRef, useState } from 'react'
 
 import { toCdnUrl } from '@/lib/cdn'
 import type { PostCardData } from '@/lib/serialize'
-import { formatRelativeTime } from '@/lib/time'
 
 import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
 
@@ -16,6 +15,7 @@ import { CommentsSheet } from './CommentsSheet'
 import { ChevronLeftIcon, ChevronRightIcon, CommentIcon, LockIcon } from './icons'
 import { ImageLightbox } from './ImageLightbox'
 import { LikeButton } from './LikeButton'
+import { RelativeTime } from './RelativeTime'
 import { SaveButton } from './SaveButton'
 import { ShareButton } from './ShareButton'
 
@@ -205,7 +205,7 @@ export const PhotoPost = memo(function PhotoPost({ post }: { post: PostCardData 
           </button>
         )}
         <p className="mt-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
-          {formatRelativeTime(post.createdAt)}
+          <RelativeTime iso={post.createdAt} />
         </p>
       </div>
 

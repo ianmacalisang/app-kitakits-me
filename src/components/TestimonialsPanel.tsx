@@ -12,13 +12,13 @@ import {
 } from '@/actions/testimonials'
 import type { FormState } from '@/actions/auth'
 import type { TestimonialData } from '@/lib/serialize'
-import { formatRelativeTime } from '@/lib/time'
 
 import { AuthPrompt } from './AuthPrompt'
 import { Avatar } from './Avatar'
 import { EmptyState } from './EmptyState'
 import { ComposeIcon, QuoteIcon, TrashIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
+import { RelativeTime } from './RelativeTime'
 import { TestimonialQuote } from './TestimonialQuote'
 
 export function TestimonialForm({
@@ -339,7 +339,7 @@ export function TestimonialsPanel({
                     — {t.authorName}
                   </Link>
                   <p className="truncate text-xs text-neutral-500">
-                    @{t.authorUsername} · {formatRelativeTime(t.createdAt)}
+                    @{t.authorUsername} · <RelativeTime iso={t.createdAt} />
                   </p>
                 </div>
                 {t.canModerate && !isPublicPage && (

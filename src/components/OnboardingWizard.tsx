@@ -102,9 +102,13 @@ const THEME_OPTIONS: {
 export function OnboardingWizard({
   initial,
   suggestions,
+  nextPath,
 }: {
   initial: OnboardingInitial
   suggestions: UserCardData[]
+  // Optional /connect/<username> path from a QR invite — the wizard hands it
+  // to completeOnboarding so a new account lands back on the connect page.
+  nextPath?: string
 }) {
   const firstName = initial.name.split(' ')[0] || initial.name
 
@@ -276,7 +280,7 @@ export function OnboardingWizard({
 
   const finish = () => {
     startTransition(async () => {
-      const res = await completeOnboarding()
+      const res = await completeOnboarding(nextPath)
       if (res?.error) setError(res.error)
     })
   }

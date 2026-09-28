@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getSuggestedPeople } from '@/actions/users'
 import { OnboardingWizard } from '@/components/OnboardingWizard'
 import { getCurrentUser } from '@/lib/auth'
+import { safeConnectPath } from '@/lib/connect-path'
 import { getPayloadClient } from '@/lib/payload'
 import {
   profileAccentValue,
@@ -14,7 +15,14 @@ import { avatarUrl, coverUrl, mediaUrl, toAboutBlocks } from '@/lib/serialize'
 
 export const metadata = { title: 'Welcome' }
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>
+}) {
+  const { next } = await searchParams
+  const safeNext = safeConnectPath(next)
+
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
@@ -27,7 +35,7 @@ export default async function OnboardingPage() {
     overrideAccess: false,
   })
 
-  if (fullUser.onboardedAt) redirect('/home')
+  if (fullUser.onboardedAt) redirect(safeNext ?? '/home')
 
   const [suggestions, followers, following] = await Promise.all([
     getSuggestedPeople(1),
@@ -71,6 +79,7 @@ export default async function OnboardingPage() {
           following: following.totalDocs,
         }}
         suggestions={suggestions.items}
+        nextPath={safeNext ?? undefined}
       />
     </main>
   )
