@@ -66,6 +66,7 @@ export default async function OnboardingPage({
           isPrivate: fullUser.isPrivate ?? false,
           discoverable: fullUser.discoverable ?? true,
           publicProfile: fullUser.publicProfile ?? false,
+          profileViewTracking: fullUser.profileViewTracking ?? false,
           commentPermission: fullUser.commentPermission ?? 'everyone',
           testimonialPermission: fullUser.testimonialPermission ?? 'everyone',
           theme: fullUser.theme ?? 'light',

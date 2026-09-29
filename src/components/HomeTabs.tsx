@@ -108,7 +108,11 @@ export function HomeTabs({
         />
       </div>
       <div role="tabpanel" hidden={tab !== 'activities'}>
-        <ActivitiesView activities={activityItems} initialHasMore={activityHasMore} />
+        <ActivitiesView
+          activities={activityItems}
+          initialHasMore={activityHasMore}
+          active={tab === 'activities'}
+        />
       </div>
       <div role="tabpanel" hidden={tab !== 'saved'}>
         <Feed

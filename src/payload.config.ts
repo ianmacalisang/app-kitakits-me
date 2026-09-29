@@ -24,6 +24,7 @@ import { Videos } from './collections/Videos'
 import { Badges } from './collections/Badges'
 import { UserBadges } from './collections/UserBadges'
 import { PointEvents } from './collections/PointEvents'
+import { ProfileViews } from './collections/ProfileViews'
 import { SiteSettings } from './globals/SiteSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -61,6 +62,7 @@ export default buildConfig({
     Badges,
     UserBadges,
     PointEvents,
+    ProfileViews,
   ],
   globals: [SiteSettings],
   editor: lexicalEditor(),

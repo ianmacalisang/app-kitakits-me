@@ -1,15 +1,12 @@
 import type { BadgeData } from '@/lib/serialize'
 
-import { BADGE_ICON_COMPONENTS } from './BadgeShelf'
+import { BADGE_ICON_COMPONENTS, BADGE_TIER_STYLES } from './BadgeShelf'
 import { MedalIcon } from './icons'
 
 // Compact badge mark rendered inline beside a user's name — a small
-// medallion with the badge name/description on hover. `light` is for names
-// that sit on cover-photo scrims. `className` sizes the outer disc; the icon
-// inside scales to ~62% of it. Uses the accent scale so it matches the app
-// accent in-app and the profile accent on public pages.
-const DISC =
-  'bg-gradient-to-br from-accent-400 to-accent-700 text-white ring-accent-900/20 dark:from-accent-400 dark:to-accent-800'
+// medallion with the badge name/description on hover, flat-filled with the
+// badge's tier color. `light` is for names that sit on cover-photo scrims.
+// `className` sizes the outer disc; the icon inside scales to ~62% of it.
 
 export function BadgeMark({
   badge,
@@ -28,8 +25,10 @@ export function BadgeMark({
       role="img"
       aria-label={badge.name}
       title={tooltip}
-      className={`inline-flex shrink-0 translate-y-[-0.06em] items-center justify-center rounded-full align-middle shadow-sm ring-1 ring-inset transition-transform hover:scale-110 ${
-        light ? 'bg-white/20 text-white ring-white/40 backdrop-blur' : DISC
+      className={`inline-flex shrink-0 translate-y-[-0.06em] items-center justify-center rounded-full align-middle transition-transform hover:scale-110 ${
+        light
+          ? 'bg-white/20 text-white ring-1 ring-inset ring-white/40 backdrop-blur'
+          : BADGE_TIER_STYLES[badge.tier].solid
       } ${className}`}
     >
       <Icon aria-hidden className="h-[62%] w-[62%]" />

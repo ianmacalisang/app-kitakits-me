@@ -10,7 +10,7 @@
 // intercepted), /admin, and /api responses (auth-sensitive REST endpoints).
 // Bump VERSION to force a full cache refresh on the next activate.
 
-const VERSION = 'v4'
+const VERSION = 'v5'
 
 // Dev hosts — `next dev` chunks under /_next aren't content-hashed, so any
 // caching strategy serves stale code after every edit (stale server-action

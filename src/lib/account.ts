@@ -116,6 +116,13 @@ export async function deleteUserData(payload: Payload, userId: number): Promise<
     where: { or: [{ author: { equals: userId } }, { recipient: { equals: userId } }] },
   })
 
+  // Profile views in either direction — the user's visits and everyone
+  // else's visits to their profile.
+  await payload.delete({
+    collection: 'profile-views',
+    where: { or: [{ viewer: { equals: userId } }, { viewed: { equals: userId } }] },
+  })
+
   // The rest of the user's connections.
   await payload.delete({ collection: 'likes', where: { user: { equals: userId } } })
   await payload.delete({ collection: 'saves', where: { user: { equals: userId } } })

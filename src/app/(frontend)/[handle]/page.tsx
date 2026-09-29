@@ -8,6 +8,7 @@ import { BlurImage } from '@/components/BlurImage'
 import { BrandMark } from '@/components/Branding'
 import { LockIcon } from '@/components/icons'
 import { ProfileTabs } from '@/components/ProfileTabs'
+import { ProfileViewBeacon } from '@/components/ProfileViewBeacon'
 import { PublicMailButton } from '@/components/PublicMailButton'
 import { PublicPageTheme } from '@/components/PublicPageTheme'
 import { PublicProfileHero } from '@/components/PublicProfileHero'
@@ -253,6 +254,9 @@ export default async function PublicProfilePage({
       )}
 
       <div className="relative mx-auto w-full max-w-3xl px-4 pb-16 pt-6">
+        {viewer && !isSelf && viewer.profileViewTracking && (
+          <ProfileViewBeacon viewedId={profileUser.id} />
+        )}
         <div className="mb-4 flex items-center justify-between">
           <Link href="/" className="flex w-fit items-center gap-2.5">
             <BrandMark size="sm" />

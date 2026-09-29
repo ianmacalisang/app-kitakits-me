@@ -210,6 +210,7 @@ export async function updatePrivacy(data: {
   isPrivate?: boolean
   discoverable?: boolean
   publicProfile?: boolean
+  profileViewTracking?: boolean
   commentPermission?: 'everyone' | 'followers' | 'off'
   testimonialPermission?: 'everyone' | 'followers' | 'off'
 }): Promise<FormState> {

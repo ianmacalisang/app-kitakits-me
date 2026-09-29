@@ -21,17 +21,22 @@ export function PrivacySettings({
     isPrivate: boolean
     discoverable: boolean
     publicProfile: boolean
+    profileViewTracking: boolean
     commentPermission: Permission
     testimonialPermission: Permission
   }
   username: string
   // Reports each toggle's new value so parents (e.g. the onboarding wizard)
   // can reflect it live; also fires with the rolled-back value on failure.
-  onChangeAction?: (key: 'isPrivate' | 'discoverable' | 'publicProfile', value: boolean) => void
+  onChangeAction?: (
+    key: 'isPrivate' | 'discoverable' | 'publicProfile' | 'profileViewTracking',
+    value: boolean,
+  ) => void
 }) {
   const [isPrivate, setIsPrivate] = useState(initial.isPrivate)
   const [discoverable, setDiscoverable] = useState(initial.discoverable)
   const [publicProfile, setPublicProfile] = useState(initial.publicProfile)
+  const [profileViewTracking, setProfileViewTracking] = useState(initial.profileViewTracking)
   const [permission, setPermission] = useState<Permission>(initial.commentPermission)
   const [testimonialPermission, setTestimonialPermission] = useState<Permission>(
     initial.testimonialPermission,
@@ -52,7 +57,7 @@ export function PrivacySettings({
   }
 
   const toggle = (
-    key: 'isPrivate' | 'discoverable' | 'publicProfile',
+    key: 'isPrivate' | 'discoverable' | 'publicProfile' | 'profileViewTracking',
     current: boolean,
     set: (value: boolean) => void,
   ) => {
@@ -145,6 +150,24 @@ export function PrivacySettings({
             disabled={pending}
             label="Public profile"
             onToggleAction={() => toggle('publicProfile', publicProfile, setPublicProfile)}
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-4 p-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Who viewed your profile</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-neutral-500">
+              See who viewed your profile in Activities. Members who also turned this on can see
+              when you view theirs.
+            </p>
+          </div>
+          <Toggle
+            on={profileViewTracking}
+            disabled={pending}
+            label="Who viewed your profile"
+            onToggleAction={() =>
+              toggle('profileViewTracking', profileViewTracking, setProfileViewTracking)
+            }
           />
         </div>
 

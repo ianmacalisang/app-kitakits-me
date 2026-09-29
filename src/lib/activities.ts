@@ -1,6 +1,15 @@
 import type { Where } from 'payload'
 
-import type { Comment, Follow, Like, Post, Testimonial, User, UserBadge } from '@/payload-types'
+import type {
+  Comment,
+  Follow,
+  Like,
+  Post,
+  ProfileView,
+  Testimonial,
+  User,
+  UserBadge,
+} from '@/payload-types'
 
 import { getTopBadgesForUsers, toBadgeData } from './gamification'
 import { getPayloadClient } from './payload'
@@ -119,20 +128,37 @@ const toBadgeActivity = (award: UserBadge, badges: BadgeMap | null): ActivityDat
   }
 }
 
-// Latest likes, comments, and follows made by the given users — powers the
-// home "Activities" tab. Each source is sorted newest-first, so fetching the
-// top page*PAGE_SIZE of each and re-merging yields the correct merged page.
+const toProfileViewActivity = (view: ProfileView, badges: BadgeMap | null): ActivityData | null => {
+  const actor = asUser(view.viewer)
+  if (!actor) return null
+  return {
+    id: `profileview-${view.id}`,
+    type: 'profile_view',
+    // updatedAt is the latest visit — re-views resurface the row.
+    createdAt: view.updatedAt,
+    ...actorFields(actor, badges),
+  }
+}
+
+// Latest likes, comments, and follows made by the given users, plus profile
+// views aimed at the viewer — powers the home "Activities" tab. Each source
+// is sorted newest-first, so fetching the top page*PAGE_SIZE of each and
+// re-merging yields the correct merged page.
 // Likes and comments are filtered to posts the viewer can read, matching the
 // visibility rules canReadPosts/canReadComments enforce; follow activities
 // only surface non-private targets; testimonial activities are limited to
 // approved ones (pending/rejected are private to the pair) and canReadTestimonials
-// still applies recipient-profile visibility on top.
+// still applies recipient-profile visibility on top. Profile views are
+// personal (viewed = the feed owner, not limited to followed actors) and
+// only show while the owner has profile-view tracking on, listing viewers
+// who still have it on too.
 export async function getFollowingActivities(
   viewer: User,
   authorIds: number[],
   page: number,
 ): Promise<Paged<ActivityData>> {
-  if (authorIds.length === 0) return { items: [], hasMore: false }
+  const optedIn = Boolean(viewer.profileViewTracking)
+  if (authorIds.length === 0 && !optedIn) return { items: [], hasMore: false }
 
   const payload = await getPayloadClient()
   const limit = page * ACTIVITY_PAGE_SIZE
@@ -150,7 +176,7 @@ export async function getFollowingActivities(
     ],
   }
 
-  const [likes, comments, follows, testimonials, badgeAwards] = await Promise.all([
+  const [likes, comments, follows, testimonials, badgeAwards, profileViews] = await Promise.all([
     // Depth 3 so the embedded post is fully usable by hydratePosts: post
     // images (2), the post author's avatar (3), and a shared original's
     // author (3) all come back populated.
@@ -203,6 +229,24 @@ export async function getFollowingActivities(
       user: viewer,
       overrideAccess: false,
     }),
+    // Who viewed the feed owner's profile — reciprocal: rows only exist for
+    // opted-in viewers, and a viewer who later opts out drops off the list.
+    optedIn
+      ? payload.find({
+          collection: 'profile-views',
+          where: {
+            and: [
+              { viewed: { equals: viewer.id } },
+              { 'viewer.profileViewTracking': { equals: true } },
+            ],
+          },
+          sort: '-updatedAt',
+          limit,
+          depth: 2,
+          user: viewer,
+          overrideAccess: false,
+        })
+      : Promise.resolve({ docs: [] as ProfileView[], hasNextPage: false }),
   ])
 
   // One badge lookup for every named user — actors, post authors, and targets.
@@ -217,6 +261,7 @@ export async function getFollowingActivities(
   for (const testimonial of testimonials.docs)
     collect(asUser(testimonial.author), asUser(testimonial.recipient))
   for (const award of badgeAwards.docs) collect(asUser(award.user))
+  for (const view of profileViews.docs) collect(asUser(view.viewer))
   const topBadges = await getTopBadgesForUsers(payload, [...badgeUserIds])
 
   const entries = [
@@ -237,6 +282,10 @@ export async function getFollowingActivities(
       data: toBadgeActivity(award, topBadges),
       post: null,
     })),
+    ...profileViews.docs.map((view) => ({
+      data: toProfileViewActivity(view, topBadges),
+      post: null,
+    })),
   ]
     .filter((e): e is { data: ActivityData; post: Post | null } => e.data !== null)
     .sort((a, b) => b.data.createdAt.localeCompare(a.data.createdAt))
@@ -249,7 +298,8 @@ export async function getFollowingActivities(
     comments.hasNextPage ||
     follows.hasNextPage ||
     testimonials.hasNextPage ||
-    badgeAwards.hasNextPage
+    badgeAwards.hasNextPage ||
+    profileViews.hasNextPage
 
   // Hydrate the distinct posts shown on this page in one batched pass so each
   // like/comment row can render the full post card, not just a snippet.

@@ -601,12 +601,13 @@ export function toNotificationData(
   }
 }
 
-// One row in the home Activities tab — something a followed user did.
+// One row in the home Activities tab — something a followed user did, or an
+// opted-in member viewing the feed owner's profile.
 // Which fields are populated depends on `type`: post fields for like/comment,
 // target fields for follow/testimonial.
 export interface ActivityData {
   id: string
-  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge'
+  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge' | 'profile_view'
   createdAt: string
   actorName: string
   actorUsername: string

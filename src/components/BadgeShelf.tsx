@@ -25,9 +25,25 @@ export const BADGE_ICON_COMPONENTS = {
   megaphone: MegaphoneIcon,
 } as const
 
-// Chips use the accent scale so they follow the app accent in-app and the
-// profile accent on public pages.
-const CHIP_STYLE = 'bg-accent-500/10 text-accent-700 ring-accent-500/20 dark:text-accent-300'
+// Tier styles — flat, solid fills so bronze/silver/gold read at a glance.
+// `soft` tints a highlighted row; `text` colors the tier label.
+export const BADGE_TIER_STYLES = {
+  bronze: {
+    solid: 'bg-amber-700 text-white',
+    soft: 'bg-amber-700/10 ring-amber-700/30',
+    text: 'text-amber-700 dark:text-amber-500',
+  },
+  silver: {
+    solid: 'bg-slate-300 text-slate-600',
+    soft: 'bg-slate-400/15 ring-slate-400/40',
+    text: 'text-slate-500 dark:text-slate-400',
+  },
+  gold: {
+    solid: 'bg-amber-400 text-amber-950',
+    soft: 'bg-amber-400/15 ring-amber-500/30',
+    text: 'text-amber-600 dark:text-amber-400',
+  },
+} as const
 
 const earnedLabel = (iso: string) =>
   new Date(iso).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
@@ -49,8 +65,10 @@ export function BadgeShelf({ badges, light = false }: { badges: BadgeData[]; lig
           <span
             key={badge.slug}
             title={tooltip || badge.name}
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
-              light ? 'bg-white/15 text-white ring-white/30 backdrop-blur' : CHIP_STYLE
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+              light
+                ? 'bg-white/15 text-white ring-1 ring-inset ring-white/30 backdrop-blur'
+                : BADGE_TIER_STYLES[badge.tier].solid
             }`}
           >
             <Icon className="h-3.5 w-3.5" />

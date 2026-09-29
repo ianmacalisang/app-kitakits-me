@@ -53,6 +53,7 @@ export interface OnboardingInitial {
   isPrivate: boolean
   discoverable: boolean
   publicProfile: boolean
+  profileViewTracking: boolean
   commentPermission: Permission
   testimonialPermission: Permission
   theme: Theme
@@ -427,6 +428,7 @@ export function OnboardingWizard({
                   isPrivate: initial.isPrivate,
                   discoverable: initial.discoverable,
                   publicProfile: initial.publicProfile,
+                  profileViewTracking: initial.profileViewTracking,
                   commentPermission: initial.commentPermission,
                   testimonialPermission: initial.testimonialPermission,
                 }}

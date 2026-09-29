@@ -5,6 +5,7 @@ import { LockIcon } from '@/components/icons'
 import { ProfileDesignSheet } from '@/components/ProfileDesignSheet'
 import { ProfileHeader } from '@/components/ProfileHeader'
 import { ProfileTabs } from '@/components/ProfileTabs'
+import { ProfileViewBeacon } from '@/components/ProfileViewBeacon'
 import { getCurrentUser } from '@/lib/auth'
 import { getBadgeProgressForUser, getUserGamification } from '@/lib/gamification'
 import { getPayloadClient } from '@/lib/payload'
@@ -154,6 +155,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   return (
     <div className="flex flex-col gap-6">
+      {!isSelf && viewer.profileViewTracking && <ProfileViewBeacon viewedId={profileUser.id} />}
       {isSelf && (
         <ProfileDesignSheet
           username={profileUser.username}

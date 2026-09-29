@@ -4,12 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 
 import type { BadgeProgressData } from '@/lib/serialize'
 
-import { BADGE_ICON_COMPONENTS } from './BadgeShelf'
+import { BADGE_ICON_COMPONENTS, BADGE_TIER_STYLES } from './BadgeShelf'
 import { ChevronLeftIcon, ChevronRightIcon, MedalIcon } from './icons'
-
-// Accent-driven so the panel follows the app accent in-app and the profile
-// accent (data-profile-accent) on public pages.
-const DISC = 'bg-gradient-to-br from-accent-400 to-accent-700 text-white ring-accent-900/20'
 
 // Earned-badge panel above the profile tabs — a horizontal rail of every badge
 // the user has unlocked. Locked badges stay hidden; requirement progress is
@@ -69,7 +65,7 @@ export function BadgeProgressPanel({ badges }: { badges: BadgeProgressData[] }) 
                 className="flex shrink-0 items-center gap-2.5 rounded-2xl bg-white/70 py-2 pl-2 pr-3.5 ring-1 ring-black/[0.06] transition-transform hover:-translate-y-0.5 dark:bg-white/[0.06] dark:ring-white/10"
               >
                 <span
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-sm ring-1 ring-inset ${DISC}`}
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${BADGE_TIER_STYLES[badge.tier].solid}`}
                 >
                   <Icon className="h-4 w-4" />
                 </span>
@@ -77,7 +73,9 @@ export function BadgeProgressPanel({ badges }: { badges: BadgeProgressData[] }) 
                   <span className="block truncate text-sm font-semibold leading-tight">
                     {badge.name}
                   </span>
-                  <span className="block truncate text-[11px] font-medium capitalize leading-tight text-accent-600 dark:text-accent-300">
+                  <span
+                    className={`block truncate text-[11px] font-medium capitalize leading-tight ${BADGE_TIER_STYLES[badge.tier].text}`}
+                  >
                     {badge.tier}
                   </span>
                 </span>

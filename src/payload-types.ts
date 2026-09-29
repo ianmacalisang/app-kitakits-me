@@ -84,6 +84,7 @@ export interface Config {
     badges: Badge;
     'user-badges': UserBadge;
     'point-events': PointEvent;
+    'profile-views': ProfileView;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -108,6 +109,7 @@ export interface Config {
     badges: BadgesSelect<false> | BadgesSelect<true>;
     'user-badges': UserBadgesSelect<false> | UserBadgesSelect<true>;
     'point-events': PointEventsSelect<false> | PointEventsSelect<true>;
+    'profile-views': ProfileViewsSelect<false> | ProfileViewsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -283,6 +285,7 @@ export interface User {
   isPrivate?: boolean | null;
   discoverable?: boolean | null;
   publicProfile?: boolean | null;
+  profileViewTracking?: boolean | null;
   commentPermission?: ('everyone' | 'followers' | 'off') | null;
   testimonialPermission?: ('everyone' | 'followers' | 'off') | null;
   theme?: ('system' | 'light' | 'dark') | null;
@@ -619,6 +622,18 @@ export interface PointEvent {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "profile-views".
+ */
+export interface ProfileView {
+  id: number;
+  viewer: number | User;
+  viewed: number | User;
+  viewCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -708,6 +723,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'point-events';
         value: number | PointEvent;
+      } | null)
+    | ({
+        relationTo: 'profile-views';
+        value: number | ProfileView;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -876,6 +895,7 @@ export interface UsersSelect<T extends boolean = true> {
   isPrivate?: T;
   discoverable?: T;
   publicProfile?: T;
+  profileViewTracking?: T;
   commentPermission?: T;
   testimonialPermission?: T;
   theme?: T;
@@ -1132,6 +1152,17 @@ export interface PointEventsSelect<T extends boolean = true> {
   points?: T;
   post?: T;
   key?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "profile-views_select".
+ */
+export interface ProfileViewsSelect<T extends boolean = true> {
+  viewer?: T;
+  viewed?: T;
+  viewCount?: T;
   updatedAt?: T;
   createdAt?: T;
 }

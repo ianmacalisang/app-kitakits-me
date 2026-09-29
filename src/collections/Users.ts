@@ -345,6 +345,15 @@ export const Users: CollectionConfig = {
       index: true,
     },
     {
+      name: 'profileViewTracking',
+      type: 'checkbox',
+      defaultValue: false,
+      // Opt-in "Who viewed your profile" — while on, the member's views of
+      // other opted-in surfaces are recorded AND they see their own viewers
+      // in Activities. Filtered on profile-views viewer lookups.
+      index: true,
+    },
+    {
       name: 'commentPermission',
       type: 'select',
       options: [
