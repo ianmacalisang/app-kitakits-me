@@ -126,13 +126,17 @@ export function ChatMenu() {
 
       {/* Below sm the pill is too narrow to anchor a panel — pin it to the
           viewport edges instead (same inset as the header/search dropdown).
-          From sm up it hugs the pill's right edge at a fixed width. Max
-          height matches the notifications dropdown; the 11rem clearance
-          keeps it above the floating dock. */}
+          From sm up it hugs the pill's right edge at a fixed width. The
+          roster sizes to its content like the notifications dropdown; an
+          open room takes the full capped height so the composer stays
+          pinned while the message list scrolls. The 11rem clearance keeps
+          the panel above the floating dock. */}
       {open && (
         <div
           ref={panelRef}
-          className="glass-pop motion-safe:animate-menu-pop fixed inset-x-4 top-20 z-20 flex max-h-[min(70vh,calc(100dvh-11rem))] origin-top flex-col overflow-hidden rounded-2xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[30rem] sm:max-w-[calc(100vw-2rem)] sm:origin-top-right"
+          className={`glass-pop motion-safe:animate-menu-pop fixed inset-x-4 top-20 z-20 flex origin-top flex-col overflow-hidden rounded-2xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[30rem] sm:max-w-[calc(100vw-2rem)] sm:origin-top-right ${
+            active ? 'h-[min(70vh,calc(100dvh-11rem))]' : 'max-h-[min(70vh,calc(100dvh-11rem))]'
+          }`}
         >
           {active ? (
             <ChatRoom room={active} />

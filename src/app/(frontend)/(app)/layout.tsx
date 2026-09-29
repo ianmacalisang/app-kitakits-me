@@ -42,8 +42,12 @@ export default async function AppLayout(props: { children: React.ReactNode }) {
         </main>
         <ToastHost />
         <InstallPrompt />
-        <InviteBanner />
-        <AcceptedBanner />
+        {/* Chat banners share one anchored stack above the dock — same
+            position for invites and accepted alerts, stacked when both show. */}
+        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-50 flex flex-col items-center gap-2 px-4">
+          <InviteBanner />
+          <AcceptedBanner />
+        </div>
       </ChatProvider>
     </div>
   )
