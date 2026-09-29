@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { isAuthenticated, isOwnerOrAdmin } from '../access'
+import { parallelAfterChange } from '../hooks/afterChangeParallel'
 import { createFollowNotification } from '../hooks/createFollowNotification'
 import { followPoints } from '../hooks/gamification'
 
@@ -53,7 +54,9 @@ export const Follows: CollectionConfig = {
         return data
       },
     ],
-    afterChange: [createFollowNotification, followPoints],
+    // Notification + points award are independent — run them concurrently so
+    // a follow create isn't serialized behind two remote-DB write chains.
+    afterChange: [parallelAfterChange(createFollowNotification, followPoints)],
   },
   fields: [
     {

@@ -8,6 +8,7 @@ import {
   isTestimonialParty,
   isTestimonialRecipientField,
 } from '../access'
+import { parallelAfterChange } from '../hooks/afterChangeParallel'
 import { createTestimonialNotification } from '../hooks/createTestimonialNotification'
 import { testimonialPoints } from '../hooks/gamification'
 import { deleteTestimonialNotifications } from '../hooks/deleteTestimonialNotifications'
@@ -80,7 +81,7 @@ export const Testimonials: CollectionConfig = {
         return data
       },
     ],
-    afterChange: [createTestimonialNotification, testimonialPoints],
+    afterChange: [parallelAfterChange(createTestimonialNotification, testimonialPoints)],
     beforeDelete: [deleteTestimonialNotifications],
   },
   fields: [

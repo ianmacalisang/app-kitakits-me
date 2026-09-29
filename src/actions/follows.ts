@@ -37,13 +37,22 @@ export async function toggleFollow(
     })
     following = false
   } else {
-    await payload.create({
-      collection: 'follows',
-      data: { follower: user.id, following: targetUserId },
-      user,
-      overrideAccess: false,
-    })
-    following = true
+    try {
+      await payload.create({
+        collection: 'follows',
+        data: { follower: user.id, following: targetUserId },
+        user,
+        overrideAccess: false,
+      })
+      following = true
+    } catch (err) {
+      // A row that raced in between the existence check and the create (or a
+      // stale "Follow" state) hits the unique index — the end state is still
+      // "following", so don't fail the action over it.
+      const message = err instanceof Error ? err.message : ''
+      if (!message.toLowerCase().includes('already following')) throw err
+      following = true
+    }
   }
 
   const followers = await payload.count({

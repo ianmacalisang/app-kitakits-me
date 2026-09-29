@@ -71,8 +71,13 @@ const idOf = (value: unknown): number | null => {
 // hook, so admin-created 'manual' adjustments get the same treatment.
 // Never throws: gamification failing must never break the action that
 // triggered it.
+//
+// The create deliberately drops `req` — inside a shared transaction a unique
+// conflict aborts the whole tx ("current transaction is aborted"), which would
+// roll back the follow/like that triggered the award. Its own transaction
+// keeps the dedupe conflict contained to this insert.
 export const awardPoints = async (
-  { payload, req }: Ctx,
+  { payload }: Ctx,
   {
     userId,
     kind,
@@ -94,7 +99,6 @@ export const awardPoints = async (
         key,
         ...(postId ? { post: postId } : {}),
       },
-      req,
     })
   } catch (err) {
     // Unique conflict on `key` = already awarded — expected, not an error.
@@ -207,22 +211,28 @@ export const evaluateBadges = async (
     const pending = badges.docs.filter((badge) => !awarded.has(badge.id))
     if (pending.length === 0) return
 
-    // One stat per rule, shared by every badge using that rule.
-    const stats = new Map<BadgeRule, number>()
+    // One stat per rule, shared by every badge using that rule — all fetched
+    // concurrently since a single award trigger would otherwise serialize
+    // ~5 remote-DB round trips inside the parent mutation.
+    const rules = [...new Set(pending.map((badge) => badge.rule as BadgeRule))]
+    const statEntries = await Promise.all(
+      rules.map(
+        async (rule) => [rule, await statForRule({ payload, req }, userId, rule, user)] as const,
+      ),
+    )
+    const stats = new Map<BadgeRule, number>(statEntries)
     for (const badge of pending) {
       const rule = badge.rule as BadgeRule
-      if (!stats.has(rule)) {
-        stats.set(rule, await statForRule({ payload, req }, userId, rule, user))
-      }
       const threshold =
         badge.rule === 'profile-complete' ? 1 : (badge.threshold ?? Number.MAX_SAFE_INTEGER)
       if ((stats.get(rule) ?? 0) < threshold) continue
 
       try {
+        // Same tx-isolation reason as awardPoints — a raced (user, badge)
+        // duplicate must not abort the transaction this evaluation runs in.
         await payload.create({
           collection: 'user-badges',
           data: { user: userId, badge: badge.id },
-          req,
           context,
         })
       } catch (err) {

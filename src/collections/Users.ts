@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { isAdmin, isAdminField, isAdminUser, isAuthenticated, isSelfOrAdmin } from '../access'
+import { parallelAfterChange } from '../hooks/afterChangeParallel'
 import { sendWelcomeEmail } from '../hooks/sendWelcomeEmail'
 import { deleteGamificationData, profileBadgeCheck } from '../hooks/gamification'
 import { deleteUserData } from '../lib/account'
@@ -102,7 +103,7 @@ export const Users: CollectionConfig = {
     },
   ],
   hooks: {
-    afterChange: [sendWelcomeEmail, profileBadgeCheck],
+    afterChange: [parallelAfterChange(sendWelcomeEmail, profileBadgeCheck)],
     beforeDelete: [deleteGamificationData],
   },
   fields: [

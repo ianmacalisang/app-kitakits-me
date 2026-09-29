@@ -39,17 +39,32 @@ const main = async () => {
   })
   payload.logger.info(`existing follow docs: ${existing.docs.length}`)
 
+  const args = {
+    collection: 'follows' as const,
+    data: { follower: nonAdmin.id, following: target.id },
+    user: nonAdmin,
+    overrideAccess: false,
+  }
+
   try {
-    const created = await payload.create({
+    // Round 1: fresh follow (awards points, fresh dedupe key)
+    const first = await payload.create(args)
+    payload.logger.info(`follow #1 create OK (id ${first.id})`)
+    await payload.delete({
       collection: 'follows',
-      data: { follower: nonAdmin.id, following: target.id },
+      id: first.id,
       user: nonAdmin,
       overrideAccess: false,
     })
-    payload.logger.info(`follow create OK (id ${created.id}) — deleting cleanup`)
+    payload.logger.info('unfollow OK')
+
+    // Round 2: RE-follow — the point-events dedupe key already exists now,
+    // so this is the exact case that was aborting the shared transaction.
+    const second = await payload.create(args)
+    payload.logger.info(`follow #2 (re-follow) create OK (id ${second.id}) — bug is fixed`)
     await payload.delete({
       collection: 'follows',
-      id: created.id,
+      id: second.id,
       user: nonAdmin,
       overrideAccess: false,
     })

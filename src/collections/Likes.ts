@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { canLike, isAuthenticated, isOwnerOrAdmin } from '../access'
+import { parallelAfterChange } from '../hooks/afterChangeParallel'
 import { createLikeNotification } from '../hooks/createLikeNotification'
 import { likeCounter } from '../hooks/postCounters'
 import { likePoints } from '../hooks/gamification'
@@ -50,7 +51,7 @@ export const Likes: CollectionConfig = {
         return data
       },
     ],
-    afterChange: [createLikeNotification, likeCounter.onCreate, likePoints],
+    afterChange: [parallelAfterChange(createLikeNotification, likeCounter.onCreate, likePoints)],
     afterDelete: [likeCounter.onDelete],
   },
   fields: [

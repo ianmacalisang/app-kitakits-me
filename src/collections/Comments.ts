@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { canComment, canReadComments, isAdminField, isOwner } from '../access'
+import { parallelAfterChange } from '../hooks/afterChangeParallel'
 import { createCommentNotification } from '../hooks/createCommentNotification'
 import { deleteCommentNotifications } from '../hooks/deleteCommentNotifications'
 import { commentCounter } from '../hooks/postCounters'
@@ -29,7 +30,9 @@ export const Comments: CollectionConfig = {
         return data
       },
     ],
-    afterChange: [createCommentNotification, commentCounter.onCreate, commentPoints],
+    afterChange: [
+      parallelAfterChange(createCommentNotification, commentCounter.onCreate, commentPoints),
+    ],
     beforeDelete: [deleteCommentNotifications],
     afterDelete: [commentCounter.onDelete],
   },

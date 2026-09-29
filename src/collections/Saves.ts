@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { canSave, isOwnerOrAdmin } from '../access'
+import { parallelAfterChange } from '../hooks/afterChangeParallel'
 import { saveCounter } from '../hooks/postCounters'
 import { savePoints } from '../hooks/gamification'
 
@@ -50,7 +51,7 @@ export const Saves: CollectionConfig = {
         return data
       },
     ],
-    afterChange: [saveCounter.onCreate, savePoints],
+    afterChange: [parallelAfterChange(saveCounter.onCreate, savePoints)],
     afterDelete: [saveCounter.onDelete],
   },
   fields: [
