@@ -4,11 +4,13 @@ import Link from 'next/link'
 import { useState } from 'react'
 
 import type { PostCategory } from '@/lib/categories'
+import type { MutualHead } from '@/lib/mutuals'
 import type { ActivityData, MediaFilter, PostCardData } from '@/lib/serialize'
 
 import { ActivitiesView } from './ActivitiesView'
 import { CountBadge } from './CountBadge'
 import { Feed } from './Feed'
+import { OnlineMutuals } from './OnlineMutuals'
 import { ActivityIcon, BookmarkIcon, HomeIcon, UsersIcon } from './icons'
 
 type Tab = 'feed' | 'activities' | 'saved'
@@ -29,6 +31,7 @@ const THUMB_POSITION: Record<Tab, string> = {
 // pill with a sliding gradient thumb. All feeds stay mounted (hidden when
 // inactive) so tab switches preserve scroll position and pagination state.
 export function HomeTabs({
+  mutuals,
   feedPosts,
   feedHasMore,
   initialMediaFilter = 'all',
@@ -39,6 +42,7 @@ export function HomeTabs({
   savedHasMore,
   savedCount,
 }: {
+  mutuals: MutualHead[]
   feedPosts: PostCardData[]
   feedHasMore: boolean
   initialMediaFilter?: MediaFilter
@@ -53,6 +57,7 @@ export function HomeTabs({
 
   return (
     <section>
+      <OnlineMutuals mutuals={mutuals} />
       <div role="tablist" aria-label="Home feed" className="mb-3">
         <div className="glass relative flex rounded-full p-1">
           {/* Sliding thumb — covers the active tab; with three equal tabs each

@@ -1,5 +1,7 @@
 'use client'
 
+import type { MutualHead } from '@/lib/mutuals'
+
 import { Avatar } from '../Avatar'
 import { EmptyState } from '../EmptyState'
 import { Spinner } from '../Spinner'
@@ -25,10 +27,11 @@ const STEPS = [
   },
 ]
 
-// /chat body — lists online mutual follows and live rooms; selecting one swaps
-// the list for the conversation (single-pane, mobile-first like the rest of
-// the app). All state comes from ChatProvider's in-memory WS session.
-export function ChatClient() {
+// /chat body — lists all mutual follows (online first, with status dots) and
+// live rooms; selecting one swaps the list for the conversation (single-pane,
+// mobile-first like the rest of the app). Presence comes from ChatProvider's
+// in-memory WS session; the mutual roster is server-loaded.
+export function ChatClient({ mutuals }: { mutuals: MutualHead[] }) {
   const chat = useChat()
 
   if (!chat) return null
@@ -51,9 +54,13 @@ export function ChatClient() {
     (a, b) => (b.messages.at(-1)?.ts ?? 0) - (a.messages.at(-1)?.ts ?? 0),
   )
   const roomPeerIds = new Set(roomList.map((r) => r.peer?.id).filter(Boolean))
+  const onlineIds = new Set(chat.online.map((u) => u.id))
 
-  // Mutuals who are online but don't have a room yet — invite targets.
-  const inviteable = chat.online.filter((u) => u.id !== selfId && !roomPeerIds.has(u.id))
+  // All mutuals, online first. Only online ones without a live room can be
+  // invited — everyone else just shows their status.
+  const roster = [...mutuals].sort(
+    (a, b) => Number(onlineIds.has(b.id)) - Number(onlineIds.has(a.id)),
+  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -177,39 +184,50 @@ export function ChatClient() {
 
       <section className="flex flex-col gap-2">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-          Online mutual follows ({inviteable.length})
+          Mutual follows ({roster.length})
         </h2>
-        {inviteable.length === 0 ? (
+        {roster.length === 0 ? (
           <EmptyState
             icon={<ChatIcon />}
-            title={chat.status === 'online' ? 'No mutuals online' : 'Looking for mutuals…'}
+            title="No mutuals yet"
             message="Live chat is available with mutual follows who are currently online."
             compact
           />
         ) : (
           <ul className="glass divide-y divide-neutral-200/60 overflow-hidden rounded-3xl dark:divide-white/10">
-            {inviteable.map((user) => {
+            {roster.map((user) => {
+              const isOnline = onlineIds.has(user.id)
               const pending = chat.outgoing.has(pairKey(selfId ?? 0, user.id))
+              const inRoom = roomPeerIds.has(user.id)
               return (
-                <li key={user.id} className="flex items-center gap-3 px-4 py-3">
+                <li
+                  key={user.id}
+                  className={`flex items-center gap-3 px-4 py-3 ${isOnline ? '' : 'opacity-60'}`}
+                >
                   <span className="relative shrink-0">
                     <Avatar src={user.avatarUrl} name={user.name} size="md" />
-                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-neutral-900" />
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-neutral-900 ${
+                        isOnline ? 'bg-emerald-500' : 'bg-neutral-300'
+                      }`}
+                    />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">{user.name}</span>
                     <span className="block truncate text-xs text-neutral-500">
-                      @{user.username}
+                      @{user.username} · {isOnline ? 'Online' : 'Offline'}
                     </span>
                   </span>
-                  <button
-                    type="button"
-                    disabled={pending || chat.status !== 'online'}
-                    onClick={() => chat.invite(user.id)}
-                    className="shrink-0 rounded-full bg-accent-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-accent-700 disabled:opacity-50 dark:bg-accent-200 dark:text-accent-900 dark:hover:bg-accent-100"
-                  >
-                    {pending ? 'Waiting…' : 'Chat'}
-                  </button>
+                  {isOnline && !inRoom && (
+                    <button
+                      type="button"
+                      disabled={pending || chat.status !== 'online'}
+                      onClick={() => chat.invite(user.id)}
+                      className="shrink-0 rounded-full bg-accent-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-accent-700 disabled:opacity-50 dark:bg-accent-200 dark:text-accent-900 dark:hover:bg-accent-100"
+                    >
+                      {pending ? 'Waiting…' : 'Chat'}
+                    </button>
+                  )}
                 </li>
               )
             })}

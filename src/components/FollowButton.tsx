@@ -30,7 +30,8 @@ export function FollowButton({
         setFollowing(result.following)
         if (result.following !== next) onFollowChange?.(result.following)
         router.refresh()
-      } catch {
+      } catch (err) {
+        console.error('toggleFollow failed', err)
         setFollowing(!next)
         onFollowChange?.(!next)
       }
@@ -39,6 +40,7 @@ export function FollowButton({
 
   return (
     <button
+      type="button"
       onClick={handleClick}
       disabled={pending}
       className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-all ${

@@ -14,6 +14,7 @@ import { PostListSkeleton } from '@/components/PostListSkeleton'
 import { getFollowingActivities } from '@/lib/activities'
 import { getCurrentUser } from '@/lib/auth'
 import { isPostCategory, type PostCategory } from '@/lib/categories'
+import { getMutuals } from '@/lib/mutuals'
 import { getPayloadClient } from '@/lib/payload'
 import {
   FEED_PAGE_SIZE,
@@ -73,6 +74,17 @@ function HomeFeedFallback() {
   ]
   return (
     <section aria-busy="true" aria-label="Loading home feed">
+      <div className="glass mb-3 rounded-3xl p-4">
+        <div className="mb-3 h-3 w-24 animate-pulse rounded-full bg-neutral-200/70" />
+        <div className="flex gap-4 overflow-hidden pb-1">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex w-20 shrink-0 flex-col items-center gap-1.5">
+              <span className="h-20 w-20 animate-pulse rounded-full bg-neutral-200/70" />
+              <span className="h-2.5 w-12 animate-pulse rounded-full bg-neutral-200/70" />
+            </div>
+          ))}
+        </div>
+      </div>
       <div className="mb-3">
         <div className="glass relative flex rounded-full p-1">
           <span
@@ -128,7 +140,7 @@ async function HomeFeed({
     .map((f) => relId(f.following))
     .filter((id): id is number => id !== null)
 
-  const [posts, activities, saved] = await Promise.all([
+  const [posts, activities, saved, mutuals] = await Promise.all([
     authorIds.length === 0
       ? Promise.resolve({ docs: [] as Post[], hasNextPage: false })
       : payload.find({
@@ -149,12 +161,14 @@ async function HomeFeed({
         }),
     getFollowingActivities(user, authorIds, 1),
     getSavedPosts(user, 1),
+    getMutuals(user),
   ])
 
   const cards = await hydratePosts(posts.docs, user)
 
   return (
     <HomeTabs
+      mutuals={mutuals}
       feedPosts={cards}
       feedHasMore={posts.hasNextPage}
       initialMediaFilter={mediaFilter}
