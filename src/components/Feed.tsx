@@ -10,7 +10,12 @@ import {
   isPostCategory,
   postCategory,
 } from '@/lib/categories'
-import { POST_SAVE_TOGGLED, type PostSaveToggledDetail } from '@/lib/events'
+import {
+  LIVE_EVENT,
+  POST_SAVE_TOGGLED,
+  type LiveEventDetail,
+  type PostSaveToggledDetail,
+} from '@/lib/events'
 import type { MediaFilter, PostCardData } from '@/lib/serialize'
 
 import { CATEGORY_ICONS } from './CategoryChip'
@@ -24,9 +29,10 @@ import { Spinner } from './Spinner'
 
 type CategoryFilter = PostCategory | 'all'
 
-// Live feed polling — how often to check for posts newer than the feed's
-// head, and how near the top counts as "at the top" for auto-prepending.
-const LIVE_POLL_MS = 30_000
+// Live feed — new posts arrive instantly via the pushed 'feed:new' event;
+// the interval is only a fallback for a dead/missing socket. AT_TOP_PX is
+// how near the top counts as "at the top" for auto-prepending.
+const LIVE_POLL_MS = 120_000
 const AT_TOP_PX = 48
 
 const MEDIA_FILTERS: {
@@ -417,50 +423,67 @@ export function Feed({
     })
   }, [])
 
-  // Live polling — fetches posts newer than the feed's head. Near the top
-  // they prepend silently; scrolled down they queue behind the pill.
-  // Skips while the tab is hidden (same pattern as the AppNav badge poller).
+  // Live updates — 'feed:new' pushes trigger an immediate fetch of posts
+  // newer than the head; the slow interval is a fallback for a dead socket.
+  // Near the top they prepend silently; scrolled down they queue behind the
+  // pill. Skips while the tab is hidden (same pattern as the AppNav poller).
   useEffect(() => {
     if (!live || posts.length === 0) return
 
+    let inFlight = false
     const tick = async () => {
-      if (document.hidden) return
+      if (inFlight || document.hidden) return
       const head = postsRef.current[0]
       if (!head) return
-      const result = await getNewerPosts({
-        afterId: head.id,
-        afterCreatedAt: head.createdAt,
-        authorId,
-        feed,
-        mediaFilter,
-        category,
-      })
-      const seen = new Set([
-        ...postsRef.current.map((p) => p.id),
-        ...pendingNewRef.current.map((p) => p.id),
-      ])
-      const incoming = result.posts.filter((p) => !seen.has(p.id))
-      if (incoming.length === 0) return
-      if (window.scrollY <= AT_TOP_PX) {
-        // Flush any queued (older) posts first so the head stays newest-first.
-        flushNew()
-        setPosts((prev) => {
-          const ids = new Set(prev.map((p) => p.id))
-          return [...incoming.filter((p) => !ids.has(p.id)), ...prev]
+      inFlight = true
+      try {
+        const result = await getNewerPosts({
+          afterId: head.id,
+          afterCreatedAt: head.createdAt,
+          authorId,
+          feed,
+          mediaFilter,
+          category,
         })
-      } else {
-        pendingNewRef.current = [...pendingNewRef.current, ...incoming]
-        setPendingNew(pendingNewRef.current)
+        const seen = new Set([
+          ...postsRef.current.map((p) => p.id),
+          ...pendingNewRef.current.map((p) => p.id),
+        ])
+        const incoming = result.posts.filter((p) => !seen.has(p.id))
+        if (incoming.length === 0) return
+        if (window.scrollY <= AT_TOP_PX) {
+          // Flush any queued (older) posts first so the head stays newest-first.
+          flushNew()
+          setPosts((prev) => {
+            const ids = new Set(prev.map((p) => p.id))
+            return [...incoming.filter((p) => !ids.has(p.id)), ...prev]
+          })
+        } else {
+          pendingNewRef.current = [...pendingNewRef.current, ...incoming]
+          setPendingNew(pendingNewRef.current)
+        }
+      } finally {
+        inFlight = false
       }
     }
 
-    const timer = setInterval(() => void tick(), LIVE_POLL_MS)
+    const onLive = (e: Event) => {
+      const detail = (e as CustomEvent<LiveEventDetail>).detail
+      if (detail?.type !== 'feed:new') return
+      // Profile feeds only care about that author's posts; the following
+      // feed is already scoped by the push (followers only).
+      if (authorId && detail.authorId !== authorId) return
+      void tick()
+    }
     const onVisible = () => {
       if (!document.hidden) void tick()
     }
+    const timer = setInterval(() => void tick(), LIVE_POLL_MS)
+    window.addEventListener(LIVE_EVENT, onLive)
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       clearInterval(timer)
+      window.removeEventListener(LIVE_EVENT, onLive)
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [live, posts.length, authorId, feed, mediaFilter, category, flushNew])

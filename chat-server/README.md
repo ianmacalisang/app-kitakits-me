@@ -19,15 +19,35 @@ Health check for load balancers/Coolify: `GET /health` → `200 ok`.
 
 ## Environment
 
-| Var                   | Default              | Purpose                                        |
-| --------------------- | -------------------- | ---------------------------------------------- |
-| `WS_PORT`             | `3001`               | Listen port                                    |
-| `CHAT_TICKET_SECRET`  | `PAYLOAD_SECRET`     | HS256 key shared with the app for ticket JWTs  |
-| `ALLOWED_ORIGIN`      | _(allow all)_        | Comma-separated browser origins for upgrades   |
-| `CHAT_PURGE_GRACE_MS` | `60000`              | Room buffer retention after everyone leaves    |
-| `CHAT_INVITE_TTL_MS`  | `120000`             | Invite expiry                                  |
-| `CHAT_AUTH_TIMEOUT_MS`| `5000`               | How long a socket may stay unauthenticated     |
-| `CHAT_KEEPALIVE_MS`   | `30000`              | ws ping interval (dead-socket reaping)         |
+| Var                    | Default           | Purpose                                       |
+| ---------------------- | ----------------- | --------------------------------------------- |
+| `WS_PORT`              | `3001`            | Listen port                                   |
+| `CHAT_TICKET_SECRET`   | `PAYLOAD_SECRET`  | HS256 key shared with the app for ticket JWTs |
+| `ALLOWED_ORIGIN`       | _(allow all)_     | Comma-separated browser origins for upgrades  |
+| `CHAT_PURGE_GRACE_MS`  | `60000`           | Room buffer retention after everyone leaves   |
+| `CHAT_INVITE_TTL_MS`   | `120000`          | Invite expiry                                 |
+| `CHAT_AUTH_TIMEOUT_MS` | `5000`            | How long a socket may stay unauthenticated    |
+| `CHAT_KEEPALIVE_MS`    | `30000`           | ws ping interval (dead-socket reaping)        |
+| `LIVE_EMIT_SECRET`     | _(emit disabled)_ | Bearer token guarding `POST /emit`            |
+
+## Server push (`POST /emit`)
+
+The app relays live events through the same socket so clients update
+instantly instead of polling (nav badges, new feed posts, video status).
+The app calls `pushLive()` in `src/lib/live.ts`, which POSTs here:
+
+```http
+POST /emit
+Authorization: Bearer <LIVE_EMIT_SECRET>
+Content-Type: application/json
+
+{ "type": "feed:new", "authorId": 7, "to": [12, 34] }
+```
+
+`to` is a list of user ids; the body (minus `to`) is forwarded verbatim to
+every connected socket of those users. On the **app** service set
+`CHAT_EMIT_URL` (e.g. `http://chat:3001/emit` on the internal network) and the
+same `LIVE_EMIT_SECRET`. The endpoint is not meant to be exposed publicly.
 
 ## Coolify
 

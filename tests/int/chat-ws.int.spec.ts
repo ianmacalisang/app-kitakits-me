@@ -71,6 +71,7 @@ describe('chat-server', () => {
         ...process.env,
         WS_PORT: String(PORT),
         CHAT_TICKET_SECRET: SECRET,
+        LIVE_EMIT_SECRET: 'emit-test-secret',
         // .env ships a dev ALLOWED_ORIGIN — neutralize it so the Node ws
         // client (which sends its own Origin) isn't rejected in tests.
         ALLOWED_ORIGIN: '',
@@ -198,5 +199,42 @@ describe('chat-server', () => {
 
     frank.ws.close()
     gwen.ws.close()
+  })
+
+  it('relays /emit events to the listed users only', async () => {
+    const hank = await connect(await mintTicket(8, [9], 'Hank'))
+    const ivy = await connect(await mintTicket(9, [8], 'Ivy'))
+    await waitFor(hank, (m) => m.type === 'auth:ok')
+    await waitFor(ivy, (m) => m.type === 'auth:ok')
+
+    const res = await fetch(`http://127.0.0.1:${PORT}/emit`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer emit-test-secret',
+      },
+      body: JSON.stringify({ type: 'badges', to: [8] }),
+    })
+    expect(res.status).toBe(200)
+    await waitFor(hank, (m) => m.type === 'badges')
+    // Ivy is online but not a target — nothing should reach her.
+    await new Promise((r) => setTimeout(r, 150))
+    expect(ivy.inbox.some((m) => m.type === 'badges')).toBe(false)
+
+    // Wrong bearer token → 401, nothing delivered.
+    const denied = await fetch(`http://127.0.0.1:${PORT}/emit`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer wrong',
+      },
+      body: JSON.stringify({ type: 'badges', to: [8] }),
+    })
+    expect(denied.status).toBe(401)
+    await new Promise((r) => setTimeout(r, 150))
+    expect(hank.inbox.filter((m) => m.type === 'badges')).toHaveLength(1)
+
+    hank.ws.close()
+    ivy.ws.close()
   })
 })

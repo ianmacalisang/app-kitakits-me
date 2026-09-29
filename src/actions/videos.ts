@@ -4,6 +4,7 @@ import { sql } from '@payloadcms/db-postgres'
 
 import { getCurrentUser } from '@/lib/auth'
 import { drizzleOf } from '@/lib/db'
+import { followerIds, pushLive } from '@/lib/live'
 import { rateLimitIP } from '@/lib/rate-limit'
 import {
   bunnyStreamConfigured,
@@ -28,6 +29,23 @@ const BUNNY_CHECK_MS = 15_000
 // A video still uploading/processing this long after creation is wedged —
 // surface it as failed rather than spinning forever.
 const STALE_MS = 30 * 60_000
+
+type PayloadClient = Awaited<ReturnType<typeof getPayloadClient>>
+
+// Push a terminal status to the owner + their followers so open PostVideo
+// cards flip instantly instead of waiting for the next fallback poll.
+function notifyVideoStatus(
+  payload: PayloadClient,
+  video: { id: number; owner: unknown },
+  status: 'ready' | 'failed',
+) {
+  const ownerId = relId(video.owner)
+  if (ownerId === null) return
+  pushLive(
+    followerIds(payload, ownerId).then((ids) => [ownerId, ...ids]),
+    { type: 'video:status', videoId: video.id, status },
+  )
+}
 
 export interface VideoUploadCredentials {
   videoId: number
@@ -166,6 +184,7 @@ export async function getVideoStatus(videoId: number): Promise<PostVideoData | n
           overrideAccess: true,
         })
         lastBunnyCheck.delete(videoId)
+        notifyVideoStatus(payload, video, 'ready')
       } else if (info?.status === 5 || info?.status === 6) {
         video = await payload.update({
           collection: 'videos',
@@ -174,6 +193,7 @@ export async function getVideoStatus(videoId: number): Promise<PostVideoData | n
           overrideAccess: true,
         })
         lastBunnyCheck.delete(videoId)
+        notifyVideoStatus(payload, video, 'failed')
       }
     }
 
@@ -189,6 +209,7 @@ export async function getVideoStatus(videoId: number): Promise<PostVideoData | n
         data: { status: 'failed' },
         overrideAccess: true,
       })
+      notifyVideoStatus(payload, video, 'failed')
     }
 
     return toVideoData(video)

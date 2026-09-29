@@ -7,6 +7,7 @@ import type { Where } from 'payload'
 import { getCurrentUser } from '@/lib/auth'
 import { isPostCategory, type PostCategory } from '@/lib/categories'
 import { drizzleOf } from '@/lib/db'
+import { followerIds, pushLive } from '@/lib/live'
 import { getPayloadClient } from '@/lib/payload'
 import {
   FEED_PAGE_SIZE,
@@ -113,6 +114,12 @@ export async function createPost(_prev: FormState, formData: FormData): Promise<
   } catch (err) {
     return { error: errorMessage(err) }
   }
+
+  // Ping followers over the socket so their live feeds prepend instantly —
+  // the hint carries only the author id; each client refetches with its own
+  // cursor/filters via getNewerPosts. Deferred (like all pushes) until after
+  // the response — see lib/live.
+  pushLive(followerIds(payload, user.id), { type: 'feed:new', authorId: user.id })
 
   return { success: true }
 }
@@ -663,22 +670,29 @@ export async function getNewerPosts(options: {
     ],
   }
 
-  if (!user) {
+  let where: Where | null
+  let access: { overrideAccess: boolean; user?: User }
+  if (user) {
+    where = await feedWhere(payload, user, { authorId, mediaFilter, category })
+    access = { overrideAccess: false, user }
+  } else {
     // Same anonymous constraint as loadMorePosts — only reachable from
     // public-profile feeds.
     if (!authorId) return { posts: [], hasMore: false }
-    const result = await payload.find({
-      collection: 'posts',
-      where: { and: [{ author: { equals: authorId } }, ...publicPostClauses(), fresh] },
-      sort: '-createdAt',
-      limit: NEW_POSTS_LIMIT,
-      depth: 2,
-    })
-    return { posts: await hydratePosts(result.docs, null), hasMore: false }
+    where = { and: [{ author: { equals: authorId } }, ...publicPostClauses()] }
+    access = { overrideAccess: true }
   }
-
-  const where = await feedWhere(payload, user, { authorId, mediaFilter, category })
   if (!where) return { posts: [], hasMore: false }
+
+  // Cheap existence check before the hydrated find — polls almost always
+  // come back empty, and pushed feed:new events can trigger a burst of
+  // refetches that race the cursor.
+  const newer = await payload.count({
+    collection: 'posts',
+    where: { and: [where, fresh] },
+    ...access,
+  })
+  if (newer.totalDocs === 0) return { posts: [], hasMore: false }
 
   const result = await payload.find({
     collection: 'posts',
@@ -686,8 +700,7 @@ export async function getNewerPosts(options: {
     sort: '-createdAt',
     limit: NEW_POSTS_LIMIT,
     depth: 2,
-    user,
-    overrideAccess: false,
+    ...access,
   })
 
   return { posts: await hydratePosts(result.docs, user), hasMore: false }

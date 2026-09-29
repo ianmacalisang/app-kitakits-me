@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { logout } from '@/actions/auth'
 import { getNavBadgeCounts } from '@/actions/nav'
 import { searchUsers, updateTheme } from '@/actions/users'
+import { LIVE_EVENT, type LiveEventDetail } from '@/lib/events'
 import type { UserCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
@@ -38,6 +39,10 @@ const THEME_ICONS: Record<'light' | 'dark', typeof SunIcon> = {
   light: SunIcon,
   dark: MoonIcon,
 }
+
+// Fallback cadence — badge changes arrive instantly via the pushed 'badges'
+// live event; this interval only covers a dead/missing socket.
+const NAV_POLL_MS = 60_000
 
 interface AppNavProps {
   name: string
@@ -313,29 +318,47 @@ export function AppNav({
     }
   }, [unreadCount, unreadMailCount, pendingTestimonialCount])
 
-  // Poll for new notifications/mail/testimonials — catches counts that didn't
-  // trigger a server re-render. When a count goes UP something new arrived,
-  // so refresh the route too: the notifications menu, mailbox, and feed pick
-  // it up immediately instead of waiting for the next navigation.
-  // Skips while the tab is hidden.
+  // Badge refresh — the chat-server pushes a 'badges' event on every change,
+  // so the interval is only a safety net for a dead socket. When a count goes
+  // UP something new arrived, so refresh the route too: the notifications
+  // menu, mailbox, and feed pick it up immediately instead of waiting for
+  // the next navigation. Skips while the tab is hidden.
   useEffect(() => {
+    let inFlight = false
     const tick = async () => {
-      if (document.hidden) return
-      const result = await getNavBadgeCounts()
-      if (!result) return
-      setBadges(result)
-      const prev = lastBadgesRef.current
-      lastBadgesRef.current = result
-      if (
-        result.unread > prev.unread ||
-        result.unreadMail > prev.unreadMail ||
-        result.pendingTestimonials > prev.pendingTestimonials
-      ) {
-        router.refresh()
+      if (inFlight || document.hidden) return
+      inFlight = true
+      try {
+        const result = await getNavBadgeCounts()
+        if (!result) return
+        setBadges(result)
+        const prev = lastBadgesRef.current
+        lastBadgesRef.current = result
+        if (
+          result.unread > prev.unread ||
+          result.unreadMail > prev.unreadMail ||
+          result.pendingTestimonials > prev.pendingTestimonials
+        ) {
+          router.refresh()
+        }
+      } finally {
+        inFlight = false
       }
     }
-    const timer = setInterval(tick, 12000)
-    return () => clearInterval(timer)
+    const onLive = (e: Event) => {
+      if ((e as CustomEvent<LiveEventDetail>).detail?.type === 'badges') void tick()
+    }
+    const onVisible = () => {
+      if (!document.hidden) void tick()
+    }
+    window.addEventListener(LIVE_EVENT, onLive)
+    document.addEventListener('visibilitychange', onVisible)
+    const timer = setInterval(() => void tick(), NAV_POLL_MS)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener(LIVE_EVENT, onLive)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [router])
 
   // Close the user dropdown when clicking outside of it or pressing Escape.

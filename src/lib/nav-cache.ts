@@ -1,5 +1,6 @@
 import { revalidateTag, unstable_cache } from 'next/cache'
 
+import { pushLive } from './live'
 import { getPayloadClient } from './payload'
 
 const tag = (userId: number) => `nav:${userId}`
@@ -56,4 +57,8 @@ export const revalidateNavCounts = (userId: number) => {
   try {
     revalidateTag(tag(userId), { expire: 0 })
   } catch {}
+  // Push a ping over the socket so open tabs bump badges instantly — the
+  // client refetches through getNavBadgeCounts, which reads the just-
+  // invalidated cache above.
+  pushLive(userId, { type: 'badges' })
 }

@@ -35,6 +35,9 @@ const KEEPALIVE_MS = Number(process.env.CHAT_KEEPALIVE_MS || 30_000)
 const BUFFER_MAX = 100
 const BODY_MAX = 2_000
 const MUTUALS_MAX = 500
+const EMIT_SECRET = process.env.LIVE_EMIT_SECRET || ''
+const EMIT_MAX_TARGETS = 10_000
+const EMIT_BODY_MAX = 64 * 1024
 
 /** @type {Map<number, {info: object, mutuals: Set<number>, sockets: Set<import('ws').WebSocket>}>} */
 const online = new Map()
@@ -412,6 +415,62 @@ const server = http.createServer((req, res) => {
     res.end('ok')
     return
   }
+
+  // Server-to-server push — the app POSTs { type, to: [userId, ...], ...data }
+  // here to fan a live event out to every connected socket of those users
+  // (badge bumps, new-post hints, video status). No DB: just a relay.
+  if (req.method === 'POST' && req.url === '/emit') {
+    if (!EMIT_SECRET || req.headers.authorization !== `Bearer ${EMIT_SECRET}`) {
+      res.writeHead(401)
+      res.end()
+      return
+    }
+    let raw = ''
+    let tooBig = false
+    req.on('data', (chunk) => {
+      raw += chunk
+      if (raw.length > EMIT_BODY_MAX && !tooBig) {
+        tooBig = true
+        res.writeHead(413)
+        res.end()
+        req.destroy()
+      }
+    })
+    req.on('end', () => {
+      if (tooBig) return
+      let msg
+      try {
+        msg = JSON.parse(raw)
+      } catch {
+        res.writeHead(400)
+        res.end()
+        return
+      }
+      const to = Array.isArray(msg?.to)
+        ? [...new Set(msg.to.filter((id) => Number.isInteger(id) && id > 0))].slice(
+            0,
+            EMIT_MAX_TARGETS,
+          )
+        : []
+      if (typeof msg?.type !== 'string' || to.length === 0) {
+        res.writeHead(400)
+        res.end()
+        return
+      }
+      delete msg.to
+      let delivered = 0
+      for (const id of to) {
+        const entry = online.get(id)
+        if (!entry) continue
+        delivered += entry.sockets.size
+        sendToUser(id, msg)
+      }
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ ok: true, delivered }))
+    })
+    return
+  }
+
   res.writeHead(404)
   res.end()
 })

@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 
 import { getChatTicket } from '@/actions/chat'
+import { LIVE_EVENT } from '@/lib/events'
 
 export interface ChatUser {
   id: number
@@ -285,6 +286,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
         case 'room:ended': {
           patchRoom(String(msg.room), { ended: true, peerInRoom: false, peerTyping: false })
+          break
+        }
+        // Server-pushed live events (relayed via chat-server's /emit) — fan
+        // out as a window event so badges, feeds, and video cards refresh
+        // instantly without a context dependency.
+        case 'badges':
+        case 'feed:new':
+        case 'video:status': {
+          window.dispatchEvent(new CustomEvent(LIVE_EVENT, { detail: msg }))
           break
         }
         case 'error': {

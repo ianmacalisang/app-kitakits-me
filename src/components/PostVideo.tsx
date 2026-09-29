@@ -3,6 +3,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 
 import { getVideoStatus, recordVideoPlay } from '@/actions/videos'
+import { LIVE_EVENT, type LiveEventDetail } from '@/lib/events'
 import type { PostVideoData } from '@/lib/serialize'
 
 import {
@@ -16,8 +17,13 @@ import {
 } from './icons'
 import { Spinner } from './Spinner'
 
-const POLL_MS = 5000
-const MAX_POLLS = 72 // ~6 minutes, then stop polling
+// Status normally arrives via the pushed 'video:status' event the moment the
+// encode flips — the poll is fallback: fast while an encode is likely about
+// to land, then slow. Max ~9 minutes total, then stop.
+const POLL_FAST_MS = 5_000
+const POLL_SLOW_MS = 15_000
+const FAST_POLLS = 6
+const MAX_POLLS = 40
 const CONTROLS_HIDE_MS = 2500
 
 // Only one video in the feed plays at a time — starting one pauses the other.
@@ -69,24 +75,58 @@ export const PostVideo = memo(function PostVideo({
     if (data.status !== 'processing') return
     let cancelled = false
     let polls = 0
-    const timer = setInterval(() => {
-      if (++polls > MAX_POLLS) {
-        clearInterval(timer)
-        return
-      }
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    // Applies a fetched status — returns false once terminal so the caller
+    // knows to stop scheduling.
+    const apply = (next: PostVideoData | null) => {
+      if (cancelled || !next) return true
+      setData(next)
+      return next.status === 'processing'
+    }
+    const schedule = () => {
+      timer = setTimeout(run, polls < FAST_POLLS ? POLL_FAST_MS : POLL_SLOW_MS)
+    }
+    const run = () => {
+      if (cancelled) return
+      // Hidden tabs don't burn polls — the wake listener refetches instead.
+      if (document.hidden) return schedule()
+      if (++polls > MAX_POLLS) return
       void getVideoStatus(video.id)
         .then((next) => {
-          if (cancelled || !next) return
-          setData(next)
-          if (next.status !== 'processing') clearInterval(timer)
+          if (cancelled) return
+          // Failed/null responses keep polling; terminal status stops.
+          if (apply(next)) schedule()
         })
         // Failed fetches (dev recompile cuts the stream, offline) — retry
         // on the next tick instead of leaking an unhandled rejection.
+        .catch(() => schedule())
+    }
+
+    // Push path — the server relays video:status when the webhook (or the
+    // throttled Bunny check) flips the doc.
+    const onLive = (e: Event) => {
+      const detail = (e as CustomEvent<LiveEventDetail>).detail
+      if (detail?.type !== 'video:status' || detail.videoId !== video.id) return
+      void getVideoStatus(video.id)
+        .then(apply)
         .catch(() => {})
-    }, POLL_MS)
+    }
+    const onVisible = () => {
+      if (!document.hidden)
+        void getVideoStatus(video.id)
+          .then(apply)
+          .catch(() => {})
+    }
+    window.addEventListener(LIVE_EVENT, onLive)
+    document.addEventListener('visibilitychange', onVisible)
+
+    schedule()
     return () => {
       cancelled = true
-      clearInterval(timer)
+      if (timer) clearTimeout(timer)
+      window.removeEventListener(LIVE_EVENT, onLive)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [data.status, video.id])
 
