@@ -939,3 +939,37 @@ html.dark::before {
 .dark .mail-richtext :where(hr):not(:where(.light, .light *)) {
   border-top-color: rgb(255 255 255 / 0.12);
 }
+
+/* ------------------------------------------------------------------
+   Launch screen — branded splash for installed-PWA launches. Rendered
+   into the root layout on every page but hidden unless the inline head
+   script marked <html> with .is-pwa (standalone display-mode or iOS
+   navigator.standalone). Matches the manifest's white background so the
+   OS-generated splash hands off seamlessly; the animation's `forwards`
+   fill leaves it invisible once faded, so no JS is involved at all.
+------------------------------------------------------------------- */
+#launch-screen {
+  display: none;
+}
+
+.is-pwa #launch-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  animation: launch-screen-out 0.45s ease 1.2s forwards;
+}
+
+.is-pwa.dark #launch-screen {
+  background: #0a0a0a;
+}
+
+@keyframes launch-screen-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}

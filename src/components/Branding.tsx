@@ -24,6 +24,7 @@ const markSizes = {
   sm: 'h-8 w-8 rounded-xl text-sm',
   md: 'h-12 w-12 rounded-2xl text-lg',
   lg: 'h-14 w-14 rounded-2xl text-xl',
+  xl: 'h-20 w-20 rounded-3xl text-3xl',
 }
 
 // Brand mark — the uploaded logo when set, otherwise a gradient letter tile.
