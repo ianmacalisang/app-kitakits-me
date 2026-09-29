@@ -81,6 +81,9 @@ export interface Config {
     'mail-attachments': MailAttachment;
     videos: Video;
     testimonials: Testimonial;
+    badges: Badge;
+    'user-badges': UserBadge;
+    'point-events': PointEvent;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -102,6 +105,9 @@ export interface Config {
     'mail-attachments': MailAttachmentsSelect<false> | MailAttachmentsSelect<true>;
     videos: VideosSelect<false> | VideosSelect<true>;
     testimonials: TestimonialsSelect<false> | TestimonialsSelect<true>;
+    badges: BadgesSelect<false> | BadgesSelect<true>;
+    'user-badges': UserBadgesSelect<false> | UserBadgesSelect<true>;
+    'point-events': PointEventsSelect<false> | PointEventsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -288,6 +294,10 @@ export interface User {
    * Set when the user finishes the onboarding flow.
    */
   onboardedAt?: string | null;
+  /**
+   * Gamification points — maintained automatically.
+   */
+  points?: number | null;
   role: 'user' | 'admin';
   updatedAt: string;
   createdAt: string;
@@ -428,10 +438,11 @@ export interface Notification {
   id: number;
   recipient: number | User;
   actor: number | User;
-  type: 'like' | 'comment' | 'follow' | 'testimonial';
+  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge';
   post?: (number | null) | Post;
   comment?: (number | null) | Comment;
   testimonial?: (number | null) | Testimonial;
+  badge?: (number | null) | Badge;
   read?: boolean | null;
   updatedAt: string;
   createdAt: string;
@@ -446,6 +457,40 @@ export interface Testimonial {
   recipient: number | User;
   content: string;
   status?: ('pending' | 'approved' | 'rejected') | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "badges".
+ */
+export interface Badge {
+  id: number;
+  slug: string;
+  name: string;
+  /**
+   * Shown in the badge tooltip on profiles.
+   */
+  description?: string | null;
+  icon: 'sparkles' | 'heart' | 'users' | 'quote' | 'trophy' | 'medal' | 'star' | 'pin' | 'megaphone';
+  /**
+   * Chip styling on profiles — gold reads as the rarest.
+   */
+  tier: 'bronze' | 'silver' | 'gold';
+  rule:
+    'posts' | 'comments' | 'likes-received' | 'followers' | 'testimonials' | 'points' | 'profile-complete' | 'manual';
+  /**
+   * Count needed to earn the badge.
+   */
+  threshold?: number | null;
+  /**
+   * Disabled badges stop auto-awarding but stay on profiles that already have them.
+   */
+  enabled?: boolean | null;
+  /**
+   * Lower sorts first on the profile badge shelf.
+   */
+  sort?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -536,6 +581,44 @@ export interface MailDraft {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-badges".
+ */
+export interface UserBadge {
+  id: number;
+  user: number | User;
+  badge: number | Badge;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "point-events".
+ */
+export interface PointEvent {
+  id: number;
+  user: number | User;
+  kind:
+    | 'post'
+    | 'comment'
+    | 'like-received'
+    | 'comment-received'
+    | 'share-received'
+    | 'save-received'
+    | 'follow-received'
+    | 'testimonial-received'
+    | 'testimonial-given'
+    | 'manual';
+  points: number;
+  post?: (number | null) | Post;
+  /**
+   * Dedupe key — awards with an existing key are skipped.
+   */
+  key?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -613,6 +696,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'testimonials';
         value: number | Testimonial;
+      } | null)
+    | ({
+        relationTo: 'badges';
+        value: number | Badge;
+      } | null)
+    | ({
+        relationTo: 'user-badges';
+        value: number | UserBadge;
+      } | null)
+    | ({
+        relationTo: 'point-events';
+        value: number | PointEvent;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -786,6 +881,7 @@ export interface UsersSelect<T extends boolean = true> {
   theme?: T;
   defaultPostVisibility?: T;
   onboardedAt?: T;
+  points?: T;
   role?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -898,6 +994,7 @@ export interface NotificationsSelect<T extends boolean = true> {
   post?: T;
   comment?: T;
   testimonial?: T;
+  badge?: T;
   read?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -995,6 +1092,46 @@ export interface TestimonialsSelect<T extends boolean = true> {
   recipient?: T;
   content?: T;
   status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "badges_select".
+ */
+export interface BadgesSelect<T extends boolean = true> {
+  slug?: T;
+  name?: T;
+  description?: T;
+  icon?: T;
+  tier?: T;
+  rule?: T;
+  threshold?: T;
+  enabled?: T;
+  sort?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-badges_select".
+ */
+export interface UserBadgesSelect<T extends boolean = true> {
+  user?: T;
+  badge?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "point-events_select".
+ */
+export interface PointEventsSelect<T extends boolean = true> {
+  user?: T;
+  kind?: T;
+  points?: T;
+  post?: T;
+  key?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -1,8 +1,11 @@
 import Link from 'next/link'
 
+import type { GamificationData } from '@/lib/serialize'
+
 import { FollowButton } from './FollowButton'
 import { FollowListModal } from './FollowListModal'
 import { MailboxIcon } from './icons'
+import { LevelChip } from './LevelChip'
 import { ProfileMedia } from './ProfileMedia'
 
 export function ProfileHeader({
@@ -16,6 +19,7 @@ export function ProfileHeader({
   followerCount,
   isSelf,
   initialFollowing,
+  gamification,
 }: {
   userId: number
   name: string
@@ -27,6 +31,7 @@ export function ProfileHeader({
   followerCount: number
   isSelf: boolean
   initialFollowing: boolean
+  gamification?: GamificationData
 }) {
   return (
     <header className="glass relative overflow-hidden rounded-3xl">
@@ -36,14 +41,20 @@ export function ProfileHeader({
         coverUrl={coverUrl}
         name={name}
         username={username}
+        badge={gamification?.badges[0]}
         stats={
-          <FollowListModal
-            userId={userId}
-            kind="followers"
-            count={followerCount}
-            label="Followers"
-            badge
-          />
+          <>
+            <FollowListModal
+              userId={userId}
+              kind="followers"
+              count={followerCount}
+              label="Followers"
+              badge
+            />
+            {gamification && (
+              <LevelChip level={gamification.level} points={gamification.points} light />
+            )}
+          </>
         }
       >
         {!isSelf && (

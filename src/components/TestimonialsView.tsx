@@ -15,6 +15,7 @@ import {
 import type { Paged, TestimonialData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { CountBadge } from './CountBadge'
 import { EmptyState } from './EmptyState'
 import { CheckIcon, ComposeIcon, QuoteIcon, TrashIcon, XIcon } from './icons'
@@ -160,7 +161,7 @@ export function TestimonialsView({
                       href={`/profile/${t.authorUsername}`}
                       className="block truncate text-sm font-semibold hover:underline"
                     >
-                      {t.authorName}
+                      {t.authorName} <BadgeMark badge={t.authorBadge} />
                     </Link>
                     <p className="truncate text-xs text-neutral-500">
                       @{t.authorUsername} · <RelativeTime iso={t.createdAt} />
@@ -215,7 +216,7 @@ export function TestimonialsView({
                       href={`/profile/${t.authorUsername}`}
                       className="block truncate text-sm font-semibold hover:underline"
                     >
-                      {t.authorName}
+                      {t.authorName} <BadgeMark badge={t.authorBadge} />
                     </Link>
                     <p className="truncate text-xs text-neutral-500">
                       @{t.authorUsername} · <RelativeTime iso={t.createdAt} />

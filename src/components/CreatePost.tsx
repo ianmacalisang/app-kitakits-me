@@ -72,6 +72,7 @@ export const CreatePost = memo(function CreatePost({
   const videoRef = useRef<HTMLInputElement>(null)
   const uploadRef = useRef<Upload | null>(null)
   const audienceRef = useRef<HTMLDivElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
 
   // Saved on the user record so the choice follows the account across
   // browsers. Fire-and-forget — local state already reflects the pick.
@@ -225,6 +226,28 @@ export const CreatePost = memo(function CreatePost({
     }
   }, [open, close, audienceOpen])
 
+  // Keep the overlay inside the visual viewport. The software keyboard only
+  // shrinks the visual viewport — the layout viewport (and dvh) stay put, so
+  // without this the browser pans the page to reveal the focused textarea and
+  // pushes the sheet's header off the top of the screen.
+  useEffect(() => {
+    if (!open) return
+    const vv = window.visualViewport
+    const overlay = overlayRef.current
+    if (!vv || !overlay) return
+    const sync = () => {
+      overlay.style.top = `${vv.offsetTop}px`
+      overlay.style.height = `${vv.height}px`
+    }
+    sync()
+    vv.addEventListener('resize', sync)
+    vv.addEventListener('scroll', sync)
+    return () => {
+      vv.removeEventListener('resize', sync)
+      vv.removeEventListener('scroll', sync)
+    }
+  }, [open])
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const form = e.currentTarget
@@ -277,7 +300,10 @@ export const CreatePost = memo(function CreatePost({
           Portaled to body so the glass dock's backdrop-filter can't trap it. */}
       {open &&
         createPortal(
-          <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4">
+          <div
+            ref={overlayRef}
+            className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4"
+          >
             <div
               className={`absolute inset-0 bg-accent-950/40 backdrop-blur-sm ${
                 closing ? 'motion-safe:animate-fade-out' : 'motion-safe:animate-fade-in'
@@ -285,7 +311,7 @@ export const CreatePost = memo(function CreatePost({
             />
             <div
               {...sheetDrag}
-              className={`glass relative flex h-dvh w-full max-w-lg flex-col overflow-y-auto overscroll-none rounded-t-[28px] px-5 pb-5 pt-2 sm:h-auto sm:max-h-[85vh] sm:rounded-[28px] sm:pt-4 ${
+              className={`glass relative flex h-full w-full max-w-lg flex-col overflow-y-auto overscroll-none rounded-t-[28px] px-5 pb-5 pt-2 sm:h-auto sm:max-h-[85vh] sm:rounded-[28px] sm:pt-4 ${
                 closing
                   ? 'motion-safe:animate-sheet-down sm:motion-safe:animate-dialog-out'
                   : 'motion-safe:animate-sheet-up sm:motion-safe:animate-dialog-in'

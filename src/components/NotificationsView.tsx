@@ -11,6 +11,7 @@ import {
 import type { NotificationData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { CommentsSheet } from './CommentsSheet'
 import { CountBadge } from './CountBadge'
 import { EmptyState } from './EmptyState'
@@ -20,6 +21,7 @@ import {
   ChevronDownIcon,
   CommentIcon,
   HeartIcon,
+  MedalIcon,
   QuoteIcon,
   UserIcon,
 } from './icons'
@@ -32,6 +34,7 @@ const typeIcon = {
   comment: <CommentIcon className="h-2.5 w-2.5" />,
   follow: <UserIcon className="h-2.5 w-2.5" />,
   testimonial: <QuoteIcon className="h-2.5 w-2.5" />,
+  badge: <MedalIcon className="h-2.5 w-2.5" />,
 }
 
 // Larger variant for the timeline icons inside expanded stacks.
@@ -40,12 +43,14 @@ const typeIconLg = {
   comment: <CommentIcon className="h-3 w-3" />,
   follow: <UserIcon className="h-3 w-3" />,
   testimonial: <QuoteIcon className="h-3 w-3" />,
+  badge: <MedalIcon className="h-3 w-3" />,
 }
 
 const notificationText = (n: NotificationData) => {
   if (n.type === 'like') return 'liked your post'
   if (n.type === 'comment') return 'commented on your post'
   if (n.type === 'follow') return 'started following you'
+  if (n.type === 'badge') return `earned the “${n.badgeName ?? 'new'}” badge`
   return n.testimonialEvent === 'approved' ? 'approved your testimonial' : 'wrote you a testimonial'
 }
 
@@ -84,6 +89,13 @@ const stackText = (items: NotificationData[]) => {
           : `sent ${testimonials.length} testimonial updates`,
     })
   }
+  const badges = items.filter((n) => n.type === 'badge')
+  if (badges.length > 0) {
+    parts.push({
+      idx: items.findIndex((n) => n.type === 'badge'),
+      text: badges.length === 1 ? notificationText(badges[0]) : `earned ${badges.length} badges`,
+    })
+  }
 
   parts.sort((a, b) => a.idx - b.idx)
   const phrases = parts.map((p) => p.text)
@@ -96,6 +108,7 @@ const typeColor = {
   comment: 'bg-accent-500 text-white',
   follow: 'bg-accent-500 text-white',
   testimonial: 'bg-accent-500 text-white',
+  badge: 'bg-amber-500 text-white',
 }
 
 const sectionLabel = 'mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400'
@@ -221,6 +234,10 @@ export function NotificationsView({
     (notification: NotificationData, stack?: NotificationData[]) => {
       markReadOptimistic((stack ?? [notification]).filter((n) => !n.read).map((n) => n.id))
       if (notification.type === 'follow') {
+        router.push(`/profile/${notification.actorUsername}`)
+      } else if (notification.type === 'badge') {
+        // Badge notifications are self-actor — land on your own profile
+        // where the badge shelf shows the new award.
         router.push(`/profile/${notification.actorUsername}`)
       } else if (notification.type === 'testimonial') {
         router.push('/testimonials')
@@ -368,7 +385,7 @@ const NotificationItem = memo(function NotificationItem({
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm">
             <span className="font-semibold">{notification.actorName}</span>{' '}
-            {notificationText(notification)}
+            <BadgeMark badge={notification.actorBadge} /> {notificationText(notification)}
           </span>
           {notification.commentSnippet && (
             <span className="block truncate text-xs italic text-neutral-600">
@@ -448,7 +465,8 @@ const NotificationStack = memo(function NotificationStack({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm">
-            <span className="font-semibold">{newest.actorName}</span> {stackText(items)}
+            <span className="font-semibold">{newest.actorName}</span>{' '}
+            <BadgeMark badge={newest.actorBadge} /> {stackText(items)}
           </span>
           {context && (
             <span

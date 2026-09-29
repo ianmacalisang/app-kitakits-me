@@ -8,20 +8,32 @@ import { toggleFollow } from '@/actions/follows'
 export function FollowButton({
   targetUserId,
   initialFollowing,
+  onFollowChange,
 }: {
   targetUserId: number
   initialFollowing: boolean
+  onFollowChange?: (following: boolean) => void
 }) {
   const router = useRouter()
   const [following, setFollowing] = useState(initialFollowing)
   const [pending, startTransition] = useTransition()
 
   const handleClick = () => {
-    setFollowing(!following)
+    const next = !following
+    setFollowing(next)
+    // Lets parents react instantly (e.g. Explore swaps the suggestion card);
+    // called again with the reverted value if the toggle fails.
+    onFollowChange?.(next)
     startTransition(async () => {
-      const result = await toggleFollow(targetUserId)
-      setFollowing(result.following)
-      router.refresh()
+      try {
+        const result = await toggleFollow(targetUserId)
+        setFollowing(result.following)
+        if (result.following !== next) onFollowChange?.(result.following)
+        router.refresh()
+      } catch {
+        setFollowing(!next)
+        onFollowChange?.(!next)
+      }
     })
   }
 

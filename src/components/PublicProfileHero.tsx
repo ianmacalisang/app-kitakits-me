@@ -1,10 +1,14 @@
 import type { ReactNode } from 'react'
 
 import type { ProfileLayout } from '@/lib/profileDesign'
+import type { GamificationData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
+
 import { BlurImage } from './BlurImage'
 import { CalendarIcon, LinkIcon } from './icons'
+import { LevelChip } from './LevelChip'
 
 // Website/joined/follower chips — `light` variants sit over the cover image in
 // the hero layout, the neutral ones on the card body.
@@ -13,12 +17,14 @@ function MetaChips({
   joinedLabel,
   followers,
   following,
+  gamification,
   light = false,
 }: {
   website: string | null
   joinedLabel: string
   followers: number
   following: number
+  gamification?: GamificationData
   light?: boolean
 }) {
   const chip = light
@@ -55,6 +61,9 @@ function MetaChips({
         <strong className={count}>{following}</strong>
         Following
       </span>
+      {gamification && (
+        <LevelChip level={gamification.level} points={gamification.points} light={light} />
+      )}
     </>
   )
 }
@@ -71,6 +80,7 @@ export function PublicProfileHero({
   followers,
   following,
   action,
+  gamification,
 }: {
   layout: ProfileLayout
   name: string
@@ -84,6 +94,7 @@ export function PublicProfileHero({
   following: number
   // CTA slot — "Public preview" badge for the owner, mail button otherwise.
   action?: ReactNode
+  gamification?: GamificationData
 }) {
   if (layout === 'minimal') {
     // No banner — but a set cover still fills the card as a dimmed backdrop
@@ -105,7 +116,8 @@ export function PublicProfileHero({
             onCover ? 'text-white drop-shadow-sm' : 'text-neutral-900'
           }`}
         >
-          {name}
+          {name}{' '}
+          <BadgeMark badge={gamification?.badges[0]} light={onCover} className="h-4.5 w-4.5" />
         </h1>
         <p className={`relative text-sm ${onCover ? 'text-white/75' : 'text-neutral-500'}`}>
           @{username}
@@ -125,6 +137,7 @@ export function PublicProfileHero({
             joinedLabel={joinedLabel}
             followers={followers}
             following={following}
+            gamification={gamification}
             light={onCover}
           />
         </div>
@@ -155,7 +168,7 @@ export function PublicProfileHero({
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-white drop-shadow-sm sm:text-2xl">
-              {name}
+              {name} <BadgeMark badge={gamification?.badges[0]} light className="h-4.5 w-4.5" />
             </h1>
             <p className="text-sm text-white/75">@{username}</p>
           </div>
@@ -168,6 +181,7 @@ export function PublicProfileHero({
               joinedLabel={joinedLabel}
               followers={followers}
               following={following}
+              gamification={gamification}
               light
             />
           </div>
@@ -200,7 +214,7 @@ export function PublicProfileHero({
         </div>
 
         <h1 className="mt-2.5 text-xl font-bold tracking-tight text-neutral-900 sm:text-2xl">
-          {name}
+          {name} <BadgeMark badge={gamification?.badges[0]} className="h-4.5 w-4.5" />
         </h1>
         <p className="text-sm text-neutral-500">@{username}</p>
 
@@ -214,6 +228,7 @@ export function PublicProfileHero({
             joinedLabel={joinedLabel}
             followers={followers}
             following={following}
+            gamification={gamification}
           />
         </div>
       </div>

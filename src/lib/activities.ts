@@ -1,10 +1,11 @@
 import type { Where } from 'payload'
 
-import type { Comment, Follow, Like, Post, Testimonial, User } from '@/payload-types'
+import type { Comment, Follow, Like, Post, Testimonial, User, UserBadge } from '@/payload-types'
 
+import { getTopBadgesForUsers, toBadgeData } from './gamification'
 import { getPayloadClient } from './payload'
 import { hydratePosts } from './posts'
-import { type ActivityData, type Paged, avatarUrl, snippet } from './serialize'
+import { type ActivityData, type BadgeData, type Paged, avatarUrl, snippet } from './serialize'
 
 const ACTIVITY_PAGE_SIZE = 20
 
@@ -19,23 +20,30 @@ const asUser = (value: unknown): User | null => (isUser(value) ? value : null)
 
 const asPost = (value: unknown): Post | null => (isPost(value) ? value : null)
 
-const actorFields = (actor: User) => ({
+type BadgeMap = Map<number, BadgeData>
+
+const badgeFor = (badges: BadgeMap | null, user: User | null | undefined) =>
+  user ? badges?.get(user.id) : undefined
+
+const actorFields = (actor: User, badges: BadgeMap | null) => ({
   actorName: actor.name,
   actorUsername: actor.username,
   actorAvatarUrl: avatarUrl(actor),
+  actorBadge: badgeFor(badges, actor),
 })
 
-const postFields = (post: Post) => {
+const postFields = (post: Post, badges: BadgeMap | null) => {
   const author = asUser(post.author)
   return {
     postId: post.id,
     postSnippet: snippet(post),
     postAuthorName: author?.name,
     postAuthorUsername: author?.username,
+    postAuthorBadge: badgeFor(badges, author),
   }
 }
 
-const toLikeActivity = (like: Like): ActivityData | null => {
+const toLikeActivity = (like: Like, badges: BadgeMap | null): ActivityData | null => {
   const actor = asUser(like.user)
   const post = asPost(like.post)
   if (!actor || !post) return null
@@ -43,12 +51,12 @@ const toLikeActivity = (like: Like): ActivityData | null => {
     id: `like-${like.id}`,
     type: 'like',
     createdAt: like.createdAt,
-    ...actorFields(actor),
-    ...postFields(post),
+    ...actorFields(actor, badges),
+    ...postFields(post, badges),
   }
 }
 
-const toCommentActivity = (comment: Comment): ActivityData | null => {
+const toCommentActivity = (comment: Comment, badges: BadgeMap | null): ActivityData | null => {
   const actor = asUser(comment.author)
   const post = asPost(comment.post)
   if (!actor || !post) return null
@@ -56,13 +64,13 @@ const toCommentActivity = (comment: Comment): ActivityData | null => {
     id: `comment-${comment.id}`,
     type: 'comment',
     createdAt: comment.createdAt,
-    ...actorFields(actor),
-    ...postFields(post),
+    ...actorFields(actor, badges),
+    ...postFields(post, badges),
     commentSnippet: snippet(comment),
   }
 }
 
-const toFollowActivity = (follow: Follow): ActivityData | null => {
+const toFollowActivity = (follow: Follow, badges: BadgeMap | null): ActivityData | null => {
   const actor = asUser(follow.follower)
   const target = asUser(follow.following)
   if (!actor || !target) return null
@@ -70,14 +78,18 @@ const toFollowActivity = (follow: Follow): ActivityData | null => {
     id: `follow-${follow.id}`,
     type: 'follow',
     createdAt: follow.createdAt,
-    ...actorFields(actor),
+    ...actorFields(actor, badges),
     targetName: target.name,
     targetUsername: target.username,
     targetAvatarUrl: avatarUrl(target),
+    targetBadge: badgeFor(badges, target),
   }
 }
 
-const toTestimonialActivity = (testimonial: Testimonial): ActivityData | null => {
+const toTestimonialActivity = (
+  testimonial: Testimonial,
+  badges: BadgeMap | null,
+): ActivityData | null => {
   const actor = asUser(testimonial.author)
   const target = asUser(testimonial.recipient)
   if (!actor || !target) return null
@@ -85,11 +97,25 @@ const toTestimonialActivity = (testimonial: Testimonial): ActivityData | null =>
     id: `testimonial-${testimonial.id}`,
     type: 'testimonial',
     createdAt: testimonial.createdAt,
-    ...actorFields(actor),
+    ...actorFields(actor, badges),
     targetName: target.name,
     targetUsername: target.username,
     targetAvatarUrl: avatarUrl(target),
+    targetBadge: badgeFor(badges, target),
     testimonialSnippet: snippet(testimonial),
+  }
+}
+
+const toBadgeActivity = (award: UserBadge, badges: BadgeMap | null): ActivityData | null => {
+  const actor = asUser(award.user)
+  const badgeEarned = toBadgeData(award)
+  if (!actor || !badgeEarned) return null
+  return {
+    id: `badge-${award.id}`,
+    type: 'badge',
+    createdAt: award.createdAt,
+    ...actorFields(actor, badges),
+    badgeEarned,
   }
 }
 
@@ -124,7 +150,7 @@ export async function getFollowingActivities(
     ],
   }
 
-  const [likes, comments, follows, testimonials] = await Promise.all([
+  const [likes, comments, follows, testimonials, badgeAwards] = await Promise.all([
     // Depth 3 so the embedded post is fully usable by hydratePosts: post
     // images (2), the post author's avatar (3), and a shared original's
     // author (3) all come back populated.
@@ -166,17 +192,49 @@ export async function getFollowingActivities(
       user: viewer,
       overrideAccess: false,
     }),
+    // Badge awards are public celebration moments — no visibility filter.
+    // Depth 2 populates the badge definition for toBadgeData.
+    payload.find({
+      collection: 'user-badges',
+      where: { user: { in: authorIds } },
+      sort: '-createdAt',
+      limit,
+      depth: 2,
+      user: viewer,
+      overrideAccess: false,
+    }),
   ])
 
+  // One badge lookup for every named user — actors, post authors, and targets.
+  const badgeUserIds = new Set<number>()
+  const collect = (...users: (User | null)[]) => {
+    for (const u of users) if (u) badgeUserIds.add(u.id)
+  }
+  for (const like of likes.docs) collect(asUser(like.user), asUser(asPost(like.post)?.author))
+  for (const comment of comments.docs)
+    collect(asUser(comment.author), asUser(asPost(comment.post)?.author))
+  for (const follow of follows.docs) collect(asUser(follow.follower), asUser(follow.following))
+  for (const testimonial of testimonials.docs)
+    collect(asUser(testimonial.author), asUser(testimonial.recipient))
+  for (const award of badgeAwards.docs) collect(asUser(award.user))
+  const topBadges = await getTopBadgesForUsers(payload, [...badgeUserIds])
+
   const entries = [
-    ...likes.docs.map((like) => ({ data: toLikeActivity(like), post: asPost(like.post) })),
+    ...likes.docs.map((like) => ({
+      data: toLikeActivity(like, topBadges),
+      post: asPost(like.post),
+    })),
     ...comments.docs.map((comment) => ({
-      data: toCommentActivity(comment),
+      data: toCommentActivity(comment, topBadges),
       post: asPost(comment.post),
     })),
-    ...follows.docs.map((follow) => ({ data: toFollowActivity(follow), post: null })),
+    ...follows.docs.map((follow) => ({ data: toFollowActivity(follow, topBadges), post: null })),
     ...testimonials.docs.map((testimonial) => ({
-      data: toTestimonialActivity(testimonial),
+      data: toTestimonialActivity(testimonial, topBadges),
+      post: null,
+    })),
+    ...badgeAwards.docs.map((award) => ({
+      data: toBadgeActivity(award, topBadges),
       post: null,
     })),
   ]
@@ -190,7 +248,8 @@ export async function getFollowingActivities(
     likes.hasNextPage ||
     comments.hasNextPage ||
     follows.hasNextPage ||
-    testimonials.hasNextPage
+    testimonials.hasNextPage ||
+    badgeAwards.hasNextPage
 
   // Hydrate the distinct posts shown on this page in one batched pass so each
   // like/comment row can render the full post card, not just a snippet.

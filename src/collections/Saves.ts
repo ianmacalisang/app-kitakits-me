@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { canSave, isOwnerOrAdmin } from '../access'
 import { saveCounter } from '../hooks/postCounters'
+import { savePoints } from '../hooks/gamification'
 
 const idOf = (value: unknown): number | string | null =>
   typeof value === 'object' && value !== null
@@ -49,7 +50,7 @@ export const Saves: CollectionConfig = {
         return data
       },
     ],
-    afterChange: [saveCounter.onCreate],
+    afterChange: [saveCounter.onCreate, savePoints],
     afterDelete: [saveCounter.onDelete],
   },
   fields: [

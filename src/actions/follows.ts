@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 
 import { getCurrentUser } from '@/lib/auth'
+import { getTopBadgesForUsers } from '@/lib/gamification'
 import { getPayloadClient } from '@/lib/payload'
 import { type Paged, relId, toUserCardData, type UserCardData } from '@/lib/serialize'
 import type { User } from '@/payload-types'
@@ -173,8 +174,18 @@ export async function getFollowList(
     }
   }
 
+  const topBadges = await getTopBadgesForUsers(payload, ids)
+
   return {
-    items: people.map((person) => toUserCardData(person, user, followingIds.has(person.id))),
+    items: people.map((person) =>
+      toUserCardData(
+        person,
+        user,
+        followingIds.has(person.id),
+        undefined,
+        topBadges.get(person.id),
+      ),
+    ),
     hasMore: follows.hasNextPage,
   }
 }

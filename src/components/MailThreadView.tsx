@@ -15,6 +15,7 @@ import type { MailMessageData, ThreadData } from '@/lib/serialize'
 import { formatMailDate } from '@/lib/time'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { BlurImage } from './BlurImage'
 import { ChevronLeftIcon, PaperclipIcon, ReplyIcon, SendIcon, TrashIcon, XIcon } from './icons'
 import { MailEditor } from './MailEditor'
@@ -137,7 +138,7 @@ export function MailThreadView({
         </button>
       </div>
       <p className="mb-4 ml-11 text-sm text-neutral-500">
-        with {thread.otherName}
+        with {thread.otherName} <BadgeMark badge={thread.otherBadge} />
         {thread.isGuest
           ? `${thread.guestContact ? ` · ${thread.guestContact}` : ''} · Guest`
           : ` · @${thread.otherUsername}`}
@@ -152,7 +153,8 @@ export function MailThreadView({
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
                   <p className="truncate text-sm font-semibold">
-                    {m.isMine ? 'You' : m.senderName}{' '}
+                    {m.isMine ? 'You' : m.senderName}
+                    {!m.isMine && <BadgeMark badge={thread.otherBadge} />}{' '}
                     {m.senderUsername ? (
                       <span className="font-normal text-neutral-500">@{m.senderUsername}</span>
                     ) : m.senderContact ? (

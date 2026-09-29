@@ -20,6 +20,7 @@ import {
 import type { DraftData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { MailEditor } from './MailEditor'
 import { PaperclipIcon, SendIcon, TrashIcon, UsersIcon, XIcon } from './icons'
 import { Spinner } from './Spinner'
@@ -276,6 +277,7 @@ export function ComposeMail({
                   <span className="my-1.5 flex min-w-0 items-center gap-1.5 rounded-full bg-accent-500/10 py-1 pl-1 pr-1.5 text-sm font-medium text-accent-800">
                     <Avatar src={recipient.avatarUrl} name={recipient.name} size="xs" />
                     <span className="max-w-36 truncate">@{recipient.username}</span>
+                    <BadgeMark badge={recipient.badge} />
                     <button
                       type="button"
                       aria-label="Remove recipient"
@@ -323,6 +325,7 @@ export function ComposeMail({
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-semibold leading-tight">
                           {u.name}
+                          <BadgeMark badge={u.badge} />
                         </span>
                         <span className="block truncate text-xs leading-tight text-neutral-500">
                           @{u.username}

@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { revalidateNavCounts } from '@/lib/nav-cache'
 import { getPayloadClient } from '@/lib/payload'
+import { getTopBadgesForUsers } from '@/lib/gamification'
 import { type NotificationData, type Paged, toNotificationData } from '@/lib/serialize'
 
 export async function getNotifications(page = 1): Promise<Paged<NotificationData>> {
@@ -23,8 +24,24 @@ export async function getNotifications(page = 1): Promise<Paged<NotificationData
     overrideAccess: false,
   })
 
+  const topBadges = await getTopBadgesForUsers(
+    payload,
+    result.docs.map((n) =>
+      typeof n.actor === 'object' && n.actor !== null ? n.actor.id : Number(n.actor),
+    ),
+  )
+
   return {
-    items: result.docs.map(toNotificationData).filter((n): n is NotificationData => n !== null),
+    items: result.docs
+      .map((n) =>
+        toNotificationData(
+          n,
+          topBadges.get(
+            typeof n.actor === 'object' && n.actor !== null ? n.actor.id : Number(n.actor),
+          ),
+        ),
+      )
+      .filter((n): n is NotificationData => n !== null),
     hasMore: result.hasNextPage,
   }
 }

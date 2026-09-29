@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { isAdmin, isAdminField, isAdminUser, isAuthenticated, isSelfOrAdmin } from '../access'
 import { sendWelcomeEmail } from '../hooks/sendWelcomeEmail'
+import { deleteGamificationData, profileBadgeCheck } from '../hooks/gamification'
 import { deleteUserData } from '../lib/account'
 import { escapeHtml, resolveEmailBaseUrl } from '../lib/email'
 
@@ -101,7 +102,8 @@ export const Users: CollectionConfig = {
     },
   ],
   hooks: {
-    afterChange: [sendWelcomeEmail],
+    afterChange: [sendWelcomeEmail, profileBadgeCheck],
+    beforeDelete: [deleteGamificationData],
   },
   fields: [
     {
@@ -390,6 +392,22 @@ export const Users: CollectionConfig = {
         readOnly: true,
         position: 'sidebar',
         description: 'Set when the user finishes the onboarding flow.',
+      },
+    },
+    {
+      name: 'points',
+      type: 'number',
+      defaultValue: 0,
+      // Gamification balance — bumped atomically in SQL by awardPoints; the
+      // point-events ledger holds the per-action audit trail.
+      index: true,
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description: 'Gamification points — maintained automatically.',
+      },
+      access: {
+        update: isAdminField,
       },
     },
     {

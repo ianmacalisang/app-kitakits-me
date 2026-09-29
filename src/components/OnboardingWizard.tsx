@@ -20,6 +20,7 @@ import type { AboutBlockData, UserCardData } from '@/lib/serialize'
 
 import { AboutEditor } from './AboutSection'
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { BrandMark } from './Branding'
 import {
   ChevronLeftIcon,
@@ -587,7 +588,10 @@ export function OnboardingWizard({
                         <>
                           <Avatar src={person.avatarUrl} name={person.name} />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold">{person.name}</p>
+                            <p className="truncate text-sm font-semibold">
+                              {person.name}
+                              <BadgeMark badge={person.topBadge} />
+                            </p>
                             <p className="truncate text-xs text-neutral-500">
                               @{person.username}
                               {person.followerCount !== undefined && (

@@ -1,4 +1,5 @@
 import type {
+  Badge,
   Comment,
   MailAttachment,
   MailDraft,
@@ -15,6 +16,7 @@ import type {
 import { streamHostname } from './bunny'
 import { type PostCategory, isPostCategory } from './categories'
 import { toCdnUrl } from './cdn'
+import { levelForPoints, type LevelInfo } from './levels'
 
 const isObj = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -86,6 +88,7 @@ export interface EmbeddedPostData {
   authorName: string
   authorUsername: string
   authorAvatarUrl?: string
+  authorBadge?: BadgeData
 }
 
 export interface PostCardData {
@@ -97,6 +100,7 @@ export interface PostCardData {
   authorName: string
   authorUsername: string
   authorAvatarUrl?: string
+  authorBadge?: BadgeData
   likeCount: number
   commentCount: number
   likedByMe: boolean
@@ -105,6 +109,7 @@ export interface PostCardData {
     authorName: string
     authorUsername: string
     authorAvatarUrl?: string
+    authorBadge?: BadgeData
     content: string
   }[]
   shareCount: number
@@ -124,6 +129,7 @@ export interface PostCardData {
 export interface PostCardExtras {
   likeCount: number
   commentCount: number
+  authorBadge?: BadgeData
   likedByMe: boolean
   likers?: PostCardData['likers']
   latestComments?: PostCardData['latestComments']
@@ -140,6 +146,7 @@ export function toPostCardData(
   {
     likeCount,
     commentCount,
+    authorBadge,
     likedByMe,
     likers = [],
     latestComments = [],
@@ -165,6 +172,7 @@ export function toPostCardData(
     authorName: author.name,
     authorUsername: author.username,
     authorAvatarUrl: avatarUrl(author),
+    authorBadge,
     likeCount,
     commentCount,
     likedByMe,
@@ -369,6 +377,39 @@ export function toAboutBlocks(user: User): AboutBlockData[] {
   })
 }
 
+// One earned badge as rendered on a profile — flattened from the award row
+// and its badge definition.
+export interface BadgeData {
+  slug: string
+  name: string
+  description: string | null
+  icon: string
+  tier: 'bronze' | 'silver' | 'gold'
+  awardedAt: string
+}
+
+// One badge definition as rendered on the profile progress panel — `earned`
+// awards render a full bar; unearned ones show current/required progress.
+// `required` is null for manual (admin-granted) badges.
+export interface BadgeProgressData {
+  slug: string
+  name: string
+  description: string | null
+  icon: string
+  tier: 'bronze' | 'silver' | 'gold'
+  earned: boolean
+  awardedAt: string | null
+  current: number
+  required: number | null
+  unit: string
+}
+
+export interface GamificationData {
+  points: number
+  level: LevelInfo
+  badges: BadgeData[]
+}
+
 export interface UserCardData {
   id: number
   name: string
@@ -379,6 +420,9 @@ export interface UserCardData {
   isFollowing: boolean
   isSelf: boolean
   followerCount?: number
+  points: number
+  level: LevelInfo
+  topBadge?: BadgeData
 }
 
 export function toUserCardData(
@@ -386,7 +430,9 @@ export function toUserCardData(
   viewer: User | null,
   isFollowing: boolean,
   followerCount?: number,
+  topBadge?: BadgeData,
 ): UserCardData {
+  const points = user.points ?? 0
   return {
     id: user.id,
     name: user.name,
@@ -397,6 +443,9 @@ export function toUserCardData(
     isFollowing,
     isSelf: user.id === viewer?.id,
     followerCount,
+    points,
+    level: levelForPoints(points),
+    topBadge,
   }
 }
 
@@ -407,10 +456,15 @@ export interface CommentData {
   authorName: string
   authorUsername: string
   authorAvatarUrl?: string
+  authorBadge?: BadgeData
   canEdit: boolean
 }
 
-export function toCommentData(comment: Comment, viewer: User | null): CommentData {
+export function toCommentData(
+  comment: Comment,
+  viewer: User | null,
+  authorBadge?: BadgeData,
+): CommentData {
   const author = comment.author as User
   return {
     id: comment.id,
@@ -419,6 +473,7 @@ export function toCommentData(comment: Comment, viewer: User | null): CommentDat
     authorName: author.name,
     authorUsername: author.username,
     authorAvatarUrl: avatarUrl(author),
+    authorBadge,
     canEdit: viewer !== null && author.id === viewer.id,
   }
 }
@@ -432,6 +487,7 @@ export interface TestimonialData {
   authorName: string
   authorUsername: string
   authorAvatarUrl?: string
+  authorBadge?: BadgeData
   recipientId: number
   recipientName: string
   recipientUsername: string
@@ -443,6 +499,7 @@ export interface TestimonialData {
 export function toTestimonialData(
   testimonial: Testimonial,
   viewer: User | null,
+  authorBadge?: BadgeData,
 ): TestimonialData | null {
   const author = isObj(testimonial.author) ? (testimonial.author as User) : null
   const recipient = isObj(testimonial.recipient) ? (testimonial.recipient as User) : null
@@ -460,6 +517,7 @@ export function toTestimonialData(
     authorName: author.name,
     authorUsername: author.username,
     authorAvatarUrl: avatarUrl(author),
+    authorBadge,
     recipientId: recipient.id,
     recipientName: recipient.name,
     recipientUsername: recipient.username,
@@ -471,12 +529,13 @@ export function toTestimonialData(
 
 export interface NotificationData {
   id: number
-  type: 'like' | 'comment' | 'follow' | 'testimonial'
+  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge'
   read: boolean
   createdAt: string
   actorName: string
   actorUsername: string
   actorAvatarUrl?: string
+  actorBadge?: BadgeData
   postId?: number
   postSnippet?: string
   commentSnippet?: string
@@ -484,6 +543,11 @@ export interface NotificationData {
   // 'received' — the actor wrote you a testimonial (awaiting your approval);
   // 'approved' — the actor approved one you wrote.
   testimonialEvent?: 'received' | 'approved'
+  // Set on type 'badge' — the definition that was granted. The "actor" on a
+  // badge notification is the recipient themself.
+  badgeName?: string
+  badgeIcon?: string
+  badgeTier?: 'bronze' | 'silver' | 'gold'
 }
 
 export const snippet = (value: unknown): string | undefined => {
@@ -494,7 +558,10 @@ export const snippet = (value: unknown): string | undefined => {
   return text.length > 80 ? `${text.slice(0, 80)}…` : text
 }
 
-export function toNotificationData(notification: Notification): NotificationData | null {
+export function toNotificationData(
+  notification: Notification,
+  actorBadge?: BadgeData,
+): NotificationData | null {
   const actor = notification.actor
   if (!isObj(actor)) return null
 
@@ -507,6 +574,8 @@ export function toNotificationData(notification: Notification): NotificationData
       : 'approved'
     : undefined
 
+  const badge = isObj(notification.badge) ? (notification.badge as Badge) : null
+
   return {
     id: notification.id,
     type: notification.type,
@@ -515,11 +584,20 @@ export function toNotificationData(notification: Notification): NotificationData
     actorName: (actor as User).name,
     actorUsername: (actor as User).username,
     actorAvatarUrl: avatarUrl(actor as User),
+    actorBadge,
     postId: relId(notification.post) ?? undefined,
     postSnippet: snippet(notification.post),
     commentSnippet: snippet(notification.comment),
     testimonialSnippet: snippet(notification.testimonial),
     testimonialEvent,
+    badgeName: badge?.name,
+    badgeIcon: badge?.icon ?? undefined,
+    badgeTier:
+      badge?.tier === 'silver' || badge?.tier === 'gold'
+        ? badge.tier
+        : badge
+          ? 'bronze'
+          : undefined,
   }
 }
 
@@ -528,15 +606,19 @@ export function toNotificationData(notification: Notification): NotificationData
 // target fields for follow/testimonial.
 export interface ActivityData {
   id: string
-  type: 'like' | 'comment' | 'follow' | 'testimonial'
+  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge'
   createdAt: string
   actorName: string
   actorUsername: string
   actorAvatarUrl?: string
+  actorBadge?: BadgeData
+  // The badge the actor earned — only set on 'badge' activities.
+  badgeEarned?: BadgeData
   postId?: number
   postSnippet?: string
   postAuthorName?: string
   postAuthorUsername?: string
+  postAuthorBadge?: BadgeData
   commentSnippet?: string
   testimonialSnippet?: string
   // The fully hydrated post card for like/comment rows — the row renders the
@@ -545,6 +627,7 @@ export interface ActivityData {
   targetName?: string
   targetUsername?: string
   targetAvatarUrl?: string
+  targetBadge?: BadgeData
 }
 
 export interface ThreadData {
@@ -559,11 +642,16 @@ export interface ThreadData {
   otherName: string
   otherUsername: string
   otherAvatarUrl?: string
+  otherBadge?: BadgeData
   isGuest: boolean
   guestContact: string | null
 }
 
-export function toThreadData(thread: Thread, viewer: User): ThreadData | null {
+export function toThreadData(
+  thread: Thread,
+  viewer: User,
+  topBadges?: Map<number, BadgeData>,
+): ThreadData | null {
   const participants = Array.isArray(thread.participants) ? thread.participants : []
   const other = participants.filter((p): p is User => isObj(p)).find((p) => p.id !== viewer.id)
   // Guest threads hold a single participant (the recipient) — the sender's
@@ -585,6 +673,7 @@ export function toThreadData(thread: Thread, viewer: User): ThreadData | null {
     otherName: other?.name ?? guestName,
     otherUsername: other?.username ?? '',
     otherAvatarUrl: other ? avatarUrl(other) : undefined,
+    otherBadge: other ? topBadges?.get(other.id) : undefined,
     isGuest: !other,
     guestContact: !other ? (thread.guestContact ?? null) : null,
   }
@@ -598,6 +687,7 @@ export interface DraftData {
     name: string
     username: string
     avatarUrl?: string
+    badge?: BadgeData
   } | null
   subject: string
   body: string
@@ -605,7 +695,7 @@ export interface DraftData {
   updatedAt: string
 }
 
-export function toDraftData(draft: MailDraft): DraftData {
+export function toDraftData(draft: MailDraft, topBadges?: Map<number, BadgeData>): DraftData {
   const recipient = isObj(draft.recipient) ? (draft.recipient as User) : null
   const text = (draft.body ?? '')
     .replace(/<[^>]+>/g, ' ')
@@ -621,6 +711,7 @@ export function toDraftData(draft: MailDraft): DraftData {
           name: recipient.name,
           username: recipient.username,
           avatarUrl: avatarUrl(recipient),
+          badge: topBadges?.get(recipient.id),
         }
       : null,
     subject: draft.subject ?? '',

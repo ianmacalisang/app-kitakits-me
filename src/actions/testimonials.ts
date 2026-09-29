@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 
 import { getCurrentUser } from '@/lib/auth'
+import { getTopBadgesForUsers } from '@/lib/gamification'
 import { getPayloadClient } from '@/lib/payload'
 import { type Paged, type TestimonialData, toTestimonialData } from '@/lib/serialize'
 
@@ -13,11 +14,28 @@ const errorMessage = (err: unknown) =>
 
 const PAGE_SIZE = 20
 
-const serialize = (
+const relId = (value: unknown): number | null => {
+  if (typeof value === 'number') return value
+  if (typeof value === 'object' && value !== null) return (value as { id: number }).id
+  return null
+}
+
+const serialize = async (
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
   docs: Parameters<typeof toTestimonialData>[0][],
   viewer: Parameters<typeof toTestimonialData>[1],
-) =>
-  docs.map((doc) => toTestimonialData(doc, viewer)).filter((t): t is TestimonialData => t !== null)
+) => {
+  const topBadges = await getTopBadgesForUsers(
+    payload,
+    docs.map((doc) => relId(doc.author)).filter((id): id is number => id !== null),
+  )
+  return docs
+    .map((doc) => {
+      const authorId = relId(doc.author)
+      return toTestimonialData(doc, viewer, authorId ? topBadges.get(authorId) : undefined)
+    })
+    .filter((t): t is TestimonialData => t !== null)
+}
 
 // Approved testimonials shown on a profile's Testimonials tab. Signed-out
 // callers (public page) get the same approved-only list — callers are
@@ -38,7 +56,7 @@ export async function getTestimonials(userId: number, page = 1): Promise<Paged<T
     ...(user ? { user, overrideAccess: false as const } : {}),
   })
 
-  return { items: serialize(result.docs, user), hasMore: result.hasNextPage }
+  return { items: await serialize(payload, result.docs, user), hasMore: result.hasNextPage }
 }
 
 // The viewer's own testimonial on a profile, whatever its status — drives the
@@ -60,7 +78,10 @@ export async function getMyTestimonialFor(recipientId: number): Promise<Testimon
   })
 
   const doc = result.docs[0]
-  return doc ? toTestimonialData(doc, user) : null
+  if (!doc) return null
+  const authorId = relId(doc.author)
+  const topBadges = authorId ? await getTopBadgesForUsers(payload, [authorId]) : null
+  return toTestimonialData(doc, user, authorId ? topBadges?.get(authorId) : undefined)
 }
 
 // Testimonials addressed to the viewer — 'pending' is the review queue,
@@ -92,7 +113,7 @@ export async function getReceivedTestimonials(
     overrideAccess: false,
   })
 
-  return { items: serialize(result.docs, user), hasMore: result.hasNextPage }
+  return { items: await serialize(payload, result.docs, user), hasMore: result.hasNextPage }
 }
 
 // Testimonials the viewer wrote for other people, with their live status.
@@ -112,7 +133,7 @@ export async function getWrittenTestimonials(page = 1): Promise<Paged<Testimonia
     overrideAccess: false,
   })
 
-  return { items: serialize(result.docs, user), hasMore: result.hasNextPage }
+  return { items: await serialize(payload, result.docs, user), hasMore: result.hasNextPage }
 }
 
 export async function createTestimonial(recipientId: number, content: string): Promise<FormState> {

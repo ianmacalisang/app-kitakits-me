@@ -2,8 +2,10 @@ import { redirect } from 'next/navigation'
 
 import { MailboxView } from '@/components/MailboxView'
 import { getCurrentUser } from '@/lib/auth'
+import { getTopBadgesForUsers } from '@/lib/gamification'
 import { getPayloadClient } from '@/lib/payload'
 import { toDraftData, toThreadData, type ThreadData } from '@/lib/serialize'
+import type { User } from '@/payload-types'
 
 export const metadata = { title: 'Mailbox' }
 
@@ -39,8 +41,21 @@ export default async function MailboxPage({
     }),
   ])
 
+  const otherIds = [
+    ...result.docs.flatMap((doc) =>
+      (Array.isArray(doc.participants) ? doc.participants : [])
+        .filter((p): p is User => typeof p === 'object' && p !== null)
+        .map((p) => p.id),
+    ),
+    ...draftResult.docs
+      .map((doc) => doc.recipient)
+      .filter((p): p is User => typeof p === 'object' && p !== null)
+      .map((p) => p.id),
+  ].filter((id) => id !== user.id)
+  const topBadges = await getTopBadgesForUsers(payload, otherIds)
+
   const threads = result.docs
-    .map((doc) => toThreadData(doc, user))
+    .map((doc) => toThreadData(doc, user, topBadges))
     .filter((t): t is ThreadData => t !== null)
 
   return (
@@ -54,7 +69,7 @@ export default async function MailboxPage({
       <MailboxView
         threads={threads}
         initialHasMore={result.hasNextPage}
-        drafts={draftResult.docs.map(toDraftData)}
+        drafts={draftResult.docs.map((doc) => toDraftData(doc, topBadges))}
         composeTo={to?.trim() || null}
       />
     </div>

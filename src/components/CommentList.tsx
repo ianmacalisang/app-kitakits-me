@@ -5,6 +5,7 @@ import { deleteComment, updateComment } from '@/actions/comments'
 import type { CommentData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { EmptyState } from './EmptyState'
 import { CommentIcon } from './icons'
 import { RelativeTime } from './RelativeTime'
@@ -79,7 +80,7 @@ const CommentItem = memo(function CommentItem({
           >
             {comment.authorName}
           </Link>{' '}
-          · <RelativeTime iso={comment.createdAt} />
+          <BadgeMark badge={comment.authorBadge} /> · <RelativeTime iso={comment.createdAt} />
         </p>
         {editing ? (
           <div className="mt-1 flex gap-2">

@@ -21,6 +21,9 @@ import { MailDrafts } from './collections/MailDrafts'
 import { MailAttachments } from './collections/MailAttachments'
 import { Testimonials } from './collections/Testimonials'
 import { Videos } from './collections/Videos'
+import { Badges } from './collections/Badges'
+import { UserBadges } from './collections/UserBadges'
+import { PointEvents } from './collections/PointEvents'
 import { SiteSettings } from './globals/SiteSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -55,6 +58,9 @@ export default buildConfig({
     MailAttachments,
     Videos,
     Testimonials,
+    Badges,
+    UserBadges,
+    PointEvents,
   ],
   globals: [SiteSettings],
   editor: lexicalEditor(),

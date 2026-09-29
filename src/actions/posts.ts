@@ -2,6 +2,7 @@
 
 import { sql } from '@payloadcms/db-postgres'
 import { redirect } from 'next/navigation'
+import type { Where } from 'payload'
 
 import { getCurrentUser } from '@/lib/auth'
 import { isPostCategory, type PostCategory } from '@/lib/categories'
@@ -606,6 +607,92 @@ export async function getUserMedia(
   return { items, hasMore: result.hasNextPage }
 }
 
+// Author scope + media/category filters shared by feed queries — a single
+// author's posts or the viewer's followees' posts. Returns null when the
+// scope can match nothing (the viewer follows nobody).
+async function feedWhere(
+  payload: PayloadClient,
+  user: User,
+  options: { authorId?: number; mediaFilter?: MediaFilter; category?: PostCategory | 'all' },
+): Promise<Where | null> {
+  const { authorId, mediaFilter, category } = options
+  const filters = [...mediaFilterClauses(mediaFilter), ...categoryFilterClauses(category)]
+  if (authorId) {
+    return { and: [{ author: { equals: authorId } }, ...filters] }
+  }
+  const following = await payload.find({
+    collection: 'follows',
+    where: { follower: { equals: user.id } },
+    limit: 2000,
+    depth: 0,
+    user,
+    overrideAccess: false,
+  })
+  const authorIds = following.docs.map((follow) =>
+    typeof follow.following === 'object' ? follow.following.id : follow.following,
+  )
+  if (authorIds.length === 0) return null
+  return { and: [{ author: { in: authorIds } }, ...filters] }
+}
+
+// Cap for a single "new posts" fetch — a burst beyond this is picked up on
+// the next poll, advancing the cursor each time.
+const NEW_POSTS_LIMIT = 50
+
+// Posts newer than the feed's current head — powers the live "new posts"
+// pill. The (createdAt, id) cursor keeps same-timestamp inserts since ids
+// are serial. Saved feeds return empty — save events keep them in sync.
+export async function getNewerPosts(options: {
+  afterId: number
+  afterCreatedAt: string
+  authorId?: number
+  feed?: 'following' | 'saved'
+  mediaFilter?: MediaFilter
+  category?: PostCategory | 'all'
+}): Promise<FeedPage> {
+  const { afterId, afterCreatedAt, authorId, feed, mediaFilter, category } = options
+  if (!authorId && feed === 'saved') return { posts: [], hasMore: false }
+
+  const user = await getCurrentUser()
+  const payload = await getPayloadClient()
+
+  const fresh: Where = {
+    or: [
+      { createdAt: { greater_than: afterCreatedAt } },
+      { and: [{ createdAt: { equals: afterCreatedAt } }, { id: { greater_than: afterId } }] },
+    ],
+  }
+
+  if (!user) {
+    // Same anonymous constraint as loadMorePosts — only reachable from
+    // public-profile feeds.
+    if (!authorId) return { posts: [], hasMore: false }
+    const result = await payload.find({
+      collection: 'posts',
+      where: { and: [{ author: { equals: authorId } }, ...publicPostClauses(), fresh] },
+      sort: '-createdAt',
+      limit: NEW_POSTS_LIMIT,
+      depth: 2,
+    })
+    return { posts: await hydratePosts(result.docs, null), hasMore: false }
+  }
+
+  const where = await feedWhere(payload, user, { authorId, mediaFilter, category })
+  if (!where) return { posts: [], hasMore: false }
+
+  const result = await payload.find({
+    collection: 'posts',
+    where: { and: [where, fresh] },
+    sort: '-createdAt',
+    limit: NEW_POSTS_LIMIT,
+    depth: 2,
+    user,
+    overrideAccess: false,
+  })
+
+  return { posts: await hydratePosts(result.docs, user), hasMore: false }
+}
+
 export async function loadMorePosts(options: {
   page: number
   authorId?: number
@@ -617,8 +704,6 @@ export async function loadMorePosts(options: {
 
   const payload = await getPayloadClient()
   const { page, authorId, feed, mediaFilter, category } = options
-  const mediaClauses = mediaFilterClauses(mediaFilter)
-  const categoryClauses = categoryFilterClauses(category)
 
   // Signed-out readers only arrive here from public profiles — serve the
   // author's public posts with the same limits anonymous canReadPosts applies.
@@ -637,26 +722,10 @@ export async function loadMorePosts(options: {
     return { posts: await hydratePosts(result.docs, null), hasMore: result.hasNextPage }
   }
 
-  let where
-  if (authorId) {
-    where = { and: [{ author: { equals: authorId } }, ...mediaClauses, ...categoryClauses] }
-  } else if (feed === 'saved') {
-    return getSavedPosts(user, page)
-  } else {
-    const following = await payload.find({
-      collection: 'follows',
-      where: { follower: { equals: user.id } },
-      limit: 2000,
-      depth: 0,
-      user,
-      overrideAccess: false,
-    })
-    const authorIds = following.docs.map((follow) =>
-      typeof follow.following === 'object' ? follow.following.id : follow.following,
-    )
-    if (authorIds.length === 0) return { posts: [], hasMore: false }
-    where = { and: [{ author: { in: authorIds } }, ...mediaClauses, ...categoryClauses] }
-  }
+  if (!authorId && feed === 'saved') return getSavedPosts(user, page)
+
+  const where = await feedWhere(payload, user, { authorId, mediaFilter, category })
+  if (!where) return { posts: [], hasMore: false }
 
   const result = await payload.find({
     collection: 'posts',

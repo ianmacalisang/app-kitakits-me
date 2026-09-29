@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { isAuthenticated, isOwnerOrAdmin } from '../access'
 import { createFollowNotification } from '../hooks/createFollowNotification'
+import { followPoints } from '../hooks/gamification'
 
 const idOf = (value: unknown): number | string | null =>
   typeof value === 'object' && value !== null
@@ -52,7 +53,7 @@ export const Follows: CollectionConfig = {
         return data
       },
     ],
-    afterChange: [createFollowNotification],
+    afterChange: [createFollowNotification, followPoints],
   },
   fields: [
     {

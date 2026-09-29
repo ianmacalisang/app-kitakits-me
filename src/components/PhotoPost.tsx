@@ -9,6 +9,7 @@ import type { PostCardData } from '@/lib/serialize'
 import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { CategoryChip } from './CategoryChip'
 import { BlurImage } from './BlurImage'
 import { CommentsSheet } from './CommentsSheet'
@@ -53,7 +54,9 @@ export const PhotoPost = memo(function PhotoPost({ post }: { post: PostCardData 
         <Link href={`/profile/${post.authorUsername}`} className="flex min-w-0 items-center gap-3">
           <Avatar src={post.authorAvatarUrl} name={post.authorName} size="sm" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{post.authorName}</p>
+            <p className="truncate text-sm font-semibold">
+              {post.authorName} <BadgeMark badge={post.authorBadge} />
+            </p>
             <p className="truncate text-xs text-neutral-500">
               @{post.authorUsername}
               {post.visibility === 'followers' && (
@@ -192,7 +195,7 @@ export const PhotoPost = memo(function PhotoPost({ post }: { post: PostCardData 
             >
               {post.authorName}
             </Link>
-            {post.content}
+            <BadgeMark badge={post.authorBadge} /> {post.content}
           </p>
         )}
         {post.commentCount > 0 && (

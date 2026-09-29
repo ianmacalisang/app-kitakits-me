@@ -8,6 +8,7 @@ import { toCdnUrl } from '@/lib/cdn'
 import type { PostCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { BlurImage } from './BlurImage'
 import { CategoryChip } from './CategoryChip'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons'
@@ -55,7 +56,9 @@ function ReelCard({ post, cardTint }: { post: PostCardData; cardTint: string }) 
         <Link href={`/@${post.authorUsername}`} className="flex min-w-0 items-center gap-2.5">
           <Avatar src={post.authorAvatarUrl} name={post.authorName} size="sm" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-white">{post.authorName}</p>
+            <p className="truncate text-sm font-semibold text-white">
+              {post.authorName} <BadgeMark badge={post.authorBadge} light />
+            </p>
             <p className="truncate text-xs text-white/60">
               @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
             </p>
@@ -97,7 +100,9 @@ function PhotoCard({ post, cardTint }: { post: PostCardData; cardTint: string })
         <Link href={`/@${post.authorUsername}`} className="flex min-w-0 items-center gap-3">
           <Avatar src={post.authorAvatarUrl} name={post.authorName} size="sm" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{post.authorName}</p>
+            <p className="truncate text-sm font-semibold">
+              {post.authorName} <BadgeMark badge={post.authorBadge} />
+            </p>
             <p className="truncate text-xs text-neutral-500">@{post.authorUsername}</p>
           </div>
         </Link>
@@ -193,7 +198,7 @@ function PhotoCard({ post, cardTint }: { post: PostCardData; cardTint: string })
             >
               {post.authorName}
             </Link>
-            {post.content}
+            <BadgeMark badge={post.authorBadge} /> {post.content}
           </p>
         )}
         <p className="mt-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
@@ -225,7 +230,9 @@ function QuoteCard({ post, cardTint }: { post: PostCardData; cardTint: string })
         >
           <Avatar src={post.authorAvatarUrl} name={post.authorName} size="xs" />
           <div className="min-w-0">
-            <p className="truncate text-[13px] font-semibold leading-tight">{post.authorName}</p>
+            <p className="truncate text-[13px] font-semibold leading-tight">
+              {post.authorName} <BadgeMark badge={post.authorBadge} />
+            </p>
             <p className="truncate text-[11px] leading-tight text-neutral-500">
               @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
             </p>

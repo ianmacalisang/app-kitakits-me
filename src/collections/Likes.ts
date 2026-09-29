@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { canLike, isAuthenticated, isOwnerOrAdmin } from '../access'
 import { createLikeNotification } from '../hooks/createLikeNotification'
 import { likeCounter } from '../hooks/postCounters'
+import { likePoints } from '../hooks/gamification'
 
 const idOf = (value: unknown): number | string | null =>
   typeof value === 'object' && value !== null
@@ -49,7 +50,7 @@ export const Likes: CollectionConfig = {
         return data
       },
     ],
-    afterChange: [createLikeNotification, likeCounter.onCreate],
+    afterChange: [createLikeNotification, likeCounter.onCreate, likePoints],
     afterDelete: [likeCounter.onDelete],
   },
   fields: [

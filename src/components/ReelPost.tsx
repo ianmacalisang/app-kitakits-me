@@ -6,6 +6,7 @@ import { useCallback, useState } from 'react'
 import type { PostCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { CategoryChip } from './CategoryChip'
 import { CommentsSheet } from './CommentsSheet'
 import { CommentIcon, LockIcon } from './icons'
@@ -81,7 +82,9 @@ export function ReelPost({ post }: { post: PostCardData }) {
         >
           <Avatar src={post.authorAvatarUrl} name={post.authorName} size="sm" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-white">{post.authorName}</p>
+            <p className="truncate text-sm font-semibold text-white">
+              {post.authorName} <BadgeMark badge={post.authorBadge} light />
+            </p>
             <p className="truncate text-xs text-white/60">
               @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
               {post.visibility === 'followers' && (

@@ -5,8 +5,10 @@ import { toCdnUrl } from '@/lib/cdn'
 import type { UserCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { BlurImage } from './BlurImage'
 import { FollowButton } from './FollowButton'
+import { TrophyIcon } from './icons'
 
 // Compact cover-card — the cover image fills the whole card and the
 // avatar, name, and follow button float on a scrim. Used by Explore and
@@ -16,10 +18,12 @@ export const UserCoverCard = memo(function UserCoverCard({
   user,
   isPublicPage = false,
   className = '',
+  onFollowChange,
 }: {
   user: UserCardData
   isPublicPage?: boolean
   className?: string
+  onFollowChange?: (following: boolean) => void
 }) {
   const cover = toCdnUrl(user.coverUrl)
   const href = isPublicPage ? `/@${user.username}` : `/profile/${user.username}`
@@ -52,7 +56,9 @@ export const UserCoverCard = memo(function UserCoverCard({
           <Avatar src={user.avatarUrl} name={user.name} size="md" />
         </Link>
         <Link href={href} className="pointer-events-auto mt-1.5 block max-w-full hover:underline">
-          <p className="truncate text-sm font-semibold text-white drop-shadow-sm">{user.name}</p>
+          <p className="truncate text-sm font-semibold text-white drop-shadow-sm">
+            {user.name} <BadgeMark badge={user.topBadge} light />
+          </p>
         </Link>
         <p className="w-full truncate text-xs text-white/75">
           @{user.username}
@@ -63,9 +69,20 @@ export const UserCoverCard = memo(function UserCoverCard({
             </>
           )}
         </p>
+        <span
+          title={`${user.points} pts · ${user.level.name}`}
+          className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold text-white ring-1 ring-inset ring-white/25 backdrop-blur"
+        >
+          <TrophyIcon className="h-2.5 w-2.5" />
+          {user.level.name}
+        </span>
         {!isPublicPage && !user.isSelf && (
           <div className="pointer-events-auto mt-2.5 w-full [&_button]:w-full [&_button]:py-1.5 [&_button]:text-xs">
-            <FollowButton targetUserId={user.id} initialFollowing={user.isFollowing} />
+            <FollowButton
+              targetUserId={user.id}
+              initialFollowing={user.isFollowing}
+              onFollowChange={onFollowChange}
+            />
           </div>
         )}
       </div>

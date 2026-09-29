@@ -8,6 +8,7 @@ import { toCdnUrl } from '@/lib/cdn'
 import type { PostCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { BlurImage } from './BlurImage'
 import { CommentIcon, HeartIcon, LockIcon, PlayIcon, VideoIcon } from './icons'
 import { PostSheet } from './PostSheet'
@@ -131,7 +132,7 @@ export const RailPostCard = memo(function RailPostCard({
               hasMedia ? 'text-white' : 'text-neutral-800 dark:text-neutral-100'
             }`}
           >
-            {post.authorName}
+            {post.authorName} <BadgeMark badge={post.authorBadge} light={hasMedia} />
             {post.visibility === 'followers' && (
               <LockIcon
                 className={`ml-1 inline h-3 w-3 align-[-0.125em] ${

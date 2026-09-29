@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 
-import { getPost, loadMorePosts } from '@/actions/posts'
+import { getNewerPosts, getPost, loadMorePosts } from '@/actions/posts'
 import {
   CATEGORY_TINTS,
   POST_CATEGORIES,
@@ -23,6 +23,11 @@ import { ReelPost } from './ReelPost'
 import { Spinner } from './Spinner'
 
 type CategoryFilter = PostCategory | 'all'
+
+// Live feed polling — how often to check for posts newer than the feed's
+// head, and how near the top counts as "at the top" for auto-prepending.
+const LIVE_POLL_MS = 30_000
+const AT_TOP_PX = 48
 
 const MEDIA_FILTERS: {
   value: MediaFilter
@@ -48,6 +53,7 @@ export function Feed({
   filterable = false,
   initialMediaFilter = 'all',
   initialCategory = 'all',
+  live = false,
 }: {
   initialPosts: PostCardData[]
   initialHasMore: boolean
@@ -64,6 +70,9 @@ export function Feed({
   initialMediaFilter?: MediaFilter
   // Same, for ?category= — the page filters by post category server-side.
   initialCategory?: CategoryFilter
+  // Poll for posts newer than the feed's head — they auto-prepend at the
+  // top, or queue behind a "new posts" pill while scrolled down.
+  live?: boolean
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [hasMore, setHasMore] = useState(initialHasMore)
@@ -78,6 +87,22 @@ export function Feed({
   const categoryRef = useRef<HTMLDivElement>(null)
   const filterRestoredRef = useRef(false)
   const [resetNonce, setResetNonce] = useState(0)
+
+  // New posts fetched in the background but not yet inserted — they sit
+  // behind the pill until the user taps it or scrolls back to the top.
+  const [pendingNew, setPendingNew] = useState<PostCardData[]>([])
+  // Refs give the poller/scroll callbacks the latest values without
+  // re-subscribing on every posts change.
+  const postsRef = useRef(posts)
+  const pendingNewRef = useRef<PostCardData[]>([])
+
+  useEffect(() => {
+    postsRef.current = posts
+  }, [posts])
+
+  useEffect(() => {
+    pendingNewRef.current = pendingNew
+  }, [pendingNew])
 
   // Media filter persists in the URL (?media=videos) so refreshes and
   // shared links keep it. The page applies it server-side, so this only
@@ -94,6 +119,8 @@ export function Feed({
 
   const refetchPageOne = useCallback(
     (nextMedia: MediaFilter, nextCategory: CategoryFilter) => {
+      pendingNewRef.current = []
+      setPendingNew([])
       startTransition(async () => {
         const result = await loadMorePosts({
           page: 1,
@@ -151,6 +178,9 @@ export function Feed({
   // keep pages loaded via infinite scroll. Otherwise reset pagination state.
   if (prevInitial !== initialPosts) {
     setPrevInitial(initialPosts)
+    // Refreshed server data may already contain the queued posts — the ref
+    // re-syncs from state in the effect above.
+    setPendingNew([])
     const sameHead =
       initialPosts.length > 0 &&
       posts.length >= initialPosts.length &&
@@ -374,6 +404,100 @@ export function Feed({
     return () => window.removeEventListener(POST_SAVE_TOGGLED, onToggled)
   }, [feed, posts, hasMore, loadMore])
 
+  // Insert the queued posts at the head — called from the pill and when the
+  // user scrolls back to the top while the pill is up.
+  const flushNew = useCallback(() => {
+    const pending = pendingNewRef.current
+    if (pending.length === 0) return
+    pendingNewRef.current = []
+    setPendingNew([])
+    setPosts((prev) => {
+      const seen = new Set(prev.map((p) => p.id))
+      return [...pending.filter((p) => !seen.has(p.id)), ...prev]
+    })
+  }, [])
+
+  // Live polling — fetches posts newer than the feed's head. Near the top
+  // they prepend silently; scrolled down they queue behind the pill.
+  // Skips while the tab is hidden (same pattern as the AppNav badge poller).
+  useEffect(() => {
+    if (!live || posts.length === 0) return
+
+    const tick = async () => {
+      if (document.hidden) return
+      const head = postsRef.current[0]
+      if (!head) return
+      const result = await getNewerPosts({
+        afterId: head.id,
+        afterCreatedAt: head.createdAt,
+        authorId,
+        feed,
+        mediaFilter,
+        category,
+      })
+      const seen = new Set([
+        ...postsRef.current.map((p) => p.id),
+        ...pendingNewRef.current.map((p) => p.id),
+      ])
+      const incoming = result.posts.filter((p) => !seen.has(p.id))
+      if (incoming.length === 0) return
+      if (window.scrollY <= AT_TOP_PX) {
+        // Flush any queued (older) posts first so the head stays newest-first.
+        flushNew()
+        setPosts((prev) => {
+          const ids = new Set(prev.map((p) => p.id))
+          return [...incoming.filter((p) => !ids.has(p.id)), ...prev]
+        })
+      } else {
+        pendingNewRef.current = [...pendingNewRef.current, ...incoming]
+        setPendingNew(pendingNewRef.current)
+      }
+    }
+
+    const timer = setInterval(() => void tick(), LIVE_POLL_MS)
+    const onVisible = () => {
+      if (!document.hidden) void tick()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [live, posts.length, authorId, feed, mediaFilter, category, flushNew])
+
+  // Scrolling back to the top flushes the queued posts — the pill is only
+  // meant for while the head of the feed is out of view.
+  useEffect(() => {
+    if (!live || pendingNew.length === 0) return
+    const onScroll = () => {
+      if (window.scrollY <= AT_TOP_PX) flushNew()
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [live, pendingNew.length, flushNew])
+
+  const showNewPosts = () => {
+    flushNew()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const newPostsPill =
+    live && pendingNew.length > 0 ? (
+      <div
+        role="status"
+        className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center px-4"
+      >
+        <button
+          type="button"
+          onClick={showNewPosts}
+          className="btn-primary motion-safe:animate-toast-in pointer-events-auto flex items-center gap-1.5 rounded-full px-4 py-2 text-sm"
+        >
+          <ChevronDownIcon className="h-4 w-4 rotate-180" />
+          {pendingNew.length === 1 ? '1 new post' : `${pendingNew.length} new posts`}
+        </button>
+      </div>
+    ) : null
+
   if (posts.length === 0) {
     return (
       <>
@@ -394,6 +518,7 @@ export function Feed({
   if (!timeline) {
     return (
       <div>
+        {newPostsPill}
         {filterBar}
         {/* Photos → Instagram-feed-style cards; Videos → reels-style tall
             cards. A post whose media lives on the embedded share falls back
@@ -418,6 +543,7 @@ export function Feed({
 
   return (
     <div>
+      {newPostsPill}
       <div className="flex flex-col">
         {posts.map((post, i) => {
           const date = new Date(post.createdAt)

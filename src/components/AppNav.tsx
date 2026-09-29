@@ -10,6 +10,7 @@ import { searchUsers, updateTheme } from '@/actions/users'
 import type { UserCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { BrandMark } from './Branding'
 import { useChat } from './chat/ChatProvider'
 import { CreatePost } from './CreatePost'
@@ -208,6 +209,7 @@ function HeaderSearch() {
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold leading-tight">
                       {user.name}
+                      <BadgeMark badge={user.topBadge} />
                     </span>
                     <span className="block truncate text-xs leading-tight text-neutral-500">
                       @{user.username}

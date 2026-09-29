@@ -35,6 +35,12 @@ export async function deleteUserData(payload: Payload, userId: number): Promise<
     where: { or: [{ recipient: { equals: userId } }, { actor: { equals: userId } }] },
   })
 
+  // Gamification ledger + awards — both FK to the user row. Events other
+  // users earned on THIS user's posts are swept per-post by
+  // deletePostDependents during the post loop below.
+  await payload.delete({ collection: 'point-events', where: { user: { equals: userId } } })
+  await payload.delete({ collection: 'user-badges', where: { user: { equals: userId } } })
+
   // Mailbox: drop every thread the user touches, plus its messages and
   // attachment uploads (messages/attachments FK to threads, so threads
   // go last).

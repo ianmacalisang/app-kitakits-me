@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { type ReactNode, useEffect, useRef, useState, useTransition } from 'react'
 
 import { type CategorySpotlight, searchPosts } from '@/actions/posts'
-import { searchUsers } from '@/actions/users'
+import { getSuggestedReplacement, searchUsers } from '@/actions/users'
 import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
 import type { PostCardData, UserCardData } from '@/lib/serialize'
 
@@ -63,6 +63,19 @@ export function ExploreSearch({
   const [postsPage, setPostsPage] = useState(1)
   const [postsMore, setPostsMore] = useState(initialPostsHasMore)
   const [morePending, startMoreTransition] = useTransition()
+  const [, startReplaceTransition] = useTransition()
+
+  // Mirror of `users` for the async replacement fetch — the displayed ids it
+  // must exclude.
+  const usersRef = useRef(users)
+  useEffect(() => {
+    usersRef.current = users
+  }, [users])
+  // Cards followed out of the suggestions rail (restored if the toggle fails)
+  // and ids already handed out as in-flight replacements so two quick follows
+  // don't pull in the same candidate.
+  const stashRef = useRef(new Map<number, { user: UserCardData; index: number }>())
+  const pendingIdsRef = useRef(new Set<number>())
 
   const loadMore = (section: Section) => {
     if (morePending) return
@@ -85,6 +98,45 @@ export function ExploreSearch({
         setPostsPage(next)
         setPostsMore(result.hasMore)
       }
+    })
+  }
+
+  // "People you may know" consumes its suggestions — a followed card leaves
+  // the rail immediately and a fresh suggestion slots into the same spot once
+  // the server picks one. A `false` callback means the toggle reverted, so the
+  // stashed card goes back where it was.
+  const handlePersonFollow = (user: UserCardData, following: boolean) => {
+    if (!following) {
+      const stashed = stashRef.current.get(user.id)
+      if (!stashed) return
+      stashRef.current.delete(user.id)
+      setUsers((prev) => {
+        if (prev.some((u) => u.id === user.id)) return prev
+        const next = [...prev]
+        next.splice(Math.min(stashed.index, next.length), 0, stashed.user)
+        return next
+      })
+      return
+    }
+
+    const index = users.findIndex((u) => u.id === user.id)
+    if (index === -1) return
+    stashRef.current.set(user.id, { user, index })
+    pendingIdsRef.current.add(user.id)
+    setUsers((prev) => prev.filter((u) => u.id !== user.id))
+
+    const excludeIds = [...usersRef.current.map((u) => u.id), ...pendingIdsRef.current]
+    startReplaceTransition(async () => {
+      const replacement = await getSuggestedReplacement(excludeIds)
+      pendingIdsRef.current.delete(user.id)
+      stashRef.current.delete(user.id)
+      if (!replacement) return
+      setUsers((prev) => {
+        if (prev.some((u) => u.id === replacement.id)) return prev
+        const next = [...prev]
+        next.splice(Math.min(index, next.length), 0, replacement)
+        return next
+      })
     })
   }
 
@@ -145,7 +197,13 @@ export function ExploreSearch({
         </div>
       )}
 
-      <PeopleResults users={users} query={query} />
+      {/* Only the unqueried "People you may know" rail swaps cards on
+          follow — search results keep showing the real follow state. */}
+      <PeopleResults
+        users={users}
+        query={query}
+        onFollowChange={query ? undefined : handlePersonFollow}
+      />
 
       {/* A button rather than a sentinel — auto-loading people here would keep
           pushing the posts section down the page. */}
@@ -325,15 +383,24 @@ function UserRail({
   label,
   users,
   emptyState,
+  onFollowChange,
 }: {
   label: string
   users: UserCardData[]
   emptyState?: ReactNode
+  onFollowChange?: (user: UserCardData, following: boolean) => void
 }) {
   return (
     <Rail label={label} count={users.length} emptyState={emptyState}>
       {users.map((user) => (
-        <UserCoverCard key={user.id} user={user} className="w-44 shrink-0 snap-start sm:w-52" />
+        <UserCoverCard
+          key={user.id}
+          user={user}
+          className="w-44 shrink-0 snap-start sm:w-52"
+          onFollowChange={
+            onFollowChange ? (following) => onFollowChange(user, following) : undefined
+          }
+        />
       ))}
     </Rail>
   )
@@ -396,11 +463,20 @@ function PostRail({
   )
 }
 
-function PeopleResults({ users, query }: { users: UserCardData[]; query: string }) {
+function PeopleResults({
+  users,
+  query,
+  onFollowChange,
+}: {
+  users: UserCardData[]
+  query: string
+  onFollowChange?: (user: UserCardData, following: boolean) => void
+}) {
   return (
     <UserRail
       label={query ? 'People' : 'People you may know'}
       users={users}
+      onFollowChange={onFollowChange}
       emptyState={
         <EmptyState
           icon={query ? <SearchIcon /> : <UsersIcon />}

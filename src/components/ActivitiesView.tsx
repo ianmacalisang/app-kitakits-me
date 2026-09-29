@@ -7,6 +7,8 @@ import { loadMoreActivities } from '@/actions/activities'
 import type { ActivityData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
+import { BadgeSheet } from './BadgeSheet'
 import { CommentsSheet } from './CommentsSheet'
 import { EmptyState } from './EmptyState'
 import {
@@ -14,6 +16,7 @@ import {
   ChevronRightIcon,
   CommentIcon,
   HeartIcon,
+  MedalIcon,
   QuoteIcon,
   UserIcon,
 } from './icons'
@@ -24,9 +27,10 @@ import { RelativeTime } from './RelativeTime'
 
 const typeIcon = {
   like: <HeartIcon className="h-3 w-3" filled />,
-  comment: <CommentIcon className="h-3 w-3" />,
-  follow: <UserIcon className="h-3 w-3" />,
-  testimonial: <QuoteIcon className="h-3 w-3" />,
+  comment: <CommentIcon className="h-3.5 w-3.5" />,
+  follow: <UserIcon className="h-3.5 w-3.5" />,
+  testimonial: <QuoteIcon className="h-3.5 w-3.5" />,
+  badge: <MedalIcon className="h-3.5 w-3.5" />,
 }
 
 const typeColor = {
@@ -34,60 +38,59 @@ const typeColor = {
   comment: 'bg-accent-500 text-white',
   follow: 'bg-accent-500 text-white',
   testimonial: 'bg-violet-500 text-white',
+  badge: 'bg-amber-500 text-white',
 }
 
 // "Maria liked Juan's post" — actor and target names in semibold, the verb plain.
 const ActivityText = ({ activity }: { activity: ActivityData }) => {
-  const actor = <span className="font-semibold">{activity.actorName}</span>
+  const actor = (
+    <>
+      <span className="font-semibold">{activity.actorName}</span>{' '}
+      <BadgeMark badge={activity.actorBadge} className="h-3.5 w-3.5" />
+    </>
+  )
+  const postAuthor = activity.postAuthorName ? (
+    <>
+      <span className="font-semibold">{activity.postAuthorName}</span>{' '}
+      <BadgeMark badge={activity.postAuthorBadge} className="h-3.5 w-3.5" />
+    </>
+  ) : null
+  const target = activity.targetName ? (
+    <>
+      <span className="font-semibold">{activity.targetName}</span>{' '}
+      <BadgeMark badge={activity.targetBadge} className="h-3.5 w-3.5" />
+    </>
+  ) : null
   switch (activity.type) {
     case 'like':
       return (
         <>
-          {actor} liked{' '}
-          {activity.postAuthorName ? (
-            <>
-              <span className="font-semibold">{activity.postAuthorName}</span>
-              &rsquo;s post
-            </>
-          ) : (
-            'a post'
-          )}
+          {actor} liked {postAuthor ? <>{postAuthor}&rsquo;s post</> : 'a post'}
         </>
       )
     case 'comment':
       return (
         <>
-          {actor} commented on{' '}
-          {activity.postAuthorName ? (
-            <>
-              <span className="font-semibold">{activity.postAuthorName}</span>
-              &rsquo;s post
-            </>
-          ) : (
-            'a post'
-          )}
+          {actor} commented on {postAuthor ? <>{postAuthor}&rsquo;s post</> : 'a post'}
         </>
       )
     case 'follow':
       return (
         <>
-          {actor} started following{' '}
-          {activity.targetName ? (
-            <span className="font-semibold">{activity.targetName}</span>
-          ) : (
-            'someone'
-          )}
+          {actor} started following {target ?? 'someone'}
         </>
       )
     case 'testimonial':
       return (
         <>
-          {actor} wrote a testimonial for{' '}
-          {activity.targetName ? (
-            <span className="font-semibold">{activity.targetName}</span>
-          ) : (
-            'someone'
-          )}
+          {actor} wrote a testimonial for {target ?? 'someone'}
+        </>
+      )
+    case 'badge':
+      return (
+        <>
+          {actor} earned the{' '}
+          <span className="font-semibold">{activity.badgeEarned?.name ?? 'a'} badge</span>
         </>
       )
   }
@@ -111,7 +114,8 @@ const dayLabel = (iso: string) => {
 }
 
 type StackEntry = { kind: 'stack'; postId: number; items: ActivityData[] }
-type ActivityEntry = { kind: 'row'; activity: ActivityData } | StackEntry
+type BadgeStackEntry = { kind: 'badge-stack'; items: ActivityData[] }
+type ActivityEntry = { kind: 'row'; activity: ActivityData } | StackEntry | BadgeStackEntry
 
 // Latest likes, comments, and follows from people the viewer follows —
 // the home "Activities" tab. Rows are grouped into day sections so the
@@ -131,6 +135,7 @@ export function ActivitiesView({
   const [prevInitial, setPrevInitial] = useState(activities)
   const [openPostId, setOpenPostId] = useState<number | null>(null)
   const [viewPostId, setViewPostId] = useState<number | null>(null)
+  const [badgeActivity, setBadgeActivity] = useState<ActivityData | null>(null)
 
   // Reconcile when the server re-renders the list (e.g. router.refresh()): keep
   // pages loaded via infinite scroll if the refreshed first page still matches.
@@ -161,7 +166,13 @@ export function ActivitiesView({
         day = { key, label: dayLabel(activity.createdAt), entries: [] }
         out.push(day)
       }
-      if (activity.post && activity.postId !== undefined) {
+      if (activity.type === 'badge') {
+        // Badge earns collapse into one "N users got an achievement" stack
+        // per day — individual earns expand inside it.
+        const stack = day.entries.find((e): e is BadgeStackEntry => e.kind === 'badge-stack')
+        if (stack) stack.items.push(activity)
+        else day.entries.push({ kind: 'badge-stack', items: [activity] })
+      } else if (activity.post && activity.postId !== undefined) {
         const stack = day.entries.find(
           (e): e is StackEntry => e.kind === 'stack' && e.postId === activity.postId,
         )
@@ -192,6 +203,8 @@ export function ActivitiesView({
     (activity: ActivityData) => {
       if (activity.type === 'follow' || activity.type === 'testimonial') {
         if (activity.targetUsername) router.push(`/profile/${activity.targetUsername}`)
+      } else if (activity.type === 'badge') {
+        setBadgeActivity(activity)
       } else if (activity.postId) {
         if (activity.type === 'like') setViewPostId(activity.postId)
         else setOpenPostId(activity.postId)
@@ -202,6 +215,7 @@ export function ActivitiesView({
 
   const closePost = useCallback(() => setOpenPostId(null), [])
   const closeViewPost = useCallback(() => setViewPostId(null), [])
+  const closeBadgeSheet = useCallback(() => setBadgeActivity(null), [])
 
   if (items.length === 0) {
     return (
@@ -233,6 +247,26 @@ export function ActivitiesView({
                     isLast={i === group.entries.length - 1}
                     onOpenAction={open}
                   />
+                ) : entry.kind === 'badge-stack' ? (
+                  entry.items.length === 1 ? (
+                    <ActivityItem
+                      key={entry.items[0].id}
+                      activity={entry.items[0]}
+                      pending={pending}
+                      isFirst={i === 0}
+                      isLast={i === group.entries.length - 1}
+                      onOpenAction={open}
+                    />
+                  ) : (
+                    <BadgeActivityStack
+                      key="badge-stack"
+                      items={entry.items}
+                      pending={pending}
+                      isFirst={i === 0}
+                      isLast={i === group.entries.length - 1}
+                      onOpenAction={open}
+                    />
+                  )
                 ) : (
                   <ActivityItem
                     key={entry.activity.id}
@@ -262,6 +296,7 @@ export function ActivitiesView({
         open={viewPostId !== null}
         onCloseAction={closeViewPost}
       />
+      <BadgeSheet activity={badgeActivity} onCloseAction={closeBadgeSheet} />
     </div>
   )
 }
@@ -367,6 +402,104 @@ const PostActivityStack = memo(function PostActivityStack({
   )
 })
 
+// Badge earns in a day collapse into one entry — "N users got an
+// achievement" with overlapping avatars; expanding lists each earn.
+const BadgeActivityStack = memo(function BadgeActivityStack({
+  items,
+  pending,
+  isFirst,
+  isLast,
+  onOpenAction,
+}: {
+  items: ActivityData[]
+  pending: boolean
+  isFirst: boolean
+  isLast: boolean
+  onOpenAction: (activity: ActivityData) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const single = isFirst && isLast
+  // One avatar per user — someone earning two badges in a day shouldn't
+  // occupy two ring slots or count twice in the summary.
+  const uniqueActors = useMemo(() => {
+    const seen = new Set<string>()
+    return items.filter((a) => !seen.has(a.actorUsername) && seen.add(a.actorUsername))
+  }, [items])
+  const preview = uniqueActors.slice(0, 4)
+  const userCount = uniqueActors.length
+
+  return (
+    <li className="flex">
+      <Rail type="badge" single={single} isFirst={isFirst} isLast={isLast} />
+      <div className="min-w-0 flex-1 pb-2.5 pl-2">
+        <div className="glass flex flex-col rounded-2xl">
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            disabled={pending}
+            className="group flex w-full items-center gap-3 rounded-2xl p-3.5 text-left transition-all hover:bg-accent-50/40 disabled:opacity-60"
+            aria-expanded={expanded}
+          >
+            <span className="flex items-center -space-x-2">
+              {preview.map((activity) => (
+                <span key={activity.id} className="rounded-full ring-2 ring-white">
+                  <Avatar src={activity.actorAvatarUrl} name={activity.actorName} size="sm" />
+                </span>
+              ))}
+            </span>
+
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm text-neutral-700">
+                <span className="font-semibold">{userCount}</span>{' '}
+                {userCount === 1 ? 'user' : 'users'} got{' '}
+                {items.length > 1 ? 'new achievements' : 'an achievement'}
+              </span>
+              <span className="mt-0.5 block text-[11px] text-neutral-400">
+                <RelativeTime iso={items[0].createdAt} />
+              </span>
+            </span>
+
+            <ChevronRightIcon
+              className={`h-4 w-4 shrink-0 text-neutral-300 transition-all group-hover:text-accent-500 ${
+                expanded ? 'rotate-90' : ''
+              }`}
+            />
+          </button>
+
+          {expanded && (
+            <ul className="border-t border-black/5 px-2 py-1.5">
+              {items.map((activity) => (
+                <li key={activity.id}>
+                  <button
+                    onClick={() => onOpenAction(activity)}
+                    disabled={pending}
+                    className="group flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-accent-50/40 disabled:opacity-60"
+                  >
+                    <Avatar src={activity.actorAvatarUrl} name={activity.actorName} size="sm" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm text-neutral-700">
+                        <ActivityText activity={activity} />
+                      </span>
+                      <span className="block text-[11px] text-neutral-400">
+                        @{activity.actorUsername} · <RelativeTime iso={activity.createdAt} />
+                      </span>
+                    </span>
+                    {activity.badgeEarned && (
+                      <BadgeMark
+                        badge={activity.badgeEarned}
+                        className="h-7 w-7 shrink-0 transition-transform group-hover:scale-110"
+                      />
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </li>
+  )
+})
+
 const ActivityItem = memo(function ActivityItem({
   activity,
   pending,
@@ -410,10 +543,16 @@ const ActivityItem = memo(function ActivityItem({
             </span>
           </span>
 
-          {/* Trailing cue — the target user's avatar on follow/testimonial
-              rows, a chevron on post rows (they open a sheet). */}
-          {(activity.type === 'follow' || activity.type === 'testimonial') &&
-          activity.targetName ? (
+          {/* Trailing cue — the earned badge's disc on badge rows, the target
+              user's avatar on follow/testimonial rows, a chevron on post rows
+              (they open a sheet). */}
+          {activity.type === 'badge' && activity.badgeEarned ? (
+            <BadgeMark
+              badge={activity.badgeEarned}
+              className="h-9 w-9 shrink-0 transition-transform group-hover:scale-110"
+            />
+          ) : (activity.type === 'follow' || activity.type === 'testimonial') &&
+            activity.targetName ? (
             <span className="shrink-0 transition-transform group-hover:scale-105">
               <Avatar src={activity.targetAvatarUrl} name={activity.targetName} size="sm" />
             </span>

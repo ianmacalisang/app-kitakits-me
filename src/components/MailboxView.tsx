@@ -15,6 +15,7 @@ import { getNavBadgeCounts } from '@/actions/nav'
 import type { DraftData, ThreadData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { ComposeMail } from './ComposeMail'
 import { CountBadge } from './CountBadge'
 import { EmptyState } from './EmptyState'
@@ -467,6 +468,7 @@ const MailRow = memo(function MailRow({
               <span className={`truncate text-sm ${thread.unread ? 'font-bold' : 'font-semibold'}`}>
                 {box === 'sent' ? `To: ${thread.otherName}` : thread.otherName}
               </span>
+              <BadgeMark badge={thread.otherBadge} />
               {thread.isGuest && (
                 <span className="shrink-0 rounded-full bg-black/5 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-500 ring-1 ring-inset ring-black/10">
                   Guest
@@ -517,11 +519,16 @@ const DraftRow = memo(function DraftRow({
   onOpenAction: (draft: DraftData) => void
   onDeleteAction: (draftId: number) => void
 }) {
-  const toLabel = draft.recipient
-    ? `To: ${draft.recipient.name}`
-    : draft.to
-      ? `To: @${draft.to}`
-      : 'No recipient'
+  const toLabel = draft.recipient ? (
+    <>
+      To: {draft.recipient.name}
+      <BadgeMark badge={draft.recipient.badge} />
+    </>
+  ) : draft.to ? (
+    `To: @${draft.to}`
+  ) : (
+    'No recipient'
+  )
 
   return (
     <li className="flex items-center gap-1 rounded-2xl border border-transparent transition-all hover:bg-white/60">

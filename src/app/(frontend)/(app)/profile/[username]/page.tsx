@@ -1,10 +1,12 @@
 import { notFound, redirect } from 'next/navigation'
 
+import { BadgeProgressPanel } from '@/components/BadgeProgressPanel'
 import { LockIcon } from '@/components/icons'
 import { ProfileDesignSheet } from '@/components/ProfileDesignSheet'
 import { ProfileHeader } from '@/components/ProfileHeader'
 import { ProfileTabs } from '@/components/ProfileTabs'
 import { getCurrentUser } from '@/lib/auth'
+import { getBadgeProgressForUser, getUserGamification } from '@/lib/gamification'
 import { getPayloadClient } from '@/lib/payload'
 import { FEED_PAGE_SIZE, hydratePosts } from '@/lib/posts'
 import {
@@ -51,6 +53,8 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     testimonials,
     myTestimonial,
     pendingTestimonials,
+    gamification,
+    badgeProgress,
   ] = await Promise.all([
     payload.count({
       collection: 'follows',
@@ -126,6 +130,8 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
           overrideAccess: false,
         })
       : Promise.resolve({ totalDocs: 0 }),
+    getUserGamification(payload, profileUser.id),
+    getBadgeProgressForUser(payload, profileUser.id),
   ])
 
   const [cards, pinnedCards] = await Promise.all([
@@ -186,30 +192,34 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
         followerCount={followers.totalDocs}
         isSelf={isSelf}
         initialFollowing={isFollowing}
+        gamification={gamification}
       />
       {canViewPosts ? (
-        <ProfileTabs
-          initialPosts={cards}
-          initialHasMore={posts.hasNextPage}
-          pinnedPosts={pinnedCards}
-          authorId={profileUser.id}
-          about={toAboutBlocks(profileUser)}
-          isSelf={isSelf}
-          name={profileUser.name}
-          username={profileUser.username}
-          followerCount={followers.totalDocs}
-          followingCount={following.totalDocs}
-          testimonials={{
-            items: testimonials.docs
-              .map((doc) => toTestimonialData(doc, viewer))
-              .filter((t): t is TestimonialData => t !== null),
-            hasMore: testimonials.hasNextPage,
-            mine: myTestimonial.docs[0] ? toTestimonialData(myTestimonial.docs[0], viewer) : null,
-            canWrite: canWriteTestimonial,
-            viewerAuthenticated: true,
-            pendingCount: pendingTestimonials.totalDocs,
-          }}
-        />
+        <>
+          <BadgeProgressPanel badges={badgeProgress} />
+          <ProfileTabs
+            initialPosts={cards}
+            initialHasMore={posts.hasNextPage}
+            pinnedPosts={pinnedCards}
+            authorId={profileUser.id}
+            about={toAboutBlocks(profileUser)}
+            isSelf={isSelf}
+            name={profileUser.name}
+            username={profileUser.username}
+            followerCount={followers.totalDocs}
+            followingCount={following.totalDocs}
+            testimonials={{
+              items: testimonials.docs
+                .map((doc) => toTestimonialData(doc, viewer))
+                .filter((t): t is TestimonialData => t !== null),
+              hasMore: testimonials.hasNextPage,
+              mine: myTestimonial.docs[0] ? toTestimonialData(myTestimonial.docs[0], viewer) : null,
+              canWrite: canWriteTestimonial,
+              viewerAuthenticated: true,
+              pendingCount: pendingTestimonials.totalDocs,
+            }}
+          />
+        </>
       ) : (
         <div className="glass flex flex-col items-center gap-2 rounded-3xl p-10 text-center">
           <LockIcon className="h-6 w-6 text-neutral-400" />

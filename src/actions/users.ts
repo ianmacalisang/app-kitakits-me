@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 
 import { getCurrentUser } from '@/lib/auth'
 import { safeConnectPath } from '@/lib/connect-path'
+import { getTopBadgesForUsers } from '@/lib/gamification'
 import { getPayloadClient } from '@/lib/payload'
 import {
   isProfileAccent,
@@ -565,10 +566,14 @@ export async function getSuggestedPeople(page = 1): Promise<Paged<UserCardData>>
   )
   const start = (page - 1) * SUGGESTED_PAGE_SIZE
   const items = ranked.slice(start, start + SUGGESTED_PAGE_SIZE)
+  const topBadges = await getTopBadgesForUsers(
+    payload,
+    items.map((doc) => doc.id),
+  )
 
   return {
     items: items.map((doc: User) =>
-      toUserCardData(doc, user, false, followerCounts.get(doc.id) ?? 0),
+      toUserCardData(doc, user, false, followerCounts.get(doc.id) ?? 0, topBadges.get(doc.id)),
     ),
     hasMore: ranked.length > start + items.length,
   }
@@ -634,13 +639,33 @@ export async function getPeopleYouMayKnow(page = 1): Promise<Paged<UserCardData>
   )
   const start = (page - 1) * SUGGESTED_PAGE_SIZE
   const items = ranked.slice(start, start + SUGGESTED_PAGE_SIZE)
+  const topBadges = await getTopBadgesForUsers(
+    payload,
+    items.map((doc) => doc.id),
+  )
 
   return {
     items: items.map((doc: User) =>
-      toUserCardData(doc, user, false, followerCounts.get(doc.id) ?? 0),
+      toUserCardData(doc, user, false, followerCounts.get(doc.id) ?? 0, topBadges.get(doc.id)),
     ),
     hasMore: ranked.length > start + items.length,
   }
+}
+
+// One fresh suggestion to swap into the Explore rail when a card is followed.
+// Pages the same ranked pool as getPeopleYouMayKnow (which already excludes
+// the just-followed user) and returns the first candidate not in excludeIds;
+// the displayed cards sit at the top of the ranking so this almost always
+// resolves within page 1. Capped at 3 pages — the pool is only 60 deep.
+export async function getSuggestedReplacement(excludeIds: number[]): Promise<UserCardData | null> {
+  const exclude = new Set(excludeIds.filter((id) => Number.isInteger(id)))
+  for (let page = 1; page <= 3; page++) {
+    const { items, hasMore } = await getPeopleYouMayKnow(page)
+    const found = items.find((u) => !exclude.has(u.id))
+    if (found) return found
+    if (!hasMore) return null
+  }
+  return null
 }
 
 export async function searchUsers(query: string, page = 1): Promise<Paged<UserCardData>> {
@@ -700,9 +725,20 @@ export async function searchUsers(query: string, page = 1): Promise<Paged<UserCa
     followerCounts.set(id, (followerCounts.get(id) ?? 0) + 1)
   }
 
+  const topBadges = await getTopBadgesForUsers(
+    payload,
+    result.docs.map((doc) => doc.id),
+  )
+
   return {
     items: result.docs.map((doc: User) =>
-      toUserCardData(doc, user, followingIds.has(doc.id), followerCounts.get(doc.id) ?? 0),
+      toUserCardData(
+        doc,
+        user,
+        followingIds.has(doc.id),
+        followerCounts.get(doc.id) ?? 0,
+        topBadges.get(doc.id),
+      ),
     ),
     hasMore: result.hasNextPage,
   }
@@ -732,5 +768,12 @@ export async function searchPublicUsers(query: string): Promise<UserCardData[]> 
     depth: 1,
   })
 
-  return result.docs.map((doc: User) => toUserCardData(doc, null, false))
+  const topBadges = await getTopBadgesForUsers(
+    payload,
+    result.docs.map((doc) => doc.id),
+  )
+
+  return result.docs.map((doc: User) =>
+    toUserCardData(doc, null, false, undefined, topBadges.get(doc.id)),
+  )
 }

@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 
 import { getCurrentUser } from '@/lib/auth'
+import { getTopBadgesForUsers } from '@/lib/gamification'
 import {
   MAIL_ATTACHMENT_MAX_BYTES,
   MAIL_ATTACHMENT_MAX_FILES,
@@ -14,19 +15,31 @@ import { getPayloadClient } from '@/lib/payload'
 import { mailHtmlToText } from '@/lib/sanitize'
 import {
   avatarUrl,
+  type BadgeData,
   type DraftData,
   type Paged,
   type ThreadData,
   toDraftData,
   toThreadData,
 } from '@/lib/serialize'
-import type { User } from '@/payload-types'
+import type { Thread, User } from '@/payload-types'
+
+// Non-viewer participant ids across a page of threads — one batch badge
+// lookup covers every otherName the list renders.
+const otherParticipantIds = (docs: Thread[], viewerId: number): number[] =>
+  docs.flatMap((doc) =>
+    (Array.isArray(doc.participants) ? doc.participants : [])
+      .filter((p): p is User => typeof p === 'object' && p !== null)
+      .map((p) => p.id)
+      .filter((id) => id !== viewerId),
+  )
 
 export interface MailRecipient {
   id: number
   name: string
   username: string
   avatarUrl?: string
+  badge?: BadgeData
 }
 
 export interface SendMailState {
@@ -113,9 +126,11 @@ export async function getThreads(box: 'inbox' | 'sent', page = 1): Promise<Paged
     overrideAccess: false,
   })
 
+  const topBadges = await getTopBadgesForUsers(payload, otherParticipantIds(result.docs, user.id))
+
   return {
     items: result.docs
-      .map((doc) => toThreadData(doc, user))
+      .map((doc) => toThreadData(doc, user, topBadges))
       .filter((t): t is ThreadData => t !== null),
     hasMore: result.hasNextPage,
   }
@@ -151,10 +166,12 @@ export async function searchMailThreads(query: string): Promise<ThreadData[]> {
     overrideAccess: false,
   })
 
+  const topBadges = await getTopBadgesForUsers(payload, otherParticipantIds(result.docs, user.id))
+
   const needle = q.toLowerCase()
   return (
     result.docs
-      .map((doc) => toThreadData(doc, user))
+      .map((doc) => toThreadData(doc, user, topBadges))
       .filter((t): t is ThreadData => t !== null)
       // The participants clause can match the searcher's own name — drop rows
       // where neither the mail fields nor the *other* person match.
@@ -507,7 +524,13 @@ export async function getDrafts(): Promise<DraftData[]> {
     overrideAccess: false,
   })
 
-  return result.docs.map(toDraftData)
+  const recipientIds = result.docs
+    .map((doc) => doc.recipient)
+    .filter((p): p is User => typeof p === 'object' && p !== null)
+    .map((p) => p.id)
+  const topBadges = await getTopBadgesForUsers(payload, recipientIds)
+
+  return result.docs.map((doc) => toDraftData(doc, topBadges))
 }
 
 export async function saveDraft({
@@ -600,10 +623,16 @@ export async function searchMailRecipients(query: string): Promise<MailRecipient
     overrideAccess: false,
   })
 
+  const topBadges = await getTopBadgesForUsers(
+    payload,
+    result.docs.map((doc: User) => doc.id),
+  )
+
   return result.docs.map((doc: User) => ({
     id: doc.id,
     name: doc.name,
     username: doc.username,
     avatarUrl: avatarUrl(doc),
+    badge: topBadges.get(doc.id),
   }))
 }

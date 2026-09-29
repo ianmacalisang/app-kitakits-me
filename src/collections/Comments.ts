@@ -4,6 +4,7 @@ import { canComment, canReadComments, isAdminField, isOwner } from '../access'
 import { createCommentNotification } from '../hooks/createCommentNotification'
 import { deleteCommentNotifications } from '../hooks/deleteCommentNotifications'
 import { commentCounter } from '../hooks/postCounters'
+import { commentPoints } from '../hooks/gamification'
 
 export const Comments: CollectionConfig = {
   slug: 'comments',
@@ -28,7 +29,7 @@ export const Comments: CollectionConfig = {
         return data
       },
     ],
-    afterChange: [createCommentNotification, commentCounter.onCreate],
+    afterChange: [createCommentNotification, commentCounter.onCreate, commentPoints],
     beforeDelete: [deleteCommentNotifications],
     afterDelete: [commentCounter.onDelete],
   },

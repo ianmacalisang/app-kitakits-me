@@ -10,6 +10,7 @@ import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
 import type { PostCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { CategoryChip, RepostBadge } from './CategoryChip'
 import { CommentsSheet } from './CommentsSheet'
 import { CommentIcon, LockIcon, PinIcon, TrashIcon } from './icons'
@@ -120,7 +121,9 @@ export const PostCard = memo(function PostCard({
         <Link href={profileHref(post.authorUsername)} className="flex min-w-0 items-center gap-3">
           <Avatar src={post.authorAvatarUrl} name={post.authorName} />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{post.authorName}</p>
+            <p className="truncate text-sm font-semibold">
+              {post.authorName} <BadgeMark badge={post.authorBadge} />
+            </p>
             <p className="truncate text-xs text-neutral-500">
               @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
               {post.visibility === 'followers' && (
@@ -204,7 +207,8 @@ export const PostCard = memo(function PostCard({
                 <span className="text-sm font-semibold text-neutral-900">
                   {post.sharedPost.authorName}
                 </span>{' '}
-                @{post.sharedPost.authorUsername} · <RelativeTime iso={post.sharedPost.createdAt} />
+                <BadgeMark badge={post.sharedPost.authorBadge} /> @{post.sharedPost.authorUsername}{' '}
+                · <RelativeTime iso={post.sharedPost.createdAt} />
               </p>
             </Link>
             <CategoryChip category={post.sharedPost.category} className="shrink-0" />
@@ -296,6 +300,7 @@ export const PostCard = memo(function PostCard({
               <Avatar src={comment.authorAvatarUrl} name={comment.authorName} size="xs" />
               <p className="min-w-0 flex-1 truncate text-sm">
                 <span className="font-semibold">{comment.authorName}</span>{' '}
+                <BadgeMark badge={comment.authorBadge} />{' '}
                 <span className="text-neutral-600">{comment.content}</span>
               </p>
             </button>

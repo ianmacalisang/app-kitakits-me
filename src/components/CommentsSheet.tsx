@@ -9,6 +9,7 @@ import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
 import type { CommentData, PostCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { CategoryChip, RepostBadge } from './CategoryChip'
 import { CommentForm } from './CommentForm'
 import { CommentList } from './CommentList'
@@ -253,7 +254,9 @@ const SheetPost = memo(function SheetPost({ post }: { post: PostCardData }) {
         >
           <Avatar src={post.authorAvatarUrl} name={post.authorName} size="sm" />
           <span className="min-w-0">
-            <span className="block truncate text-sm font-semibold">{post.authorName}</span>
+            <span className="block truncate text-sm font-semibold">
+              {post.authorName} <BadgeMark badge={post.authorBadge} />
+            </span>
             <span className="block truncate text-xs text-neutral-500">
               @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
               {post.visibility === 'followers' && (
@@ -292,7 +295,8 @@ const SheetPost = memo(function SheetPost({ post }: { post: PostCardData }) {
                 <span className="text-sm font-semibold text-neutral-900">
                   {post.sharedPost.authorName}
                 </span>{' '}
-                @{post.sharedPost.authorUsername} · <RelativeTime iso={post.sharedPost.createdAt} />
+                <BadgeMark badge={post.sharedPost.authorBadge} /> @{post.sharedPost.authorUsername}{' '}
+                · <RelativeTime iso={post.sharedPost.createdAt} />
               </p>
             </Link>
             <CategoryChip category={post.sharedPost.category} className="shrink-0" />

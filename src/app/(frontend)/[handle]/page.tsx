@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { cache } from 'react'
 
+import { BadgeProgressPanel } from '@/components/BadgeProgressPanel'
 import { BlurImage } from '@/components/BlurImage'
 import { BrandMark } from '@/components/Branding'
 import { LockIcon } from '@/components/icons'
@@ -12,6 +13,7 @@ import { PublicPageTheme } from '@/components/PublicPageTheme'
 import { PublicProfileHero } from '@/components/PublicProfileHero'
 import { ShareProfileButton } from '@/components/ShareProfileButton'
 import { getCurrentUser } from '@/lib/auth'
+import { getBadgeProgressForUser, getUserGamification } from '@/lib/gamification'
 import { getPayloadClient } from '@/lib/payload'
 import { FEED_PAGE_SIZE, hydratePosts } from '@/lib/posts'
 import {
@@ -107,6 +109,8 @@ export default async function PublicProfilePage({
     myTestimonial,
     viewerFollows,
     pendingTestimonials,
+    gamification,
+    badgeProgress,
   ] = await Promise.all([
     payload.count({
       collection: 'follows',
@@ -193,6 +197,8 @@ export default async function PublicProfilePage({
           overrideAccess: false,
         })
       : Promise.resolve({ totalDocs: 0 }),
+    getUserGamification(payload, profileUser.id),
+    getBadgeProgressForUser(payload, profileUser.id),
   ])
 
   const testimonialPermission = profileUser.testimonialPermission ?? 'everyone'
@@ -266,6 +272,7 @@ export default async function PublicProfilePage({
             joinedLabel={joinedLabel}
             followers={followers.totalDocs}
             following={following.totalDocs}
+            gamification={gamification}
             action={
               isSelf ? (
                 <span
@@ -289,31 +296,34 @@ export default async function PublicProfilePage({
           />
 
           {canViewPosts ? (
-            <ProfileTabs
-              initialPosts={cards}
-              initialHasMore={posts.hasNextPage}
-              pinnedPosts={pinnedCards}
-              authorId={profileUser.id}
-              about={toAboutBlocks(profileUser)}
-              isSelf={Boolean(isSelf)}
-              name={profileUser.name}
-              username={profileUser.username}
-              followerCount={followers.totalDocs}
-              followingCount={following.totalDocs}
-              testimonials={{
-                items: testimonials.docs
-                  .map((doc) => toTestimonialData(doc, viewer))
-                  .filter((t): t is TestimonialData => t !== null),
-                hasMore: testimonials.hasNextPage,
-                mine: myTestimonial.docs[0]
-                  ? toTestimonialData(myTestimonial.docs[0], viewer)
-                  : null,
-                canWrite: canWriteTestimonial,
-                viewerAuthenticated: Boolean(viewer),
-                pendingCount: pendingTestimonials.totalDocs,
-              }}
-              isPublicPage
-            />
+            <>
+              <BadgeProgressPanel badges={badgeProgress} />
+              <ProfileTabs
+                initialPosts={cards}
+                initialHasMore={posts.hasNextPage}
+                pinnedPosts={pinnedCards}
+                authorId={profileUser.id}
+                about={toAboutBlocks(profileUser)}
+                isSelf={Boolean(isSelf)}
+                name={profileUser.name}
+                username={profileUser.username}
+                followerCount={followers.totalDocs}
+                followingCount={following.totalDocs}
+                testimonials={{
+                  items: testimonials.docs
+                    .map((doc) => toTestimonialData(doc, viewer))
+                    .filter((t): t is TestimonialData => t !== null),
+                  hasMore: testimonials.hasNextPage,
+                  mine: myTestimonial.docs[0]
+                    ? toTestimonialData(myTestimonial.docs[0], viewer)
+                    : null,
+                  canWrite: canWriteTestimonial,
+                  viewerAuthenticated: Boolean(viewer),
+                  pendingCount: pendingTestimonials.totalDocs,
+                }}
+                isPublicPage
+              />
+            </>
           ) : (
             <div className="glass flex flex-col items-center gap-2 rounded-3xl p-8 text-center">
               <LockIcon className="h-6 w-6 text-neutral-400" />

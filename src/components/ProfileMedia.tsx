@@ -6,8 +6,10 @@ import { useEffect, useRef, useState, useTransition, type ReactNode } from 'reac
 import { updateProfileMedia } from '@/actions/users'
 import { toCdnUrl } from '@/lib/cdn'
 import { compressImage } from '@/lib/image'
+import type { BadgeData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { BlurImage } from './BlurImage'
 import { ImageIcon } from './icons'
 import { Spinner } from './Spinner'
@@ -20,6 +22,7 @@ export function ProfileMedia({
   name,
   username,
   stats,
+  badge,
   children,
   onMediaChange,
 }: {
@@ -29,6 +32,7 @@ export function ProfileMedia({
   coverUrl?: string
   name: string
   username: string
+  badge?: BadgeData | null
   stats?: ReactNode
   children?: ReactNode
   // Reports a successful upload with its local preview URL — lets parents
@@ -183,7 +187,9 @@ export function ProfileMedia({
                   {stats}
                 </div>
               )}
-              <h1 className="truncate text-xl font-bold text-white drop-shadow-sm">{name}</h1>
+              <h1 className="truncate text-xl font-bold text-white drop-shadow-sm">
+                {name} <BadgeMark badge={badge} light className="h-4.5 w-4.5" />
+              </h1>
               <p className="truncate text-sm text-white/75">@{username}</p>
             </div>
           </div>

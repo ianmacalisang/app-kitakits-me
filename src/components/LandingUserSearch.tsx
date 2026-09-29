@@ -7,6 +7,7 @@ import { searchPublicUsers } from '@/actions/users'
 import type { UserCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { SearchIcon, UsersIcon, XIcon } from './icons'
 import { Spinner } from './Spinner'
 
@@ -162,6 +163,7 @@ export function LandingUserSearch() {
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold leading-tight">
                       {user.name}
+                      <BadgeMark badge={user.topBadge} />
                     </span>
                     <span className="block truncate text-xs leading-tight text-neutral-500">
                       @{user.username}

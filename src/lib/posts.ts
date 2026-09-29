@@ -5,6 +5,7 @@ import type { Media, Post, User, Video } from '@/payload-types'
 
 import { isPostCategory, type PostCategory } from './categories'
 import { drizzleOf } from './db'
+import { getTopBadgesForUsers } from './gamification'
 import { getPayloadClient } from './payload'
 import {
   avatarUrl,
@@ -224,6 +225,18 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
     likersByPost.set(row.pid, stack)
   }
 
+  // One badge lookup for every named user on the page — post authors,
+  // embedded (shared) authors, and comment authors.
+  const badgeUserIds = new Set<number>()
+  for (const post of docs) {
+    if (isUser(post.author)) badgeUserIds.add(post.author.id)
+    if (isObj(post.sharedPost) && isUser(post.sharedPost.author)) {
+      badgeUserIds.add(post.sharedPost.author.id)
+    }
+  }
+  for (const row of commentRows.rows) badgeUserIds.add(row.uid)
+  const topBadges = await getTopBadgesForUsers(payload, [...badgeUserIds])
+
   const latestByPost = new Map<number, PostCardData['latestComments']>()
   for (const row of commentRows.rows) {
     const actor = actorMap.get(row.uid)
@@ -234,6 +247,7 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
       authorName: actor.name,
       authorUsername: actor.username,
       authorAvatarUrl: avatarUrl(actor),
+      authorBadge: topBadges.get(actor.id),
       content: row.content,
     })
     latestByPost.set(row.pid, list)
@@ -261,12 +275,14 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
         authorUsername: shared.author.username,
         authorAvatarUrl:
           avatarMap.get(relId(shared.author.avatar) ?? -1) ?? avatarUrl(shared.author),
+        authorBadge: topBadges.get(shared.author.id),
       }
     }
 
     return toPostCardData(post, viewer, {
       likeCount: post.likeCount ?? 0,
       commentCount: post.commentCount ?? 0,
+      authorBadge: isUser(post.author) ? topBadges.get(post.author.id) : undefined,
       likedByMe: likedByMe.has(post.id),
       likers: likersByPost.get(post.id) ?? [],
       latestComments: latestByPost.get(post.id) ?? [],

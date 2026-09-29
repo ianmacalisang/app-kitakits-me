@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 
 import { MailThreadView } from '@/components/MailThreadView'
 import { getCurrentUser } from '@/lib/auth'
+import { getTopBadgesForUsers } from '@/lib/gamification'
 import { getPayloadClient } from '@/lib/payload'
 import {
   avatarUrl,
@@ -10,14 +11,11 @@ import {
   toMailMessageData,
   toThreadData,
 } from '@/lib/serialize'
+import type { User } from '@/payload-types'
 
 export const metadata = { title: 'Mail' }
 
-export default async function MailThreadPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
+export default async function MailThreadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const threadId = Number(id)
   if (!Number.isInteger(threadId)) notFound()
@@ -46,7 +44,13 @@ export default async function MailThreadPage({
     .filter((v): v is number => v !== null)
   if (!visibleTo.includes(user.id)) notFound()
 
-  const threadData = toThreadData(thread, user)
+  const otherId = (Array.isArray(thread.participants) ? thread.participants : [])
+    .filter((p): p is User => typeof p === 'object' && p !== null)
+    .map((p) => p.id)
+    .find((pid) => pid !== user.id)
+  const topBadges = await getTopBadgesForUsers(payload, otherId ? [otherId] : [])
+
+  const threadData = toThreadData(thread, user, topBadges)
   if (!threadData) notFound()
 
   const [messages, fullUser] = await Promise.all([

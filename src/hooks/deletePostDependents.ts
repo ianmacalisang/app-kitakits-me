@@ -30,6 +30,14 @@ export const deletePostDependents: CollectionBeforeDeleteHook = async ({ id, req
     where: { or: notificationOr },
     req,
   })
+  // Ledger rows reference the post — drop them before the post row so the
+  // FK doesn't reject the delete. Points already earned stay on the
+  // users' balances (delete-and-recreate can't re-earn the same key).
+  await req.payload.delete({
+    collection: 'point-events',
+    where: { post: { in: postIds } },
+    req,
+  })
   await req.payload.delete({
     collection: 'comments',
     where: { post: { in: postIds } },

@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 
 import { getCurrentUser } from '@/lib/auth'
+import { getTopBadgesForUsers } from '@/lib/gamification'
 import { getPayloadClient } from '@/lib/payload'
 import { type CommentData, type Paged, toCommentData } from '@/lib/serialize'
 
@@ -42,8 +43,27 @@ export async function getComments(
     ...(user ? { user, overrideAccess: false as const } : {}),
   })
 
+  const topBadges = await getTopBadgesForUsers(
+    payload,
+    comments.docs.map((comment) =>
+      typeof comment.author === 'object' && comment.author !== null
+        ? comment.author.id
+        : Number(comment.author),
+    ),
+  )
+
   return {
-    items: comments.docs.map((comment) => toCommentData(comment, user)),
+    items: comments.docs.map((comment) =>
+      toCommentData(
+        comment,
+        user,
+        topBadges.get(
+          typeof comment.author === 'object' && comment.author !== null
+            ? comment.author.id
+            : Number(comment.author),
+        ),
+      ),
+    ),
     hasMore: comments.hasNextPage,
     commentsDisabled,
   }

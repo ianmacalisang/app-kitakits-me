@@ -6,6 +6,7 @@ import { deletePostDependents } from '../hooks/deletePostDependents'
 import { deletePostMedia, deleteRemovedPostMedia } from '../hooks/deletePostMedia'
 import { deletePostVideo, deleteRemovedPostVideo } from '../hooks/deletePostVideo'
 import { shareCounterCreate, shareCounterDelete } from '../hooks/postCounters'
+import { postPoints } from '../hooks/gamification'
 
 export const Posts: CollectionConfig = {
   slug: 'posts',
@@ -42,7 +43,7 @@ export const Posts: CollectionConfig = {
     ],
     beforeDelete: [deletePostDependents],
     afterDelete: [deletePostMedia, deletePostVideo, shareCounterDelete],
-    afterChange: [deleteRemovedPostMedia, deleteRemovedPostVideo, shareCounterCreate],
+    afterChange: [deleteRemovedPostMedia, deleteRemovedPostVideo, shareCounterCreate, postPoints],
   },
   fields: [
     {

@@ -15,6 +15,7 @@ import type { TestimonialData } from '@/lib/serialize'
 
 import { AuthPrompt } from './AuthPrompt'
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { EmptyState } from './EmptyState'
 import { ComposeIcon, QuoteIcon, TrashIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
@@ -336,7 +337,7 @@ export function TestimonialsPanel({
                     href={profileHref(t.authorUsername)}
                     className="block truncate text-sm font-semibold hover:underline"
                   >
-                    — {t.authorName}
+                    — {t.authorName} <BadgeMark badge={t.authorBadge} />
                   </Link>
                   <p className="truncate text-xs text-neutral-500">
                     @{t.authorUsername} · <RelativeTime iso={t.createdAt} />

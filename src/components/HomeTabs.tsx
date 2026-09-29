@@ -88,6 +88,7 @@ export function HomeTabs({
           initialPosts={feedPosts}
           initialHasMore={feedHasMore}
           feed="following"
+          live
           filterable
           initialMediaFilter={initialMediaFilter}
           initialCategory={initialCategory}

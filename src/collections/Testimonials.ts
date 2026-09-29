@@ -9,6 +9,7 @@ import {
   isTestimonialRecipientField,
 } from '../access'
 import { createTestimonialNotification } from '../hooks/createTestimonialNotification'
+import { testimonialPoints } from '../hooks/gamification'
 import { deleteTestimonialNotifications } from '../hooks/deleteTestimonialNotifications'
 
 const idOf = (value: unknown): number | string | null =>
@@ -79,7 +80,7 @@ export const Testimonials: CollectionConfig = {
         return data
       },
     ],
-    afterChange: [createTestimonialNotification],
+    afterChange: [createTestimonialNotification, testimonialPoints],
     beforeDelete: [deleteTestimonialNotifications],
   },
   fields: [

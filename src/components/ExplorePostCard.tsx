@@ -8,6 +8,7 @@ import { toCdnUrl } from '@/lib/cdn'
 import type { PostCardData, PostVideoData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
+import { BadgeMark } from './BadgeMark'
 import { BlurImage } from './BlurImage'
 import { CategoryChip, RepostBadge } from './CategoryChip'
 import { CommentIcon, LockIcon, PlayIcon, ShareIcon, VideoIcon } from './icons'
@@ -54,7 +55,9 @@ export const ExplorePostCard = memo(function ExplorePostCard({ post }: { post: P
         >
           <Avatar src={post.authorAvatarUrl} name={post.authorName} size="xs" />
           <div className="min-w-0">
-            <p className="truncate text-[13px] font-semibold leading-tight">{post.authorName}</p>
+            <p className="truncate text-[13px] font-semibold leading-tight">
+              {post.authorName} <BadgeMark badge={post.authorBadge} />
+            </p>
             <p className="truncate text-[11px] leading-tight text-neutral-500">
               @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
               {post.visibility === 'followers' && (
