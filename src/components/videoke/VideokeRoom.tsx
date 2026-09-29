@@ -334,8 +334,9 @@ export function VideokeRoom({
           )}
         </div>
 
-        {/* Transport bar — now playing + host controls, always on dark */}
-        <div className="relative flex items-center gap-3 border-t border-white/10 bg-white/[0.04] px-4 py-3">
+        {/* Transport bar — now playing + controls. On small screens the
+            controls drop to a second row below the now-playing line. */}
+        <div className="relative flex flex-col gap-3 border-t border-white/10 bg-white/[0.04] px-4 py-3 sm:flex-row sm:items-center">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <EqBars
               playing={isPlaying}
@@ -355,39 +356,45 @@ export function VideokeRoom({
               )}
             </div>
           </div>
-          {canMutate && <MicMeter />}
-          {isHost && !ended && (
-            <div className="flex shrink-0 items-center gap-2">
-              {room.playback.state === 'playing' ? (
-                <button
-                  type="button"
-                  onClick={pause}
-                  disabled={pending}
-                  aria-label="Pause"
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition hover:bg-white/20 disabled:opacity-50"
-                >
-                  <PauseIcon className="h-4.5 w-4.5" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={play}
-                  disabled={pending || (!current && room.queue.every((q) => q.state !== 'queued'))}
-                  aria-label="Play"
-                  className="btn-primary flex h-10 w-10 items-center justify-center rounded-full"
-                >
-                  <PlayIcon className="h-4.5 w-4.5" />
-                </button>
+          {canMutate && (
+            <div className="flex items-center justify-between gap-2 sm:justify-normal">
+              <MicMeter />
+              {isHost && !ended && (
+                <div className="flex shrink-0 items-center gap-2">
+                  {room.playback.state === 'playing' ? (
+                    <button
+                      type="button"
+                      onClick={pause}
+                      disabled={pending}
+                      aria-label="Pause"
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition hover:bg-white/20 disabled:opacity-50"
+                    >
+                      <PauseIcon className="h-4.5 w-4.5" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={play}
+                      disabled={
+                        pending || (!current && room.queue.every((q) => q.state !== 'queued'))
+                      }
+                      aria-label="Play"
+                      className="btn-primary flex h-10 w-10 items-center justify-center rounded-full"
+                    >
+                      <PlayIcon className="h-4.5 w-4.5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={skip}
+                    disabled={pending || !current}
+                    className="flex h-10 items-center gap-1.5 rounded-full bg-white/10 px-4 text-xs font-semibold text-white ring-1 ring-white/15 transition hover:bg-white/20 disabled:opacity-50"
+                  >
+                    <SkipForwardIcon className="h-3.5 w-3.5" />
+                    Next
+                  </button>
+                </div>
               )}
-              <button
-                type="button"
-                onClick={skip}
-                disabled={pending || !current}
-                className="flex h-10 items-center gap-1.5 rounded-full bg-white/10 px-4 text-xs font-semibold text-white ring-1 ring-white/15 transition hover:bg-white/20 disabled:opacity-50"
-              >
-                <SkipForwardIcon className="h-3.5 w-3.5" />
-                Next
-              </button>
             </div>
           )}
         </div>
