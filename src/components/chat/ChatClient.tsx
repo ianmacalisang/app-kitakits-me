@@ -5,32 +5,14 @@ import type { MutualHead } from '@/lib/mutuals'
 import { Avatar } from '../Avatar'
 import { EmptyState } from '../EmptyState'
 import { Spinner } from '../Spinner'
-import { ChatIcon, LockIcon, UsersIcon } from '../icons'
+import { ChatIcon } from '../icons'
 import { useChat } from './ChatProvider'
-import { ChatRoom, pairKey } from './ChatRoom'
+import { pairKey } from './ChatRoom'
 
-const STEPS = [
-  {
-    icon: UsersIcon,
-    label: 'A mutual comes online',
-    hint: 'Chat only works with mutual follows who are online now',
-  },
-  {
-    icon: ChatIcon,
-    label: 'They accept your invite',
-    hint: 'Nothing starts until the other person says yes',
-  },
-  {
-    icon: LockIcon,
-    label: 'Nothing is stored',
-    hint: 'Chats vanish when they end — or when you log out',
-  },
-]
-
-// /chat body — lists all mutual follows (online first, with status dots) and
-// live rooms; selecting one swaps the list for the conversation (single-pane,
-// mobile-first like the rest of the app). Presence comes from ChatProvider's
-// in-memory WS session; the mutual roster is server-loaded.
+// Chat dropdown body — lists all mutual follows (online first, with status
+// dots) and live rooms inside the panel; selecting a room swaps the panel to
+// the conversation. Presence comes from ChatProvider's in-memory WS session;
+// the mutual roster is fetched by ChatMenu when the dropdown opens.
 export function ChatClient({ mutuals }: { mutuals: MutualHead[] }) {
   const chat = useChat()
 
@@ -42,12 +24,11 @@ export function ChatClient({ mutuals }: { mutuals: MutualHead[] }) {
         icon={<ChatIcon />}
         title="Chat is not available"
         message="Live chat isn't configured on this deployment."
+        compact
+        plain
       />
     )
   }
-
-  const active = chat.activeRoom ? chat.rooms.get(chat.activeRoom) : undefined
-  if (active) return <ChatRoom room={active} />
 
   const selfId = chat.self?.id
   const roomList = [...chat.rooms.values()].sort(
@@ -63,177 +44,149 @@ export function ChatClient({ mutuals }: { mutuals: MutualHead[] }) {
   )
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-bold">Quick Chat</h1>
-        <p className="mt-1 text-sm text-neutral-500">Log out, and your chats are gone.</p>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="border-b border-neutral-200/60 px-4 py-3 dark:border-white/10">
+        <h2 className="text-sm font-bold">Quick Chat</h2>
+        <p className="mt-0.5 text-xs text-neutral-500">Log out, and your chats are gone.</p>
       </div>
 
-      {/* How it works — three steps on a dashed timeline; the ring on each
-          disc keeps the connector hidden behind it. */}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-          How it works
-        </h2>
-        <ol className="glass relative grid grid-cols-3 gap-1 rounded-3xl px-3 pb-5 pt-4">
-          <span
-            aria-hidden
-            className="motion-safe:animate-dash-flow absolute left-[16.67%] right-[16.67%] top-9 h-px"
-            style={{
-              backgroundImage:
-                'repeating-linear-gradient(to right, var(--color-accent-400) 0 6px, transparent 6px 12px)',
-            }}
-          />
-          {STEPS.map(({ icon: Icon, label, hint }) => (
-            <li key={label} className="relative flex flex-col items-center gap-2 text-center">
-              <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-accent-600 to-accent-900 text-white shadow-md shadow-accent-900/25 ring-4 ring-white/80 dark:ring-neutral-900">
-                <Icon className="h-4 w-4" />
-              </span>
-              <span className="flex flex-col gap-0.5">
-                <span className="text-[11px] font-semibold leading-tight text-neutral-800 dark:text-neutral-100">
-                  {label}
-                </span>
-                <span className="text-[10px] leading-snug text-neutral-500 dark:text-neutral-400">
-                  {hint}
-                </span>
-              </span>
-            </li>
-          ))}
-        </ol>
-      </section>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="flex flex-col gap-3">
+          {chat.status === 'connecting' && (
+            <div className="flex items-center gap-2.5 rounded-xl bg-white/60 px-3 py-2.5 text-xs text-neutral-500 dark:bg-white/5">
+              <Spinner className="h-3.5 w-3.5 text-neutral-400" /> Connecting to chat…
+            </div>
+          )}
+          {chat.status === 'offline' && (
+            <div className="rounded-xl bg-white/60 px-3 py-2.5 text-xs text-neutral-500 dark:bg-white/5">
+              Chat is offline — retrying automatically.
+            </div>
+          )}
 
-      {chat.status === 'connecting' && (
-        <div className="glass flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-neutral-500">
-          <Spinner className="h-4 w-4 text-neutral-400" /> Connecting to chat…
-        </div>
-      )}
-      {chat.status === 'offline' && (
-        <div className="glass rounded-2xl px-4 py-3 text-sm text-neutral-500">
-          Chat is offline — retrying automatically.
-        </div>
-      )}
-
-      {roomList.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-            Conversations
-          </h2>
-          <ul className="glass divide-y divide-neutral-200/60 overflow-hidden rounded-3xl dark:divide-white/10">
-            {roomList.map((room) => {
-              const peer = room.peer
-              const last = room.messages.at(-1)
-              const peerOnline = peer != null && chat.online.some((u) => u.id === peer.id)
-              return (
-                <li key={room.key}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      chat.join(room.key)
-                      chat.openRoom(room.key)
-                    }}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/60"
-                  >
-                    <span className="relative shrink-0">
-                      <Avatar src={peer?.avatarUrl} name={peer?.name ?? '?'} size="md" />
-                      <span
-                        className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-neutral-900 ${
-                          room.peerInRoom || peerOnline ? 'bg-emerald-500' : 'bg-neutral-300'
-                        }`}
-                      />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">
-                        {peer?.name ?? 'Chat'}
-                      </span>
-                      <span
-                        className={`block truncate text-xs ${
-                          room.unread > 0
-                            ? 'font-semibold text-neutral-900 dark:text-neutral-100'
-                            : 'text-neutral-500'
-                        }`}
+          {roomList.length > 0 && (
+            <section className="flex flex-col gap-1">
+              <h3 className="px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+                Conversations
+              </h3>
+              <ul className="divide-y divide-neutral-200/60 overflow-hidden rounded-2xl bg-white/60 dark:divide-white/10 dark:bg-white/5">
+                {roomList.map((room) => {
+                  const peer = room.peer
+                  const last = room.messages.at(-1)
+                  const peerOnline = peer != null && chat.online.some((u) => u.id === peer.id)
+                  return (
+                    <li key={room.key}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          chat.join(room.key)
+                          chat.openRoom(room.key)
+                        }}
+                        className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-white/60 dark:hover:bg-white/10"
                       >
-                        {room.ended
-                          ? 'Chat ended'
-                          : last
-                            ? `${last.from === selfId ? 'You: ' : ''}${last.body}`
-                            : 'No messages yet'}
-                      </span>
-                    </span>
-                    {room.unread > 0 && (
-                      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-                        {room.unread > 99 ? '99+' : room.unread}
-                      </span>
-                    )}
-                    {room.peerInRoom && (
-                      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-                        Live
-                      </span>
-                    )}
-                    {!room.peerInRoom && room.peerLeftAt > 0 && !room.ended && (
-                      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
-                        Left
-                      </span>
-                    )}
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </section>
-      )}
+                        <span className="relative shrink-0">
+                          <Avatar src={peer?.avatarUrl} name={peer?.name ?? '?'} size="md" />
+                          <span
+                            className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-neutral-900 ${
+                              room.peerInRoom || peerOnline ? 'bg-emerald-500' : 'bg-neutral-300'
+                            }`}
+                          />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold">
+                            {peer?.name ?? 'Chat'}
+                          </span>
+                          <span
+                            className={`block truncate text-xs ${
+                              room.unread > 0
+                                ? 'font-semibold text-neutral-900 dark:text-neutral-100'
+                                : 'text-neutral-500'
+                            }`}
+                          >
+                            {room.ended
+                              ? 'Chat ended'
+                              : last
+                                ? `${last.from === selfId ? 'You: ' : ''}${last.body}`
+                                : 'No messages yet'}
+                          </span>
+                        </span>
+                        {room.unread > 0 && (
+                          <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                            {room.unread > 99 ? '99+' : room.unread}
+                          </span>
+                        )}
+                        {room.peerInRoom && (
+                          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                            Live
+                          </span>
+                        )}
+                        {!room.peerInRoom && room.peerLeftAt > 0 && !room.ended && (
+                          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+                            Left
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          )}
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-          Mutual follows ({roster.length})
-        </h2>
-        {roster.length === 0 ? (
-          <EmptyState
-            icon={<ChatIcon />}
-            title="No mutuals yet"
-            message="Live chat is available with mutual follows who are currently online."
-            compact
-          />
-        ) : (
-          <ul className="glass divide-y divide-neutral-200/60 overflow-hidden rounded-3xl dark:divide-white/10">
-            {roster.map((user) => {
-              const isOnline = onlineIds.has(user.id)
-              const pending = chat.outgoing.has(pairKey(selfId ?? 0, user.id))
-              const inRoom = roomPeerIds.has(user.id)
-              return (
-                <li
-                  key={user.id}
-                  className={`flex items-center gap-3 px-4 py-3 ${isOnline ? '' : 'opacity-60'}`}
-                >
-                  <span className="relative shrink-0">
-                    <Avatar src={user.avatarUrl} name={user.name} size="md" />
-                    <span
-                      className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-neutral-900 ${
-                        isOnline ? 'bg-emerald-500' : 'bg-neutral-300'
-                      }`}
-                    />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{user.name}</span>
-                    <span className="block truncate text-xs text-neutral-500">
-                      @{user.username} · {isOnline ? 'Online' : 'Offline'}
-                    </span>
-                  </span>
-                  {isOnline && !inRoom && (
-                    <button
-                      type="button"
-                      disabled={pending || chat.status !== 'online'}
-                      onClick={() => chat.invite(user.id)}
-                      className="shrink-0 rounded-full bg-accent-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-accent-700 disabled:opacity-50 dark:bg-accent-200 dark:text-accent-900 dark:hover:bg-accent-100"
+          <section className="flex flex-col gap-1">
+            <h3 className="px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+              Mutual follows ({roster.length})
+            </h3>
+            {roster.length === 0 ? (
+              <EmptyState
+                icon={<ChatIcon />}
+                title="No mutuals yet"
+                message="Live chat is available with mutual follows who are currently online."
+                compact
+                plain
+              />
+            ) : (
+              <ul className="divide-y divide-neutral-200/60 overflow-hidden rounded-2xl bg-white/60 dark:divide-white/10 dark:bg-white/5">
+                {roster.map((user) => {
+                  const isOnline = onlineIds.has(user.id)
+                  const pending = chat.outgoing.has(pairKey(selfId ?? 0, user.id))
+                  const inRoom = roomPeerIds.has(user.id)
+                  return (
+                    <li
+                      key={user.id}
+                      className={`flex items-center gap-3 px-3 py-2.5 ${isOnline ? '' : 'opacity-60'}`}
                     >
-                      {pending ? 'Waiting…' : 'Chat'}
-                    </button>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
+                      <span className="relative shrink-0">
+                        <Avatar src={user.avatarUrl} name={user.name} size="md" />
+                        <span
+                          className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-neutral-900 ${
+                            isOnline ? 'bg-emerald-500' : 'bg-neutral-300'
+                          }`}
+                        />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">{user.name}</span>
+                        <span className="block truncate text-xs text-neutral-500">
+                          @{user.username} · {isOnline ? 'Online' : 'Offline'}
+                        </span>
+                      </span>
+                      {isOnline && !inRoom && (
+                        <button
+                          type="button"
+                          disabled={pending || chat.status !== 'online'}
+                          onClick={() => chat.invite(user.id)}
+                          className="shrink-0 rounded-full bg-accent-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-accent-700 disabled:opacity-50 dark:bg-accent-200 dark:text-accent-900 dark:hover:bg-accent-100"
+                        >
+                          {pending ? 'Waiting…' : 'Chat'}
+                        </button>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   )
 }

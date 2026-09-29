@@ -1,17 +1,13 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
-
 import { Avatar } from '../Avatar'
 import { useChat } from './ChatProvider'
 
 // App-wide incoming-invite surface — rendered inside ChatProvider so a ping
-// reaches the user on any page, not just /chat. Accepting joins the room and
-// navigates to the chat page.
+// reaches the user on any page. Accepting joins the room and opens the chat
+// dropdown.
 export function InviteBanner() {
   const chat = useChat()
-  const router = useRouter()
-  const pathname = usePathname()
 
   if (!chat || chat.incoming.length === 0) return null
 
@@ -20,7 +16,7 @@ export function InviteBanner() {
   const onAccept = () => {
     chat.accept(invite.room)
     chat.openRoom(invite.room)
-    if (pathname !== '/chat') router.push('/chat')
+    chat.setMenuOpen(true)
   }
 
   return (

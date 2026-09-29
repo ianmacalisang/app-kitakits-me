@@ -49,6 +49,9 @@ interface ChatContextValue {
   activeRoom: string | null
   /** Set when a peer accepts one of our outgoing invites — drives a toast. */
   acceptedAlert: { room: string; user: ChatUser } | null
+  /** Chat dropdown visibility — kept here so banners can open it app-wide. */
+  menuOpen: boolean
+  setMenuOpen: (open: boolean) => void
   invite: (to: number) => void
   accept: (room: string) => void
   decline: (room: string) => void
@@ -94,6 +97,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [incoming, setIncoming] = useState<PendingInvite[]>([])
   const [outgoing, setOutgoing] = useState<Map<string, ChatUser>>(new Map())
   const [activeRoom, setActiveRoom] = useState<string | null>(null)
+  const [menuOpen, setMenuOpenState] = useState(false)
   const [acceptedAlert, setAcceptedAlert] = useState<{
     room: string
     user: ChatUser
@@ -391,6 +395,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [patchRoom],
   )
 
+  // Closing the menu backs out of any open room — a hidden room would keep
+  // auto-marking its messages read and the nav badge would never bump.
+  const setMenuOpen = useCallback((open: boolean) => {
+    if (!open) {
+      activeRoomRef.current = null
+      setActiveRoom(null)
+    }
+    setMenuOpenState(open)
+  }, [])
+
   const clearAcceptedAlert = useCallback(() => setAcceptedAlert(null), [])
 
   const value: ChatContextValue = {
@@ -403,6 +417,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     outgoing,
     activeRoom,
     acceptedAlert,
+    menuOpen,
+    setMenuOpen,
     invite,
     accept,
     decline,

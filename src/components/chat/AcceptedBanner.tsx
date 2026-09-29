@@ -1,17 +1,15 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
 import { Avatar } from '../Avatar'
 import { useChat } from './ChatProvider'
 
 // App-wide "they accepted" toast — fires when a peer accepts one of our
-// outgoing invites, on any page. Auto-dismisses; Open jumps into the room.
+// outgoing invites, on any page. Auto-dismisses; Open jumps into the room in
+// the chat dropdown.
 export function AcceptedBanner() {
   const chat = useChat()
-  const router = useRouter()
-  const pathname = usePathname()
   const alert = chat?.acceptedAlert ?? null
 
   useEffect(() => {
@@ -25,7 +23,7 @@ export function AcceptedBanner() {
   const onOpen = () => {
     chat.openRoom(alert.room)
     chat.clearAcceptedAlert()
-    if (pathname !== '/chat') router.push('/chat')
+    chat.setMenuOpen(true)
   }
 
   return (

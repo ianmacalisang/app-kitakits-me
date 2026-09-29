@@ -115,7 +115,9 @@ const dayLabel = (iso: string) => {
 
 type StackEntry = { kind: 'stack'; postId: number; items: ActivityData[] }
 type BadgeStackEntry = { kind: 'badge-stack'; items: ActivityData[] }
-type ActivityEntry = { kind: 'row'; activity: ActivityData } | StackEntry | BadgeStackEntry
+type FollowStackEntry = { kind: 'follow-stack'; actorUsername: string; items: ActivityData[] }
+type ActivityEntry =
+  { kind: 'row'; activity: ActivityData } | StackEntry | BadgeStackEntry | FollowStackEntry
 
 // Latest likes, comments, and follows from people the viewer follows —
 // the home "Activities" tab. Rows are grouped into day sections so the
@@ -155,8 +157,9 @@ export function ActivitiesView({
   }
 
   // Activities on the same post stack into one entry per day (Facebook-style):
-  // the post card renders once with every actor line above it. The stack sits
-  // where its newest activity falls in the stream.
+  // the post card renders once with every actor line above it. Follows stack
+  // per actor per day, badges per day. A stack sits where its newest activity
+  // falls in the stream.
   const groups = useMemo(() => {
     const out: { key: string; label: string; entries: ActivityEntry[] }[] = []
     for (const activity of items) {
@@ -172,6 +175,20 @@ export function ActivitiesView({
         const stack = day.entries.find((e): e is BadgeStackEntry => e.kind === 'badge-stack')
         if (stack) stack.items.push(activity)
         else day.entries.push({ kind: 'badge-stack', items: [activity] })
+      } else if (activity.type === 'follow') {
+        // A user's follows collapse into one "started following N people"
+        // stack per day — individual follows expand inside it.
+        const stack = day.entries.find(
+          (e): e is FollowStackEntry =>
+            e.kind === 'follow-stack' && e.actorUsername === activity.actorUsername,
+        )
+        if (stack) stack.items.push(activity)
+        else
+          day.entries.push({
+            kind: 'follow-stack',
+            actorUsername: activity.actorUsername,
+            items: [activity],
+          })
       } else if (activity.post && activity.postId !== undefined) {
         const stack = day.entries.find(
           (e): e is StackEntry => e.kind === 'stack' && e.postId === activity.postId,
@@ -260,6 +277,26 @@ export function ActivitiesView({
                   ) : (
                     <BadgeActivityStack
                       key="badge-stack"
+                      items={entry.items}
+                      pending={pending}
+                      isFirst={i === 0}
+                      isLast={i === group.entries.length - 1}
+                      onOpenAction={open}
+                    />
+                  )
+                ) : entry.kind === 'follow-stack' ? (
+                  entry.items.length === 1 ? (
+                    <ActivityItem
+                      key={entry.items[0].id}
+                      activity={entry.items[0]}
+                      pending={pending}
+                      isFirst={i === 0}
+                      isLast={i === group.entries.length - 1}
+                      onOpenAction={open}
+                    />
+                  ) : (
+                    <FollowActivityStack
+                      key={`follow-${entry.actorUsername}`}
                       items={entry.items}
                       pending={pending}
                       isFirst={i === 0}
@@ -489,6 +526,117 @@ const BadgeActivityStack = memo(function BadgeActivityStack({
                         className="h-7 w-7 shrink-0 transition-transform group-hover:scale-110"
                       />
                     )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </li>
+  )
+})
+
+// One user's follows in a day collapse into one entry — "Maria started
+// following N people" with the followed users' overlapping avatars;
+// expanding lists each follow.
+const FollowActivityStack = memo(function FollowActivityStack({
+  items,
+  pending,
+  isFirst,
+  isLast,
+  onOpenAction,
+}: {
+  items: ActivityData[]
+  pending: boolean
+  isFirst: boolean
+  isLast: boolean
+  onOpenAction: (activity: ActivityData) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const single = isFirst && isLast
+  const actor = items[0]
+  // One avatar per followed user — a refollow after an unfollow shouldn't
+  // occupy two ring slots or count twice in the summary.
+  const uniqueTargets = useMemo(() => {
+    const seen = new Set<string>()
+    return items.filter((a) => {
+      const key = a.targetUsername ?? a.id
+      return !seen.has(key) && seen.add(key)
+    })
+  }, [items])
+  const preview = uniqueTargets.slice(0, 4)
+  const peopleCount = uniqueTargets.length
+
+  return (
+    <li className="flex">
+      <Rail type="follow" single={single} isFirst={isFirst} isLast={isLast} />
+      <div className="min-w-0 flex-1 pb-2.5 pl-2">
+        <div className="glass flex flex-col rounded-2xl">
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            disabled={pending}
+            className="group flex w-full items-center gap-3 rounded-2xl p-3.5 text-left transition-all hover:bg-accent-50/40 disabled:opacity-60"
+            aria-expanded={expanded}
+          >
+            <Avatar src={actor.actorAvatarUrl} name={actor.actorName} />
+
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm text-neutral-700">
+                <span className="font-semibold">{actor.actorName}</span>{' '}
+                <BadgeMark badge={actor.actorBadge} className="h-3.5 w-3.5" /> started following{' '}
+                <span className="font-semibold">
+                  {peopleCount} {peopleCount === 1 ? 'person' : 'people'}
+                </span>
+              </span>
+              <span className="mt-0.5 block text-[11px] text-neutral-400">
+                @{actor.actorUsername} · <RelativeTime iso={items[0].createdAt} />
+              </span>
+            </span>
+
+            <span className="flex shrink-0 items-center -space-x-2">
+              {preview.map((activity) => (
+                <span key={activity.id} className="rounded-full ring-2 ring-white">
+                  <Avatar
+                    src={activity.targetAvatarUrl}
+                    name={activity.targetName ?? '?'}
+                    size="xs"
+                  />
+                </span>
+              ))}
+            </span>
+
+            <ChevronRightIcon
+              className={`h-4 w-4 shrink-0 text-neutral-300 transition-all group-hover:text-accent-500 ${
+                expanded ? 'rotate-90' : ''
+              }`}
+            />
+          </button>
+
+          {expanded && (
+            <ul className="border-t border-black/5 px-2 py-1.5">
+              {items.map((activity) => (
+                <li key={activity.id}>
+                  <button
+                    onClick={() => onOpenAction(activity)}
+                    disabled={pending}
+                    className="group flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-accent-50/40 disabled:opacity-60"
+                  >
+                    <Avatar
+                      src={activity.targetAvatarUrl}
+                      name={activity.targetName ?? '?'}
+                      size="sm"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm text-neutral-700">
+                        <ActivityText activity={activity} />
+                      </span>
+                      <span className="block text-[11px] text-neutral-400">
+                        {activity.targetUsername ? `@${activity.targetUsername} · ` : ''}
+                        <RelativeTime iso={activity.createdAt} />
+                      </span>
+                    </span>
+                    <ChevronRightIcon className="h-4 w-4 shrink-0 text-neutral-300 transition-colors group-hover:text-accent-500" />
                   </button>
                 </li>
               ))}

@@ -4,11 +4,21 @@ import { redirect } from 'next/navigation'
 
 import { getCurrentUser } from '@/lib/auth'
 import { getMutualFollowIds, mintChatTicket } from '@/lib/chat'
+import { getMutuals, type MutualHead } from '@/lib/mutuals'
 import { getPayloadClient } from '@/lib/payload'
 
 export interface ChatTicket {
   ticket: string
   expiresAt: number
+}
+
+// Mutual-follow roster for the chat dropdown — fetched lazily when the menu
+// opens so other pages don't pay for a roster they never show.
+export async function getChatMutuals(): Promise<MutualHead[]> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  return getMutuals(user)
 }
 
 // Mint a short-lived credential for the standalone chat WebSocket service.
