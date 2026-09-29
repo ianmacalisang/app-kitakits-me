@@ -470,8 +470,12 @@ export function AppNav({
 
   return (
     <>
-      {/* Top header — floating pill matching the bottom dock */}
-      <div className="group/header fixed inset-x-4 top-4 z-30 mx-auto flex max-w-3xl items-center gap-2">
+      {/* Top header — floating pill matching the bottom dock. z-40 (above
+          the dock's z-30) so the full-screen mobile chat room — which lives
+          inside this stacking context — can cover the dock. Portaled
+          sheets/modals are appended to body later, so z-40 still stacks
+          under them. */}
+      <div className="group/header fixed inset-x-4 top-4 z-40 mx-auto flex max-w-3xl items-center gap-2">
         <header className="glass min-w-0 flex-1 rounded-full">
           <div className="flex h-14 w-full items-center justify-between px-4">
             <Logo />

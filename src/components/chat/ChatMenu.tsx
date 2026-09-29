@@ -63,6 +63,7 @@ export function ChatMenu() {
   // put — so without this the browser pans the page to reveal the composer
   // and buries the panel header off the top. Same trick as CreatePost.
   // Only applies below sm, where the panel is viewport-fixed.
+  const roomOpen = Boolean(chat?.activeRoom && chat.rooms.get(chat.activeRoom))
   useEffect(() => {
     if (!open) return
     const vv = window.visualViewport
@@ -75,10 +76,17 @@ export function ChatMenu() {
         panel.style.maxHeight = ''
         return
       }
-      panel.style.top = `${vv.offsetTop + 80}px`
-      // Keyboard open: the dock is hidden behind it, so a small gap suffices.
-      // Closed: hold the 11rem clearance the CSS height uses (dock + margin).
-      panel.style.maxHeight = `${vv.height - (vv.height < window.innerHeight ? 96 : 176)}px`
+      if (roomOpen) {
+        // Full-screen sheet — track the visual viewport exactly so the
+        // composer stays above the software keyboard.
+        panel.style.top = `${vv.offsetTop}px`
+        panel.style.maxHeight = `${vv.height}px`
+      } else {
+        // Roster dropdown — anchored 5rem from the top; 176px clearance
+        // keeps it above the dock, 96px when the keyboard hides it.
+        panel.style.top = `${vv.offsetTop + 80}px`
+        panel.style.maxHeight = `${vv.height - (vv.height < window.innerHeight ? 96 : 176)}px`
+      }
     }
     sync()
     vv.addEventListener('resize', sync)
@@ -89,7 +97,7 @@ export function ChatMenu() {
       panel.style.top = ''
       panel.style.maxHeight = ''
     }
-  }, [open])
+  }, [open, roomOpen])
 
   // Chat badge = pending invites + unread room messages, all from the WS
   // session (client-side only) — nothing is persisted server-side.
@@ -124,18 +132,19 @@ export function ChatMenu() {
         </span>
       </button>
 
-      {/* Below sm the pill is too narrow to anchor a panel — pin it to the
-          viewport edges instead (same inset as the header/search dropdown).
-          From sm up it hugs the pill's right edge at a fixed width. The
-          roster sizes to its content like the notifications dropdown; an
-          open room takes the full capped height so the composer stays
-          pinned while the message list scrolls. The 11rem clearance keeps
-          the panel above the floating dock. */}
+      {/* Below sm an open room is a full-screen sheet (the visualViewport
+          sync keeps it glued above the software keyboard) while the roster
+          stays a viewport-anchored dropdown. From sm up it's always a
+          dropdown hugging the pill's right edge — the roster sizes to its
+          content like the notifications dropdown; an open room takes the
+          full capped height so the composer stays pinned. */}
       {open && (
         <div
           ref={panelRef}
-          className={`glass-pop motion-safe:animate-menu-pop fixed inset-x-4 top-20 z-20 flex origin-top flex-col overflow-hidden rounded-2xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[30rem] sm:max-w-[calc(100vw-2rem)] sm:origin-top-right ${
-            active ? 'h-[min(70vh,calc(100dvh-11rem))]' : 'max-h-[min(70vh,calc(100dvh-11rem))]'
+          className={`glass-pop motion-safe:animate-menu-pop fixed z-20 flex flex-col overflow-hidden sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-full sm:z-20 sm:mt-2 sm:w-[30rem] sm:max-w-[calc(100vw-2rem)] sm:rounded-2xl sm:origin-top-right ${
+            active
+              ? 'inset-0 z-50 sm:h-[min(70vh,calc(100dvh-11rem))]'
+              : 'inset-x-4 top-20 origin-top rounded-2xl max-h-[min(70vh,calc(100dvh-11rem))]'
           }`}
         >
           {active ? (

@@ -5,7 +5,7 @@ import type { MutualHead } from '@/lib/mutuals'
 import { Avatar } from '../Avatar'
 import { EmptyState } from '../EmptyState'
 import { Spinner } from '../Spinner'
-import { ChatIcon } from '../icons'
+import { ChatIcon, XIcon } from '../icons'
 import { useChat } from './ChatProvider'
 import { pairKey } from './ChatRoom'
 
@@ -45,9 +45,21 @@ export function ChatClient({ mutuals }: { mutuals: MutualHead[] }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-neutral-200/60 px-4 py-3 dark:border-white/10">
-        <h2 className="text-sm font-bold">Quick Chat</h2>
-        <p className="mt-0.5 text-xs text-neutral-500">Log out, and your chats are gone.</p>
+      <div className="flex items-start justify-between gap-2 border-b border-neutral-200/60 px-4 py-3 dark:border-white/10">
+        <div>
+          <h2 className="text-sm font-bold">Quick Chat</h2>
+          <p className="mt-0.5 text-xs text-neutral-500">Log out, and your chats are gone.</p>
+        </div>
+        {/* The panel is a full-screen sheet on mobile — no outside tap to
+            dismiss, so it needs an explicit close. */}
+        <button
+          type="button"
+          onClick={() => chat.setMenuOpen(false)}
+          aria-label="Close chat"
+          className="-mr-1 -mt-0.5 rounded-full p-1.5 text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-800 dark:hover:bg-white/10 dark:hover:text-neutral-100 sm:hidden"
+        >
+          <XIcon className="h-5 w-5" />
+        </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
