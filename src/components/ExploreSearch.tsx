@@ -11,6 +11,7 @@ import type { PostCardData, UserCardData } from '@/lib/serialize'
 import { CATEGORY_ICONS } from './CategoryChip'
 import { EmptyState } from './EmptyState'
 import { ExplorePostCard } from './ExplorePostCard'
+import { HangoutsApps } from './HangoutsApps'
 import { PhotoPost } from './PhotoPost'
 import { RailPostCard } from './RailPostCard'
 import { ReelPost } from './ReelPost'
@@ -19,6 +20,7 @@ import {
   ChevronRightIcon,
   CommentIcon,
   CompassIcon,
+  GripIcon,
   ListIcon,
   QuestionIcon,
   SearchIcon,
@@ -31,6 +33,17 @@ import { Spinner } from './Spinner'
 import { UserCoverCard } from './UserCoverCard'
 
 type Section = 'people' | 'posts'
+type Tab = 'foryou' | 'hangouts'
+
+const TABS: { value: Tab; label: string; icon: typeof SparklesIcon }[] = [
+  { value: 'foryou', label: 'For You', icon: ListIcon },
+  { value: 'hangouts', label: 'Hangouts', icon: GripIcon },
+]
+
+const THUMB_POSITION: Record<Tab, string> = {
+  foryou: 'translate-x-0',
+  hangouts: 'translate-x-full',
+}
 
 export function ExploreSearch({
   initialQuery = '',
@@ -56,6 +69,7 @@ export function ExploreSearch({
   // The query only ever comes from the URL (header search, tag chips) — the
   // page has no input, so it can't change while mounted.
   const query = initialQuery.trim()
+  const [tab, setTab] = useState<Tab>('foryou')
   const [users, setUsers] = useState(initialUsers)
   const [usersPage, setUsersPage] = useState(1)
   const [usersMore, setUsersMore] = useState(initialUsersHasMore)
@@ -159,6 +173,8 @@ export function ExploreSearch({
                 <>
                   Results for <span className="font-semibold text-neutral-800">“{query}”</span>
                 </>
+              ) : tab === 'hangouts' ? (
+                'Mini apps to enjoy with your mutuals.'
               ) : (
                 'Trending posts, hot discussions, and people you may know.'
               )}
@@ -176,112 +192,148 @@ export function ExploreSearch({
         </div>
       </header>
 
-      {/* Trending hashtag chips — hidden while searching */}
-      {!query && trendingTags.length > 0 && (
-        <div>
-          <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-tight text-neutral-700 dark:text-neutral-200">
-            <SparklesIcon className="h-4 w-4 text-accent-500" />
-            Trending tags
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {trendingTags.map((tag) => (
-              <Link
-                key={tag}
-                href={`/explore?q=${encodeURIComponent(tag)}`}
-                className="rounded-full bg-black/5 px-3 py-1 text-[13px] text-neutral-600 transition-colors hover:bg-accent-500/15 hover:text-accent-800"
-              >
-                {tag}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Only the unqueried "People you may know" rail swaps cards on
-          follow — search results keep showing the real follow state. */}
-      <PeopleResults
-        users={users}
-        query={query}
-        onFollowChange={query ? undefined : handlePersonFollow}
-      />
-
-      {/* A button rather than a sentinel — auto-loading people here would keep
-          pushing the posts section down the page. */}
-      {usersMore && (
-        <div className="mt-3 flex justify-center">
-          <button
-            onClick={() => loadMore('people')}
-            disabled={morePending}
-            className="flex items-center gap-2 rounded-full bg-black/5 px-4 py-1.5 text-[13px] text-neutral-600 transition-colors hover:bg-black/10 disabled:opacity-60"
-          >
-            {morePending ? <Spinner className="h-3.5 w-3.5" /> : null}
-            Show more people
-          </button>
-        </div>
-      )}
-
-      {/* Trending posts — horizontal rail of media tiles; a sentinel at the
-          end pages more posts in as it scrolls. */}
-      {!query && (
-        <PostRail
-          label={
-            <>
-              <SparklesIcon className="h-[18px] w-[18px] text-accent-500" />
-              Trending posts
-            </>
-          }
-          posts={posts}
-          emptyState={<EmptyState icon={<ListIcon />} title="No posts yet" />}
-          tileClass="w-72 sm:w-80"
-          hasMore={postsMore}
-          pending={morePending}
-          onLoad={() => loadMore('posts')}
-        />
-      )}
-
-      {/* Discovery sections — hidden while searching, self-hiding when empty */}
-      {!query && (
-        <>
-          <SpotlightRail
-            spotlight={{ category: 'tanong', posts: unansweredPosts }}
-            label="Be the first to answer"
-            tileClass="w-72 sm:w-80"
-            aspectClass="aspect-[4/3]"
-            overlaySnippet
-            badge={
-              <span className="flex items-center gap-1 rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-semibold text-white">
-                <QuestionIcon className="h-3 w-3" />
-                Unanswered
-              </span>
-            }
+      {/* For You / Hangouts segmented control — same sliding-thumb pill as
+          HomeTabs. Both panels stay mounted so the For You rails keep their
+          scroll position and follow-replacement state. */}
+      <div role="tablist" aria-label="Explore" className="mb-3">
+        <div className="glass relative flex rounded-full p-1">
+          <span
+            aria-hidden
+            className={`absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/2)] rounded-full bg-gradient-to-br from-accent-500 to-accent-600 shadow-md shadow-accent-600/30 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out ${THUMB_POSITION[tab]}`}
           />
+          {TABS.map(({ value, label, icon: Icon }) => {
+            const active = tab === value
+            return (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(value)}
+                className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-sm font-semibold transition-colors duration-300 active:scale-[0.98] ${
+                  active ? 'text-white' : 'text-neutral-500 hover:text-neutral-700'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
+      <div role="tabpanel" hidden={tab !== 'foryou'}>
+        {/* Trending hashtag chips — hidden while searching */}
+        {!query && trendingTags.length > 0 && (
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-tight text-neutral-700 dark:text-neutral-200">
+              <SparklesIcon className="h-4 w-4 text-accent-500" />
+              Trending tags
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {trendingTags.map((tag) => (
+                <Link
+                  key={tag}
+                  href={`/explore?q=${encodeURIComponent(tag)}`}
+                  className="rounded-full bg-black/5 px-3 py-1 text-[13px] text-neutral-600 transition-colors hover:bg-accent-500/15 hover:text-accent-800"
+                >
+                  {tag}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Only the unqueried "People you may know" rail swaps cards on
+          follow — search results keep showing the real follow state. */}
+        <PeopleResults
+          users={users}
+          query={query}
+          onFollowChange={query ? undefined : handlePersonFollow}
+        />
+
+        {/* A button rather than a sentinel — auto-loading people here would keep
+          pushing the posts section down the page. */}
+        {usersMore && (
+          <div className="mt-3 flex justify-center">
+            <button
+              onClick={() => loadMore('people')}
+              disabled={morePending}
+              className="flex items-center gap-2 rounded-full bg-black/5 px-4 py-1.5 text-[13px] text-neutral-600 transition-colors hover:bg-black/10 disabled:opacity-60"
+            >
+              {morePending ? <Spinner className="h-3.5 w-3.5" /> : null}
+              Show more people
+            </button>
+          </div>
+        )}
+
+        {/* Trending posts — horizontal rail of media tiles; a sentinel at the
+          end pages more posts in as it scrolls. */}
+        {!query && (
           <PostRail
             label={
               <>
-                <CommentIcon className="h-[18px] w-[18px] text-accent-500" />
-                Hot discussions
+                <SparklesIcon className="h-[18px] w-[18px] text-accent-500" />
+                Trending posts
               </>
             }
-            posts={hotDiscussions}
-          />
-
-          {spotlights.map((spotlight) => (
-            <SpotlightRail key={spotlight.category} spotlight={spotlight} />
-          ))}
-        </>
-      )}
-
-      {query && (
-        <>
-          <PostResults posts={posts} query={query} />
-          <LoadSentinel
+            posts={posts}
+            emptyState={<EmptyState icon={<ListIcon />} title="No posts yet" />}
+            tileClass="w-72 sm:w-80"
             hasMore={postsMore}
             pending={morePending}
-            onLoadAction={() => loadMore('posts')}
+            onLoad={() => loadMore('posts')}
           />
-        </>
-      )}
+        )}
+
+        {/* Discovery sections — hidden while searching, self-hiding when empty */}
+        {!query && (
+          <>
+            <SpotlightRail
+              spotlight={{ category: 'tanong', posts: unansweredPosts }}
+              label="Be the first to answer"
+              tileClass="w-72 sm:w-80"
+              aspectClass="aspect-[4/3]"
+              overlaySnippet
+              badge={
+                <span className="flex items-center gap-1 rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                  <QuestionIcon className="h-3 w-3" />
+                  Unanswered
+                </span>
+              }
+            />
+
+            <PostRail
+              label={
+                <>
+                  <CommentIcon className="h-[18px] w-[18px] text-accent-500" />
+                  Hot discussions
+                </>
+              }
+              posts={hotDiscussions}
+            />
+
+            {spotlights.map((spotlight) => (
+              <SpotlightRail key={spotlight.category} spotlight={spotlight} />
+            ))}
+          </>
+        )}
+
+        {query && (
+          <>
+            <PostResults posts={posts} query={query} />
+            <LoadSentinel
+              hasMore={postsMore}
+              pending={morePending}
+              onLoadAction={() => loadMore('posts')}
+            />
+          </>
+        )}
+      </div>
+
+      <div role="tabpanel" hidden={tab !== 'hangouts'}>
+        <HangoutsApps />
+      </div>
     </div>
   )
 }

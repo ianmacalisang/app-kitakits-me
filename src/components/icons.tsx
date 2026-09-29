@@ -155,6 +155,13 @@ export const PlayIcon = (props: IconProps) => (
   </svg>
 )
 
+export const SkipForwardIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <polygon points="5 4 15 12 5 20 5 4" />
+    <line x1="19" x2="19" y1="5" y2="19" />
+  </svg>
+)
+
 export const PauseIcon = (props: IconProps) => (
   <svg viewBox="0 0 24 24" {...base} {...props}>
     <rect x="6" y="4" width="4" height="16" rx="1" />
@@ -201,6 +208,12 @@ export const ImageIcon = (props: IconProps) => (
     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
     <circle cx="8.5" cy="8.5" r="1.5" />
     <polyline points="21 15 16 10 5 21" />
+  </svg>
+)
+
+export const ChevronUpIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <polyline points="18 15 12 9 6 15" />
   </svg>
 )
 
@@ -613,5 +626,13 @@ export const MedalIcon = (props: IconProps) => (
 export const StarIcon = (props: IconProps) => (
   <svg viewBox="0 0 24 24" {...base} {...props}>
     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+)
+
+export const MicIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" x2="12" y1="19" y2="22" />
   </svg>
 )

@@ -25,6 +25,8 @@ import { Badges } from './collections/Badges'
 import { UserBadges } from './collections/UserBadges'
 import { PointEvents } from './collections/PointEvents'
 import { ProfileViews } from './collections/ProfileViews'
+import { VideokeQueueItems } from './collections/VideokeQueueItems'
+import { VideokeRooms } from './collections/VideokeRooms'
 import { SiteSettings } from './globals/SiteSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -63,6 +65,8 @@ export default buildConfig({
     UserBadges,
     PointEvents,
     ProfileViews,
+    VideokeRooms,
+    VideokeQueueItems,
   ],
   globals: [SiteSettings],
   editor: lexicalEditor(),

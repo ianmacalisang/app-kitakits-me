@@ -297,6 +297,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           window.dispatchEvent(new CustomEvent(LIVE_EVENT, { detail: msg }))
           break
         }
+        case 'videoke:update': {
+          window.dispatchEvent(new CustomEvent(LIVE_EVENT, { detail: msg }))
+          break
+        }
+        case 'videoke:invite': {
+          window.dispatchEvent(new CustomEvent(LIVE_EVENT, { detail: msg }))
+          const from = typeof msg.from === 'string' && msg.from ? msg.from : 'Someone'
+          toast(`${from} invited you to Videoke`)
+          break
+        }
         case 'error': {
           // Surface server rejections (rate limit, peer went offline,
           // non-mutual) — a silently-dropped invite looks like a dead button.

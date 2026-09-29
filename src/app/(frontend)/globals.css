@@ -665,6 +665,22 @@ body::after {
   }
 }
 
+/* Karaoke equalizer bars — staggered via animation-delay on each bar */
+@utility animate-eq {
+  animation: eq 0.9s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
 /* ------------------------------------------------------------------
    Dark theme — activated by the `dark` class on <html> (user's theme
    preference on their account) or a scoped `.dark` container (the design

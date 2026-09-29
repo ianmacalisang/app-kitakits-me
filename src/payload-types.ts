@@ -85,6 +85,8 @@ export interface Config {
     'user-badges': UserBadge;
     'point-events': PointEvent;
     'profile-views': ProfileView;
+    'videoke-rooms': VideokeRoom;
+    'videoke-queue-items': VideokeQueueItem;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -110,6 +112,8 @@ export interface Config {
     'user-badges': UserBadgesSelect<false> | UserBadgesSelect<true>;
     'point-events': PointEventsSelect<false> | PointEventsSelect<true>;
     'profile-views': ProfileViewsSelect<false> | ProfileViewsSelect<true>;
+    'videoke-rooms': VideokeRoomsSelect<false> | VideokeRoomsSelect<true>;
+    'videoke-queue-items': VideokeQueueItemsSelect<false> | VideokeQueueItemsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -634,6 +638,53 @@ export interface ProfileView {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "videoke-rooms".
+ */
+export interface VideokeRoom {
+  id: number;
+  host: number | User;
+  name?: string | null;
+  members: (number | User)[];
+  /**
+   * Pending invitations — invitee, who invited them, and when.
+   */
+  invites?:
+    | {
+        user: number | User;
+        invitedBy?: (number | null) | User;
+        invitedAt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  status?: ('open' | 'ended') | null;
+  playback?: {
+    item?: (number | null) | VideokeQueueItem;
+    state?: ('idle' | 'playing' | 'paused') | null;
+    startedAt?: string | null;
+    positionSec?: number | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "videoke-queue-items".
+ */
+export interface VideokeQueueItem {
+  id: number;
+  room: number | VideokeRoom;
+  videoId: string;
+  title: string;
+  thumbnail?: string | null;
+  durationSec?: number | null;
+  addedBy: number | User;
+  state?: ('queued' | 'playing' | 'done' | 'skipped') | null;
+  position: number;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -727,6 +778,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'profile-views';
         value: number | ProfileView;
+      } | null)
+    | ({
+        relationTo: 'videoke-rooms';
+        value: number | VideokeRoom;
+      } | null)
+    | ({
+        relationTo: 'videoke-queue-items';
+        value: number | VideokeQueueItem;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -1163,6 +1222,50 @@ export interface ProfileViewsSelect<T extends boolean = true> {
   viewer?: T;
   viewed?: T;
   viewCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "videoke-rooms_select".
+ */
+export interface VideokeRoomsSelect<T extends boolean = true> {
+  host?: T;
+  name?: T;
+  members?: T;
+  invites?:
+    | T
+    | {
+        user?: T;
+        invitedBy?: T;
+        invitedAt?: T;
+        id?: T;
+      };
+  status?: T;
+  playback?:
+    | T
+    | {
+        item?: T;
+        state?: T;
+        startedAt?: T;
+        positionSec?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "videoke-queue-items_select".
+ */
+export interface VideokeQueueItemsSelect<T extends boolean = true> {
+  room?: T;
+  videoId?: T;
+  title?: T;
+  thumbnail?: T;
+  durationSec?: T;
+  addedBy?: T;
+  state?: T;
+  position?: T;
   updatedAt?: T;
   createdAt?: T;
 }
