@@ -21,6 +21,7 @@ const main = async () => {
       password: PASS,
       name: 'E2E Follow',
       username: 'e2efollow',
+      role: 'user',
       onboardedAt: new Date().toISOString(),
     },
   })
