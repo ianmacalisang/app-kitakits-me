@@ -161,12 +161,12 @@ export function LandingUserSearch() {
                 >
                   <Avatar src={user.avatarUrl} name={user.name} size="md" />
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold leading-tight">
-                      {user.name}
+                    <span className="flex items-center gap-1.5 truncate text-sm font-semibold leading-tight">
+                      <span className="truncate">{user.name}</span>
                       <BadgeMark badge={user.topBadge} />
                     </span>
                     <span className="block truncate text-xs leading-tight text-neutral-500">
-                      @{user.username}
+                      @{user.username} · {user.level.name}
                     </span>
                   </span>
                 </button>

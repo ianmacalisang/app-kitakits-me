@@ -14,6 +14,7 @@ import { BadgeMark } from './BadgeMark'
 import { BrandMark } from './Branding'
 import { useChat } from './chat/ChatProvider'
 import { CreatePost } from './CreatePost'
+import { FollowButton } from './FollowButton'
 import { NotificationsMenu } from './NotificationsMenu'
 import {
   ChatIcon,
@@ -193,29 +194,33 @@ function HeaderSearch() {
           ) : (
             <>
               {results.map((user, i) => (
-                <button
+                <div
                   key={user.id}
                   id={`header-search-option-${user.id}`}
                   role="option"
                   aria-selected={active === i}
-                  type="button"
                   onClick={() => go(`/profile/${user.username}`)}
                   onMouseEnter={() => setActive(i)}
-                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors ${
+                  className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors ${
                     active === i ? 'bg-white/70' : 'hover:bg-white/70'
                   }`}
                 >
                   <Avatar src={user.avatarUrl} name={user.name} size="sm" />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold leading-tight">
-                      {user.name}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5 truncate text-sm font-semibold leading-tight">
+                      <span className="truncate">{user.name}</span>
                       <BadgeMark badge={user.topBadge} />
                     </span>
                     <span className="block truncate text-xs leading-tight text-neutral-500">
-                      @{user.username}
+                      @{user.username} · {user.level.name}
                     </span>
                   </span>
-                </button>
+                  {!user.isSelf && (
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <FollowButton targetUserId={user.id} initialFollowing={user.isFollowing} />
+                    </span>
+                  )}
+                </div>
               ))}
               {results.length === 0 && (
                 <div className="flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-500">
