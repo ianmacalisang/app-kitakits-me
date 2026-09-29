@@ -189,7 +189,7 @@ function HeaderSearch() {
           // Below sm the input is too narrow — pin the dropdown to the
           // viewport edges (same inset as the floating header pill). From sm
           // up it hugs the input instead.
-          className="glass-pop motion-safe:animate-menu-pop fixed inset-x-4 top-14 z-20 mt-2 origin-top rounded-2xl p-1.5 sm:absolute sm:inset-x-0 sm:top-full sm:mt-[18px]"
+          className="glass-pop motion-safe:animate-menu-pop fixed inset-x-4 top-14 z-20 mt-2 max-h-[calc(100dvh-10rem)] origin-top overflow-y-auto rounded-2xl p-1.5 sm:absolute sm:inset-x-0 sm:top-full sm:mt-[18px]"
         >
           {pending && results.length === 0 ? (
             <div className="flex items-center justify-center py-4">
@@ -508,7 +508,7 @@ export function AppNav({
             ref={menuPopRef}
             role="menu"
             aria-label="Account"
-            className="glass-pop motion-safe:animate-menu-pop absolute left-1/2 top-full z-20 mt-2 w-64 max-w-[calc(100vw-2rem)] origin-top -translate-x-1/2 rounded-2xl p-1.5 sm:left-auto sm:right-0 sm:translate-x-0 sm:origin-top-right"
+            className="glass-pop motion-safe:animate-menu-pop absolute left-1/2 top-full z-20 mt-2 max-h-[calc(100dvh-11rem)] w-64 max-w-[calc(100vw-2rem)] origin-top -translate-x-1/2 overflow-y-auto rounded-2xl p-1.5 sm:left-auto sm:right-0 sm:translate-x-0 sm:origin-top-right"
           >
             <Link
               href={`/profile/${username}`}
@@ -575,8 +575,11 @@ export function AppNav({
         )}
 
         {/* Chat + notification pills — on small screens these collapse while
-            the search input is focused, letting the header span full width */}
-        <div className="flex shrink-0 items-center gap-2 max-sm:group-has-[form:focus-within]/header:hidden">
+            the search input is focused, letting the header span full width.
+            Scoped to role=search: a bare `form:focus-within` would also match
+            the chat composer and hide the panel (blurring its input) the
+            moment it's tapped. */}
+        <div className="flex shrink-0 items-center gap-2 max-sm:group-has-[[role=search]:focus-within]/header:hidden">
           <ChatMenu />
           <NotificationsMenu unreadCount={badges.unread} />
         </div>

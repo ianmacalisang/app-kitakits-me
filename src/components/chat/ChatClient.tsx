@@ -149,11 +149,25 @@ export function ChatClient({ mutuals }: { mutuals: MutualHead[] }) {
                 {roster.map((user) => {
                   const isOnline = onlineIds.has(user.id)
                   const pending = chat.outgoing.has(pairKey(selfId ?? 0, user.id))
-                  const inRoom = roomPeerIds.has(user.id)
+                  // Room key is pairKey(self, peer) — same as the server.
+                  const roomKey = roomPeerIds.has(user.id) ? pairKey(selfId ?? 0, user.id) : null
                   return (
                     <li
                       key={user.id}
-                      className={`flex items-center gap-3 px-3 py-2.5 ${isOnline ? '' : 'opacity-60'}`}
+                      onClick={
+                        roomKey
+                          ? () => {
+                              chat.join(roomKey)
+                              chat.openRoom(roomKey)
+                            }
+                          : undefined
+                      }
+                      role={roomKey ? 'button' : undefined}
+                      className={`flex items-center gap-3 px-3 py-2.5 ${isOnline ? '' : 'opacity-60'} ${
+                        roomKey
+                          ? 'cursor-pointer transition hover:bg-white/60 dark:hover:bg-white/10'
+                          : ''
+                      }`}
                     >
                       <span className="relative shrink-0">
                         <Avatar src={user.avatarUrl} name={user.name} size="md" />
@@ -169,7 +183,7 @@ export function ChatClient({ mutuals }: { mutuals: MutualHead[] }) {
                           @{user.username} · {isOnline ? 'Online' : 'Offline'}
                         </span>
                       </span>
-                      {isOnline && !inRoom && (
+                      {isOnline && !roomKey && (
                         <button
                           type="button"
                           disabled={pending || chat.status !== 'online'}

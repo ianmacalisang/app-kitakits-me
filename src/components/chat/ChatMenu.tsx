@@ -23,6 +23,7 @@ export function ChatMenu() {
   const [loaded, setLoaded] = useState(false)
   const [, startTransition] = useTransition()
   const boxRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const refresh = useCallback(() => {
     startTransition(async () => {
@@ -57,6 +58,39 @@ export function ChatMenu() {
     }
   }, [open, chat])
 
+  // Keep the mobile panel inside the visual viewport. The software keyboard
+  // only shrinks the visual viewport — the layout viewport (and dvh) stay
+  // put — so without this the browser pans the page to reveal the composer
+  // and buries the panel header off the top. Same trick as CreatePost.
+  // Only applies below sm, where the panel is viewport-fixed.
+  useEffect(() => {
+    if (!open) return
+    const vv = window.visualViewport
+    const panel = panelRef.current
+    if (!vv || !panel) return
+    const mobile = window.matchMedia('(max-width: 639px)')
+    const sync = () => {
+      if (!mobile.matches) {
+        panel.style.top = ''
+        panel.style.maxHeight = ''
+        return
+      }
+      panel.style.top = `${vv.offsetTop + 80}px`
+      // Keyboard open: the dock is hidden behind it, so a small gap suffices.
+      // Closed: hold the 11rem clearance the CSS height uses (dock + margin).
+      panel.style.maxHeight = `${vv.height - (vv.height < window.innerHeight ? 96 : 176)}px`
+    }
+    sync()
+    vv.addEventListener('resize', sync)
+    vv.addEventListener('scroll', sync)
+    return () => {
+      vv.removeEventListener('resize', sync)
+      vv.removeEventListener('scroll', sync)
+      panel.style.top = ''
+      panel.style.maxHeight = ''
+    }
+  }, [open])
+
   // Chat badge = pending invites + unread room messages, all from the WS
   // session (client-side only) — nothing is persisted server-side.
   const inviteCount = chat?.incoming.length ?? 0
@@ -90,19 +124,22 @@ export function ChatMenu() {
         </span>
       </button>
 
-      {/* Fixed height so an open room can pin its composer while the message
-          list scrolls; the roster view scrolls inside the same frame.
-          Below sm the pill is too narrow to anchor a panel — pin it to the
+      {/* Below sm the pill is too narrow to anchor a panel — pin it to the
           viewport edges instead (same inset as the header/search dropdown).
-          From sm up it hugs the pill's right edge at a fixed width. */}
+          From sm up it hugs the pill's right edge at a fixed width. Max
+          height matches the notifications dropdown; the 11rem clearance
+          keeps it above the floating dock. */}
       {open && (
-        <div className="glass-pop motion-safe:animate-menu-pop fixed inset-x-4 top-20 z-20 flex h-[min(36rem,calc(100dvh-7rem))] origin-top flex-col overflow-hidden rounded-2xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[23rem] sm:max-w-[calc(100vw-2rem)] sm:origin-top-right">
+        <div
+          ref={panelRef}
+          className="glass-pop motion-safe:animate-menu-pop fixed inset-x-4 top-20 z-20 flex max-h-[min(70vh,calc(100dvh-11rem))] origin-top flex-col overflow-hidden rounded-2xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[30rem] sm:max-w-[calc(100vw-2rem)] sm:origin-top-right"
+        >
           {active ? (
             <ChatRoom room={active} />
           ) : loaded ? (
             <ChatClient mutuals={mutuals} />
           ) : (
-            <div className="flex flex-1 items-center justify-center">
+            <div className="flex justify-center p-3 py-12">
               <Spinner className="h-5 w-5 text-neutral-400" />
             </div>
           )}

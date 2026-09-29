@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 
 import { getChatTicket } from '@/actions/chat'
-import { LIVE_EVENT } from '@/lib/events'
+import { LIVE_EVENT, toast } from '@/lib/events'
 
 export interface ChatUser {
   id: number
@@ -298,8 +298,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           break
         }
         case 'error': {
-          // Surface server rejections as a toast-style status on the room if
-          // it exists — malformed/forbidden cases simply get ignored.
+          // Surface server rejections (rate limit, peer went offline,
+          // non-mutual) — a silently-dropped invite looks like a dead button.
+          if (typeof msg.message === 'string' && msg.message) toast(msg.message)
           break
         }
       }
@@ -330,6 +331,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             if (unmountedRef.current) return
             setStatus('connecting')
             setOnlineMap(new Map())
+            // Pending invites die server-side the moment we go fully offline
+            // and are never replayed on reconnect — keeping them would leave
+            // "Waiting…" buttons disabled and Accept banners that no-op. (If a
+            // second tab kept us online, re-inviting just re-acks via
+            // `invite:sent`, so clearing is safe either way.)
+            outgoingRef.current = new Map()
+            setOutgoing(new Map())
+            setIncoming([])
+            setAcceptedAlert(null)
             // Keep room buffers visible across a reconnect — the server
             // replays history on `joined`, presence repopulates on auth:ok.
             setRooms((prev) => {

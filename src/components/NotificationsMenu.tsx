@@ -109,7 +109,12 @@ export function NotificationsMenu({ unreadCount }: { unreadCount: number }) {
           sheets — rendered through portals — survive the dropdown closing. */}
       {(open || loaded) && (
         <div
-          className={`glass-pop motion-safe:animate-menu-pop absolute right-0 top-full z-20 mt-2 flex max-h-[70vh] w-[30rem] max-w-[calc(100vw-2rem)] origin-top-right flex-col overflow-hidden rounded-2xl ${
+          // Below sm the pill is too narrow to anchor a panel — pin it to
+          // the viewport edges instead (same inset as the chat panel). From
+          // sm up it hugs the pill's right edge at a fixed width. The 11rem
+          // cap clearance = panel top (~5rem) + floating dock (~6rem), keeping
+          // the panel above the bottom nav on short viewports.
+          className={`glass-pop motion-safe:animate-menu-pop fixed inset-x-4 top-20 z-20 flex max-h-[min(70vh,calc(100dvh-11rem))] origin-top flex-col overflow-hidden rounded-2xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[30rem] sm:max-w-[calc(100vw-2rem)] sm:origin-top-right ${
             open ? '' : 'hidden'
           }`}
         >

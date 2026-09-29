@@ -34,10 +34,24 @@ const traceRoundRect = (
   ctx.closePath()
 }
 
-// Composes the downloadable card on canvas — a clean centered layout: avatar
-// (or initials disc), name, handle, QR with the app mark at its center, and a
-// brand footer. CDN images fall back gracefully if they can't be read
-// cross-origin.
+// Resolve a --color-* token to a canvas-usable color. getComputedStyle
+// serializes oklch tokens to a painted color, which every canvas accepts.
+const cssColor = (token: string, fallback: string) => {
+  const el = document.createElement('div')
+  el.style.color = `var(--color-${token})`
+  el.style.position = 'absolute'
+  el.style.opacity = '0'
+  document.body.appendChild(el)
+  const value = getComputedStyle(el).color
+  el.remove()
+  return value || fallback
+}
+
+// Composes the downloadable card on canvas — mirrors the on-screen ticket:
+// dark accent panel (cover photo dimmed underneath when set), avatar
+// straddling the top edge, name + handle, white QR tile with the app mark at
+// its center, and the dashed perforation footer. CDN images fall back
+// gracefully if they can't be read cross-origin.
 const renderCard = async (
   canvas: HTMLCanvasElement,
   {
@@ -45,6 +59,7 @@ const renderCard = async (
     name,
     username,
     avatarUrl,
+    coverUrl,
     appName,
     logoUrl,
   }: {
@@ -52,6 +67,7 @@ const renderCard = async (
     name: string
     username: string
     avatarUrl?: string
+    coverUrl?: string
     appName: string
     logoUrl?: string
   },
@@ -63,78 +79,125 @@ const renderCard = async (
   const ctx = canvas.getContext('2d')
   if (!ctx) return false
 
+  const accent = (t: string, fb: string) => cssColor(t, fb)
+  const a700 = accent('accent-700', '#a3561d')
+  const a800 = accent('accent-800', '#7c3e16')
+  const a950 = accent('accent-950', '#321c0b')
+  const a500 = accent('accent-500', '#c2622a')
+  const a600 = accent('accent-600', '#a8521f')
+
+  const cx = W / 2
+  const card = { x: 90, y: 170, w: 900, h: 1090, r: 56 }
+
+  // Page background — soft neutral, matching the app shell.
   const bg = ctx.createLinearGradient(0, 0, 0, H)
   bg.addColorStop(0, '#fafafa')
   bg.addColorStop(1, '#e9e9e9')
   ctx.fillStyle = bg
   ctx.fillRect(0, 0, W, H)
 
-  traceRoundRect(ctx, 90, 90, 900, 1170, 48)
-  ctx.fillStyle = '#ffffff'
-  ctx.fill()
-  ctx.strokeStyle = 'rgba(0,0,0,0.07)'
+  // Card panel — accent gradient, cover photo dimmed underneath when set.
+  ctx.save()
+  traceRoundRect(ctx, card.x, card.y, card.w, card.h, card.r)
+  ctx.clip()
+  const panel = ctx.createLinearGradient(0, card.y, 0, card.y + card.h)
+  panel.addColorStop(0, a700)
+  panel.addColorStop(0.5, a800)
+  panel.addColorStop(1, a950)
+  ctx.fillStyle = panel
+  ctx.fillRect(card.x, card.y, card.w, card.h)
+
+  try {
+    if (!coverUrl) throw new Error('no cover')
+    const cover = await loadImage(coverUrl, 'anonymous')
+    const s = Math.max(card.w / cover.width, card.h / cover.height)
+    ctx.drawImage(
+      cover,
+      card.x + (card.w - cover.width * s) / 2,
+      card.y + (card.h - cover.height * s) / 2,
+      cover.width * s,
+      cover.height * s,
+    )
+    ctx.fillStyle = a950
+    ctx.globalAlpha = 0.65
+    ctx.fillRect(card.x, card.y, card.w, card.h)
+    ctx.globalAlpha = 1
+  } catch {
+    /* gradient-only card */
+  }
+
+  // Ambient highlight — white sheen across the top of the panel.
+  const sheen = ctx.createLinearGradient(0, card.y, 0, card.y + 180)
+  sheen.addColorStop(0, 'rgba(255,255,255,0.15)')
+  sheen.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = sheen
+  ctx.fillRect(card.x, card.y, card.w, 180)
+  ctx.restore()
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)'
   ctx.lineWidth = 2
+  traceRoundRect(ctx, card.x, card.y, card.w, card.h, card.r)
   ctx.stroke()
 
-  const cx = W / 2
+  // Avatar straddling the card's top edge — white ring behind the photo.
+  ctx.beginPath()
+  ctx.arc(cx, card.y, 92, 0, Math.PI * 2)
+  ctx.fillStyle = '#ffffff'
+  ctx.fill()
   try {
     if (!avatarUrl) throw new Error('no avatar')
     const img = await loadImage(avatarUrl, 'anonymous')
     ctx.save()
     ctx.beginPath()
-    ctx.arc(cx, 300, 84, 0, Math.PI * 2)
+    ctx.arc(cx, card.y, 80, 0, Math.PI * 2)
     ctx.clip()
-    const s = Math.max(168 / img.width, 168 / img.height)
+    const s = Math.max(160 / img.width, 160 / img.height)
     ctx.drawImage(
       img,
       cx - (img.width * s) / 2,
-      300 - (img.height * s) / 2,
+      card.y - (img.height * s) / 2,
       img.width * s,
       img.height * s,
     )
     ctx.restore()
-    ctx.beginPath()
-    ctx.arc(cx, 300, 84, 0, Math.PI * 2)
-    ctx.strokeStyle = 'rgba(0,0,0,0.08)'
-    ctx.lineWidth = 3
-    ctx.stroke()
   } catch {
-    const g = ctx.createLinearGradient(cx - 84, 216, cx + 84, 384)
+    const g = ctx.createLinearGradient(cx - 80, card.y - 80, cx + 80, card.y + 80)
     g.addColorStop(0, '#404040')
     g.addColorStop(1, '#141414')
     ctx.beginPath()
-    ctx.arc(cx, 300, 84, 0, Math.PI * 2)
+    ctx.arc(cx, card.y, 80, 0, Math.PI * 2)
     ctx.fillStyle = g
     ctx.fill()
     ctx.fillStyle = '#ffffff'
-    ctx.font = '600 64px Poppins, Arial, sans-serif'
+    ctx.font = '600 60px Poppins, Arial, sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(name.charAt(0).toUpperCase(), cx, 306)
+    ctx.fillText(name.charAt(0).toUpperCase(), cx, card.y + 4)
   }
 
   ctx.textAlign = 'center'
   ctx.textBaseline = 'alphabetic'
-  ctx.fillStyle = '#212121'
-  ctx.font = '600 50px Poppins, Arial, sans-serif'
-  ctx.fillText(name.length > 22 ? `${name.slice(0, 21)}…` : name, cx, 478)
-  ctx.fillStyle = '#737373'
-  ctx.font = '400 30px Poppins, Arial, sans-serif'
-  ctx.fillText(`@${username}`, cx, 528)
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '600 56px Poppins, Arial, sans-serif'
+  ctx.fillText(name.length > 22 ? `${name.slice(0, 21)}…` : name, cx, card.y + 170)
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'
+  ctx.font = '400 34px Poppins, Arial, sans-serif'
+  ctx.fillText(`@${username}`, cx, card.y + 224)
 
-  // QR tile.
-  traceRoundRect(ctx, 250, 590, 580, 580, 36)
+  // White QR tile.
+  const tile = { x: cx - 280, y: card.y + 280, s: 560 }
+  traceRoundRect(ctx, tile.x, tile.y, tile.s, tile.s, 36)
   ctx.fillStyle = '#ffffff'
   ctx.fill()
   ctx.strokeStyle = 'rgba(0,0,0,0.08)'
   ctx.lineWidth = 2
   ctx.stroke()
   const qr = await loadImage(qrDataUrl)
-  ctx.drawImage(qr, 280, 620, 520, 520)
+  ctx.drawImage(qr, tile.x + 28, tile.y + 28, tile.s - 56, tile.s - 56)
 
   // App mark centered on the QR — white pad + logo (or the gradient letter
   // tile). 'H' error correction keeps the code readable under the overlay.
-  traceRoundRect(ctx, 474, 814, 132, 132, 30)
+  traceRoundRect(ctx, cx - 66, tile.y + tile.s / 2 - 66, 132, 132, 30)
   ctx.fillStyle = '#ffffff'
   ctx.fill()
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'
@@ -146,28 +209,57 @@ const renderCard = async (
     const s = Math.min(92 / logo.width, 92 / logo.height)
     ctx.drawImage(
       logo,
-      540 - (logo.width * s) / 2,
-      880 - (logo.height * s) / 2,
+      cx - (logo.width * s) / 2,
+      tile.y + tile.s / 2 - (logo.height * s) / 2,
       logo.width * s,
       logo.height * s,
     )
   } catch {
-    traceRoundRect(ctx, 494, 834, 92, 92, 24)
-    const lg = ctx.createLinearGradient(494, 834, 586, 926)
-    lg.addColorStop(0, '#404040')
-    lg.addColorStop(1, '#1a1a1a')
+    traceRoundRect(ctx, cx - 46, tile.y + tile.s / 2 - 46, 92, 92, 24)
+    const lg = ctx.createLinearGradient(
+      cx - 46,
+      tile.y + tile.s / 2 - 46,
+      cx + 46,
+      tile.y + tile.s / 2 + 46,
+    )
+    lg.addColorStop(0, a500)
+    lg.addColorStop(0.5, a600)
+    lg.addColorStop(1, a800)
     ctx.fillStyle = lg
     ctx.fill()
     ctx.fillStyle = '#ffffff'
     ctx.font = '700 52px Poppins, Arial, sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(appName.charAt(0).toUpperCase(), 540, 884)
+    ctx.fillText(appName.charAt(0).toUpperCase(), cx, tile.y + tile.s / 2 + 4)
   }
 
-  ctx.fillStyle = '#a3a3a3'
-  ctx.font = '500 28px Poppins, Arial, sans-serif'
-  ctx.fillText(`Scan to connect on ${appName}`, 540, 1230)
+  // Caption under the tile.
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'
+  ctx.font = '400 30px Poppins, Arial, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillText('Scan to connect — no login needed', cx, tile.y + tile.s + 66)
+
+  // Ticket perforation — dashed rule flanking the tagline.
+  const tag = 'SCAN · FOLLOW · CONNECT'
+  ctx.font = '500 24px Poppins, Arial, sans-serif'
+  ctx.letterSpacing = '5px'
+  const tagW = ctx.measureText(tag).width
+  const py = tile.y + tile.s + 140
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'
+  ctx.fillText(tag, cx, py + 9)
+  ctx.letterSpacing = '0px'
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+  ctx.lineWidth = 2
+  ctx.setLineDash([10, 9])
+  ctx.beginPath()
+  ctx.moveTo(card.x + 40, py)
+  ctx.lineTo(cx - tagW / 2 - 30, py)
+  ctx.moveTo(cx + tagW / 2 + 30, py)
+  ctx.lineTo(card.x + card.w - 40, py)
+  ctx.stroke()
+  ctx.setLineDash([])
 
   return true
 }
@@ -179,6 +271,7 @@ export function QrCard({
   name,
   username,
   avatarUrl,
+  coverUrl,
   appName,
   logoUrl,
 }: {
@@ -187,6 +280,7 @@ export function QrCard({
   name: string
   username: string
   avatarUrl?: string
+  coverUrl?: string
   appName: string
   logoUrl?: string
 }) {
@@ -218,6 +312,7 @@ export function QrCard({
         name,
         username,
         avatarUrl,
+        coverUrl,
         appName,
         logoUrl,
       })
@@ -248,6 +343,15 @@ export function QrCard({
         className="absolute inset-x-6 bottom-0 top-12 rounded-[2.5rem] bg-accent-900/20 blur-2xl"
       />
       <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-accent-700 via-accent-800 to-accent-950 px-5 pb-5 pt-11 text-center text-white shadow-2xl shadow-accent-950/40 ring-1 ring-white/10">
+        {/* Cover photo backdrop — dimmed so the panel stays readable; the
+            gradient underneath covers users with no cover set. */}
+        {coverUrl && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- decorative cover backdrop */}
+            <img src={coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <div aria-hidden className="absolute inset-0 bg-accent-950/65" />
+          </>
+        )}
         {/* Ambient highlights */}
         <div
           aria-hidden
@@ -302,30 +406,29 @@ export function QrCard({
             </span>
             <span className="h-px flex-1 border-t border-dashed border-white/20" />
           </div>
+        </div>
 
-          <div className="mt-3.5 flex gap-2">
-            <button
-              type="button"
-              onClick={download}
-              disabled={downloading}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-sm font-semibold text-accent-900 shadow-md shadow-black/20 transition-all hover:brightness-95 active:scale-[0.98] disabled:opacity-50"
-            >
-              {downloading ? (
-                <Spinner className="h-4 w-4 text-accent-900" />
-              ) : (
-                <DownloadIcon className="h-4 w-4" />
-              )}
-              {downloading ? 'Saving…' : 'Download'}
-            </button>
-            <button
-              type="button"
-              onClick={share}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-sm font-semibold text-white ring-1 ring-white/20 backdrop-blur transition-colors hover:bg-white/15"
-            >
-              <ShareIcon className="h-4 w-4" />
-              Share
-            </button>
-          </div>
+        {/* Icon-only actions pinned to the card's top-right corner. */}
+        <div className="absolute right-3.5 top-3.5 z-10 flex gap-2">
+          <button
+            type="button"
+            onClick={share}
+            aria-label="Share invite link"
+            title="Share invite link"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/25 backdrop-blur transition-colors hover:bg-white/20"
+          >
+            <ShareIcon className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={download}
+            disabled={downloading}
+            aria-label="Download QR card"
+            title="Download QR card"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/25 backdrop-blur transition-colors hover:bg-white/20 disabled:opacity-50"
+          >
+            {downloading ? <Spinner className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
+          </button>
         </div>
       </div>
 

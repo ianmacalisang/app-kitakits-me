@@ -13,12 +13,14 @@ export const safeConnectPath = (value: unknown): string | null => {
   return /^\/connect\/[a-zA-Z0-9_]{3,30}$/.test(value) ? value : null
 }
 
-// Turns a raw decoded QR payload into a same-origin connect path, or null.
-// Relative paths resolve against `origin`; foreign URLs are rejected.
+// Turns a raw decoded QR payload into an in-app connect path, or null.
+// Relative paths resolve against `origin`. Only the pathname is returned, so
+// a foreign origin can't redirect off-app — and codes generated under a
+// different alias of the same deployment (LAN IP vs localhost, tunnels,
+// proto mismatches) still scan correctly.
 export const connectPathFromUrl = (raw: string, origin: string): string | null => {
   try {
     const url = new URL(raw, origin)
-    if (url.origin !== origin) return null
     return safeConnectPath(url.pathname)
   } catch {
     return null

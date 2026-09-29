@@ -169,6 +169,7 @@ export function ChatRoom({ room }: { room: RoomState }) {
             placeholder={
               room.peerInRoom || peerOnline ? 'Message…' : 'They left — messages wait for them'
             }
+            enterKeyHint="send"
             maxLength={2000}
             className="min-w-0 flex-1 rounded-full bg-neutral-100 px-4 py-2 text-sm outline-none transition placeholder:text-neutral-400 focus:ring-2 focus:ring-accent-500/40 dark:bg-white/10 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:ring-accent-400/40"
           />

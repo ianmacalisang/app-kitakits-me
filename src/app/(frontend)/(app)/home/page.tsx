@@ -48,11 +48,9 @@ export default function HomePage({
           <QrCodeIcon className="h-5 w-5" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-neutral-800">
-            Met someone at a party?
-          </span>
+          <span className="block text-sm font-semibold text-neutral-800">Your invite code</span>
           <span className="block text-xs text-neutral-500">
-            Show your code or scan theirs — you&apos;ll follow each other instantly.
+            Share it with friends — a quick scan and you&apos;ll follow each other instantly.
           </span>
         </span>
         <ChevronRightIcon className="h-4 w-4 shrink-0 text-neutral-400 transition-transform group-hover:translate-x-0.5" />
