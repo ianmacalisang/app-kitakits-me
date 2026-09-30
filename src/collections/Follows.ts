@@ -4,6 +4,7 @@ import { isAuthenticated, isOwnerOrAdmin } from '../access'
 import { parallelAfterChange } from '../hooks/afterChangeParallel'
 import { createFollowNotification } from '../hooks/createFollowNotification'
 import { followPoints } from '../hooks/gamification'
+import { pushMutualsRefreshChange, pushMutualsRefreshDelete } from '../hooks/pushMutualsRefresh'
 
 const idOf = (value: unknown): number | string | null =>
   typeof value === 'object' && value !== null
@@ -56,7 +57,10 @@ export const Follows: CollectionConfig = {
     ],
     // Notification + points award are independent — run them concurrently so
     // a follow create isn't serialized behind two remote-DB write chains.
-    afterChange: [parallelAfterChange(createFollowNotification, followPoints)],
+    afterChange: [
+      parallelAfterChange(createFollowNotification, followPoints, pushMutualsRefreshChange),
+    ],
+    afterDelete: [pushMutualsRefreshDelete],
   },
   fields: [
     {

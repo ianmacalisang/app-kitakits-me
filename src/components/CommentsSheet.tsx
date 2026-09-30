@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import { getComments } from '@/actions/comments'
 import { getPost } from '@/actions/posts'
 import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
+import { emitPostUpdated } from '@/lib/events'
 import type { CommentData, PostCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
@@ -102,8 +103,13 @@ export const CommentsSheet = memo(function CommentsSheet({
 
   const changed = useCallback(() => {
     void load()
+    // Comment count + latest-comments preview patch on every mounted card,
+    // including posts past the router.refresh() reconcile window.
+    void getPost(postId).then((post) => {
+      if (post) emitPostUpdated(post)
+    })
     router.refresh()
-  }, [load, router])
+  }, [load, router, postId])
 
   // Lazy-load on first open.
   useEffect(() => {

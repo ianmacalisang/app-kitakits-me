@@ -21,10 +21,13 @@ const EMIT_SECRET = process.env.LIVE_EMIT_SECRET ?? ''
 export type LiveEvent =
   | { type: 'badges' }
   | { type: 'feed:new'; authorId: number }
+  | { type: 'feed:delete'; postId: number; authorId: number }
+  | { type: 'feed:update'; postId: number; authorId: number }
   | { type: 'video:status'; videoId: number; status: 'ready' | 'failed' }
   | { type: 'videoke:update'; roomId: number }
   | { type: 'videoke:invite'; roomId: number; roomName: string; from: string }
   | { type: 'videoke:request'; roomId: number; roomName: string; from: string }
+  | { type: 'mutuals:refresh' }
 
 const emit = async (ids: number[], event: LiveEvent): Promise<void> => {
   if (ids.length === 0 || !EMIT_SECRET) return

@@ -117,9 +117,16 @@ export async function createPost(_prev: FormState, formData: FormData): Promise<
 
   // Ping followers over the socket so their live feeds prepend instantly —
   // the hint carries only the author id; each client refetches with its own
-  // cursor/filters via getNewerPosts. Deferred (like all pushes) until after
-  // the response — see lib/live.
-  pushLive(followerIds(payload, user.id), { type: 'feed:new', authorId: user.id })
+  // cursor/filters via getNewerPosts. The author's own tabs get the same ping
+  // so a post made on one device surfaces everywhere. Deferred (like all
+  // pushes) until after the response — see lib/live.
+  pushLive(
+    followerIds(payload, user.id).then((ids) => [...ids, user.id]),
+    {
+      type: 'feed:new',
+      authorId: user.id,
+    },
+  )
 
   return { success: true }
 }
@@ -157,6 +164,17 @@ export async function updatePost(postId: number, formData: FormData): Promise<Fo
   } catch (err) {
     return { error: errorMessage(err) }
   }
+
+  // Edited content patches in place on every viewer's mounted feeds — they
+  // refetch just this post via getPost rather than waiting for a refresh.
+  pushLive(
+    followerIds(payload, user.id).then((ids) => [...ids, user.id]),
+    {
+      type: 'feed:update',
+      postId,
+      authorId: user.id,
+    },
+  )
 
   return { success: true }
 }
@@ -225,6 +243,15 @@ export async function sharePost(
       overrideAccess: false,
     })
     shared = false
+    // The repost card must leave followers' feeds — same push as a delete.
+    pushLive(
+      followerIds(payload, user.id).then((ids) => [...ids, user.id]),
+      {
+        type: 'feed:delete',
+        postId: existing.docs[0].id,
+        authorId: user.id,
+      },
+    )
   } else {
     await payload.create({
       collection: 'posts',
@@ -233,6 +260,15 @@ export async function sharePost(
       overrideAccess: false,
     })
     shared = true
+    // Reposts are posts — followers' live feeds prepend them just like a
+    // fresh create instead of waiting out the fallback poll.
+    pushLive(
+      followerIds(payload, user.id).then((ids) => [...ids, user.id]),
+      {
+        type: 'feed:new',
+        authorId: user.id,
+      },
+    )
   }
 
   // The share counter hooks already bumped the denormalized column on the
@@ -304,6 +340,17 @@ export async function deletePost(postId: number): Promise<FormState> {
   } catch (err) {
     return { error: errorMessage(err) }
   }
+
+  // The card leaves every follower's mounted feed instantly; share-cards
+  // embedding it were cascade-deleted server-side and drop client-side too.
+  pushLive(
+    followerIds(payload, user.id).then((ids) => [...ids, user.id]),
+    {
+      type: 'feed:delete',
+      postId,
+      authorId: user.id,
+    },
+  )
 
   return { success: true }
 }

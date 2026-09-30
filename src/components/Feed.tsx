@@ -12,9 +12,13 @@ import {
 } from '@/lib/categories'
 import {
   LIVE_EVENT,
+  POST_DELETED,
   POST_SAVE_TOGGLED,
+  POST_UPDATED,
   type LiveEventDetail,
+  type PostDeletedDetail,
   type PostSaveToggledDetail,
+  type PostUpdatedDetail,
 } from '@/lib/events'
 import type { MediaFilter, PostCardData } from '@/lib/serialize'
 
@@ -214,6 +218,156 @@ export function Feed({
       setPage(next)
     })
   }, [pending, page, authorId, feed, mediaFilter, category])
+
+  // Full head reconcile — refetches page 1 with the active filters and merges
+  // it over the loaded window: fresh data replaces matching posts (edits),
+  // posts missing from the window drop out (deletes, lost access, unfollows),
+  // and infinite-scroll pages below the fresh tail stay attached. Runs on the
+  // fallback poll, on tab-return, and on mount — a back-navigation remount can
+  // resurrect a cached render up to ~30s old (staleTimes.dynamic).
+  //
+  // Time-ordered feeds use the (createdAt, id) cursor of the fresh page's
+  // last item as the window boundary — loaded posts older than it are beyond
+  // page 1 by definition. The saved feed is ordered by save time, so it
+  // reconciles by position instead: loaded items up to the deepest one still
+  // present in the fresh page are window-covered, anything deeper is kept.
+  const reconcileHead = useCallback(async () => {
+    const result = await loadMorePosts({
+      page: 1,
+      authorId,
+      feed,
+      // The URL is the filter source of truth — state can lag a restore.
+      mediaFilter: filterable ? urlMediaFilter() : mediaFilter,
+      category: filterable ? urlCategory() : category,
+    })
+    const freshIds = new Set(result.posts.map((p) => p.id))
+    let kept: PostCardData[]
+    if (feed === 'saved') {
+      const lastFreshIdx = postsRef.current.reduce(
+        (acc, p, i) => (freshIds.has(p.id) ? i : acc),
+        -1,
+      )
+      kept =
+        result.posts.length === 0
+          ? []
+          : postsRef.current.slice(lastFreshIdx + 1).filter((p) => !freshIds.has(p.id))
+    } else {
+      const tail = result.posts[result.posts.length - 1]
+      kept = tail
+        ? postsRef.current.filter(
+            (p) =>
+              !freshIds.has(p.id) &&
+              (p.createdAt < tail.createdAt || (p.createdAt === tail.createdAt && p.id < tail.id)),
+          )
+        : []
+    }
+    setPosts([...result.posts, ...kept])
+    if (kept.length === 0) {
+      setPage(1)
+      setHasMore(result.hasMore)
+    }
+    // Queued "new posts" are inside the fresh page now — drop covered ids.
+    pendingNewRef.current = pendingNewRef.current.filter((p) => !freshIds.has(p.id))
+    setPendingNew(pendingNewRef.current)
+  }, [authorId, feed, mediaFilter, category, filterable])
+
+  // Mount reconcile — SPA back-navigation can remount this feed from the
+  // router cache with stale data; one page-1 fetch brings it current. On a
+  // true first mount it's a redundant-but-harmless refetch.
+  useEffect(() => {
+    if (!document.hidden) void reconcileHead()
+  }, [reconcileHead])
+
+  // A post vanished — drop it (and share-cards embedding it) from the list
+  // and from the queued "new posts" buffer. Backfills once if the visible
+  // list collapsed while more pages exist.
+  const removePost = useCallback(
+    (postId: number) => {
+      const matches = (p: PostCardData) => p.id === postId || p.sharedPost?.id === postId
+      if (pendingNewRef.current.some(matches)) {
+        pendingNewRef.current = pendingNewRef.current.filter((p) => !matches(p))
+        setPendingNew(pendingNewRef.current)
+      }
+      if (!postsRef.current.some(matches)) return
+      const next = postsRef.current.filter((p) => !matches(p))
+      setPosts(next)
+      if (next.length === 0 && hasMore) void loadMore()
+    },
+    [hasMore, loadMore],
+  )
+
+  // Edited post data patches in place — the card is dropped when it no
+  // longer matches the active media/category filters. Share-cards carrying
+  // the post as their embed get the embedded fields refreshed too.
+  const applyUpdated = useCallback(
+    (updated: PostCardData) => {
+      const matchesFilters =
+        (category === 'all' || (updated.category ?? 'kwento') === category) &&
+        (mediaFilter === 'all' ||
+          (mediaFilter === 'media' && (updated.images.length > 0 || Boolean(updated.video))) ||
+          (mediaFilter === 'images' && updated.images.length > 0) ||
+          (mediaFilter === 'videos' && Boolean(updated.video)))
+      pendingNewRef.current = pendingNewRef.current.flatMap((p) =>
+        p.id === updated.id ? (matchesFilters ? [updated] : []) : [p],
+      )
+      setPendingNew(pendingNewRef.current)
+      setPosts((prev) =>
+        prev.flatMap((p) => {
+          if (p.id === updated.id) return matchesFilters ? [updated] : []
+          if (p.sharedPost?.id === updated.id) {
+            return [
+              {
+                ...p,
+                sharedPost: {
+                  ...p.sharedPost,
+                  content: updated.content,
+                  imageUrls: updated.images.map((i) => i.url),
+                  video: updated.video,
+                  category: updated.category ?? 'kwento',
+                },
+              },
+            ]
+          }
+          return [p]
+        }),
+      )
+    },
+    [category, mediaFilter],
+  )
+
+  // Cross-component sync — deletes/edits anywhere in the app (this tab's own
+  // actions or a socket push from another session) patch every mounted feed,
+  // including infinite-scroll pages the router.refresh() reconcile can't
+  // reach. Not gated on `live`: the saved tab and profile feeds sync too.
+  useEffect(() => {
+    const onDeleted = (e: Event) => removePost((e as CustomEvent<PostDeletedDetail>).detail.postId)
+    const onUpdated = (e: Event) => applyUpdated((e as CustomEvent<PostUpdatedDetail>).detail.post)
+    const onLive = (e: Event) => {
+      const detail = (e as CustomEvent<LiveEventDetail>).detail
+      if (detail?.type === 'feed:delete') {
+        removePost(detail.postId)
+      } else if (detail?.type === 'feed:update') {
+        const inList =
+          postsRef.current.some(
+            (p) => p.id === detail.postId || p.sharedPost?.id === detail.postId,
+          ) || pendingNewRef.current.some((p) => p.id === detail.postId)
+        if (!inList) return
+        // Null means deleted or no longer readable (e.g. went followers-only).
+        void getPost(detail.postId).then((post) => {
+          if (post) applyUpdated(post)
+          else removePost(detail.postId)
+        })
+      }
+    }
+    window.addEventListener(POST_DELETED, onDeleted)
+    window.addEventListener(POST_UPDATED, onUpdated)
+    window.addEventListener(LIVE_EVENT, onLive)
+    return () => {
+      window.removeEventListener(POST_DELETED, onDeleted)
+      window.removeEventListener(POST_UPDATED, onUpdated)
+      window.removeEventListener(LIVE_EVENT, onLive)
+    }
+  }, [removePost, applyUpdated])
 
   // Switching filters refetches page 1 with the new media constraint and
   // resets infinite-scroll state.
@@ -424,17 +578,28 @@ export function Feed({
   }, [])
 
   // Live updates — 'feed:new' pushes trigger an immediate fetch of posts
-  // newer than the head; the slow interval is a fallback for a dead socket.
-  // Near the top they prepend silently; scrolled down they queue behind the
-  // pill. Skips while the tab is hidden (same pattern as the AppNav poller).
+  // newer than the head; the interval and tab-return do a full head reconcile
+  // so deletes/edits that slipped through land too. Near the top new posts
+  // prepend silently; scrolled down they queue behind the pill. An empty
+  // feed has no cursor to diff against — it reconciles instead, which is how
+  // it comes alive. Skips while the tab is hidden (same pattern as the
+  // AppNav poller).
   useEffect(() => {
-    if (!live || posts.length === 0) return
+    if (!live) return
 
     let inFlight = false
     const tick = async () => {
       if (inFlight || document.hidden) return
       const head = postsRef.current[0]
-      if (!head) return
+      if (!head) {
+        inFlight = true
+        try {
+          await reconcileHead()
+        } finally {
+          inFlight = false
+        }
+        return
+      }
       inFlight = true
       try {
         const result = await getNewerPosts({
@@ -475,10 +640,19 @@ export function Feed({
       if (authorId && detail.authorId !== authorId) return
       void tick()
     }
-    const onVisible = () => {
-      if (!document.hidden) void tick()
+    const reconcile = async () => {
+      if (inFlight || document.hidden) return
+      inFlight = true
+      try {
+        await reconcileHead()
+      } finally {
+        inFlight = false
+      }
     }
-    const timer = setInterval(() => void tick(), LIVE_POLL_MS)
+    const onVisible = () => {
+      if (!document.hidden) void reconcile()
+    }
+    const timer = setInterval(() => void reconcile(), LIVE_POLL_MS)
     window.addEventListener(LIVE_EVENT, onLive)
     document.addEventListener('visibilitychange', onVisible)
     return () => {
@@ -486,7 +660,7 @@ export function Feed({
       window.removeEventListener(LIVE_EVENT, onLive)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [live, posts.length, authorId, feed, mediaFilter, category, flushNew])
+  }, [live, authorId, feed, mediaFilter, category, flushNew, reconcileHead])
 
   // Scrolling back to the top flushes the queued posts — the pill is only
   // meant for while the head of the feed is out of view.

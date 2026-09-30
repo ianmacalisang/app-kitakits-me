@@ -138,6 +138,35 @@ describe('chat-server', () => {
     await bob.closed
   })
 
+  it("refreshes a live entry's mutuals when another socket auths a newer ticket", async () => {
+    // Jay authed before the mutual-follow existed; until a fresher ticket
+    // arrives, invites bounce off his stale mutuals even though he shows
+    // online to Kim.
+    const jay = await connect(await mintTicket(10, [], 'Jay'))
+    await waitFor(jay, (m) => m.type === 'auth:ok')
+
+    const kim = await connect(await mintTicket(11, [10], 'Kim'))
+    await waitFor(kim, (m) => m.type === 'auth:ok' && (m.online as unknown[]).length === 1)
+
+    const key = pairKey(10, 11)
+    kim.ws.send(JSON.stringify({ type: 'invite', to: 10 }))
+    await waitFor(kim, (m) => m.type === 'error' && m.code === 'offline')
+
+    // Jay's second tab auths with a ticket minted after the follow — the
+    // entry's mutuals must follow the newest ticket, not the first socket's.
+    const jay2 = await connect(await mintTicket(10, [11], 'Jay'))
+    await waitFor(jay2, (m) => m.type === 'auth:ok')
+
+    kim.ws.send(JSON.stringify({ type: 'invite', to: 10 }))
+    await waitFor(kim, (m) => m.type === 'invite:sent' && m.room === key)
+    await waitFor(jay, (m) => m.type === 'invite' && m.room === key)
+    await waitFor(jay2, (m) => m.type === 'invite' && m.room === key)
+
+    jay.ws.close()
+    jay2.ws.close()
+    kim.ws.close()
+  })
+
   it('rejects invites outside the mutual set', async () => {
     const carol = await connect(await mintTicket(3, [], 'Carol'))
     await waitFor(carol, (m) => m.type === 'auth:ok')

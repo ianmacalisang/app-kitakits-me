@@ -2,10 +2,11 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { Upload } from 'tus-js-client'
 
-import { updatePost } from '@/actions/posts'
+import { getPost, updatePost } from '@/actions/posts'
 import { createVideoUpload, discardVideo, markVideoUploaded } from '@/actions/videos'
 import type { PostCategory } from '@/lib/categories'
 import { toCdnUrl } from '@/lib/cdn'
+import { emitPostUpdated } from '@/lib/events'
 import { compressImage } from '@/lib/image'
 import type { PostVideoData } from '@/lib/serialize'
 
@@ -217,6 +218,11 @@ export function PostEditForm({
         setVideo((v) => {
           if (v) URL.revokeObjectURL(v.previewUrl)
           return null
+        })
+        // Patch every mounted card in place — posts past the first page are
+        // outside the router.refresh() reconcile window.
+        void getPost(postId).then((post) => {
+          if (post) emitPostUpdated(post)
         })
         router.refresh()
         onDoneAction()

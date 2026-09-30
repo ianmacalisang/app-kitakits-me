@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState, useTransition } from 'react'
 
 import { requestVideokeJoin } from '@/actions/videoke'
-import { toast } from '@/lib/events'
+import { LIVE_EVENT, type LiveEventDetail, toast } from '@/lib/events'
 import type { VideokeGateData } from '@/lib/videoke'
 
 import { Spinner } from '../Spinner'
@@ -16,8 +17,25 @@ import { EqBars } from './EqBars'
 // who left knock to get back in; the host lets them through via the room's
 // join requests, which go through the normal invite path.
 export function VideokeGate({ roomId, gate }: { roomId: number; gate: VideokeGateData }) {
+  const router = useRouter()
   const [asked, setAsked] = useState(gate.asked)
   const [pending, startTransition] = useTransition()
+
+  // Live pushes while waiting at the door: an invite for this room means the
+  // host let us in (the refresh re-renders the page as the room itself), and
+  // an update can flip the copy to "ended" if the host closed it meanwhile.
+  useEffect(() => {
+    const onLive = (e: Event) => {
+      const detail = (e as CustomEvent<LiveEventDetail>).detail
+      if (
+        (detail?.type === 'videoke:invite' || detail?.type === 'videoke:update') &&
+        detail.roomId === roomId
+      )
+        router.refresh()
+    }
+    window.addEventListener(LIVE_EVENT, onLive)
+    return () => window.removeEventListener(LIVE_EVENT, onLive)
+  }, [roomId, router])
 
   const ask = () => {
     startTransition(async () => {

@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom'
 
 import { deletePost, togglePin } from '@/actions/posts'
 import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
+import { emitPostDeleted } from '@/lib/events'
 import type { PostCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
@@ -100,6 +101,9 @@ export const PostCard = memo(function PostCard({
         setDeleteError(result.error)
       } else {
         setDeleteOpen(false)
+        // Every mounted list drops the card instantly — router.refresh only
+        // reaches the server-rendered first page.
+        emitPostDeleted(post.id)
         router.refresh()
       }
     })

@@ -2,6 +2,14 @@ import { memo, useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { getPost } from '@/actions/posts'
+import {
+  LIVE_EVENT,
+  POST_DELETED,
+  POST_UPDATED,
+  type LiveEventDetail,
+  type PostDeletedDetail,
+  type PostUpdatedDetail,
+} from '@/lib/events'
 import type { PostCardData } from '@/lib/serialize'
 
 import { EmptyState } from './EmptyState'
@@ -59,6 +67,36 @@ export const PostSheet = memo(function PostSheet({
     }
   }, [open, post, missing, postId])
 
+  // Keep the open post in sync — a delete anywhere flips the sheet to its
+  // "no longer available" state, an edit patches the card in place.
+  useEffect(() => {
+    const onDeleted = (e: Event) => {
+      if ((e as CustomEvent<PostDeletedDetail>).detail.postId === postId) setMissing(true)
+    }
+    const onUpdated = (e: Event) => {
+      const updated = (e as CustomEvent<PostUpdatedDetail>).detail.post
+      if (updated.id === postId) setPost(updated)
+    }
+    const onLive = (e: Event) => {
+      const detail = (e as CustomEvent<LiveEventDetail>).detail
+      if (detail?.type === 'feed:delete' && detail.postId === postId) setMissing(true)
+      else if (detail?.type === 'feed:update' && detail.postId === postId && post !== null) {
+        void getPost(postId).then((result) => {
+          if (result) setPost(result)
+          else setMissing(true)
+        })
+      }
+    }
+    window.addEventListener(POST_DELETED, onDeleted)
+    window.addEventListener(POST_UPDATED, onUpdated)
+    window.addEventListener(LIVE_EVENT, onLive)
+    return () => {
+      window.removeEventListener(POST_DELETED, onDeleted)
+      window.removeEventListener(POST_UPDATED, onUpdated)
+      window.removeEventListener(LIVE_EVENT, onLive)
+    }
+  }, [postId, post])
+
   // Lock scroll and support Escape while the sheet is open.
   useEffect(() => {
     if (!open) return
@@ -115,7 +153,7 @@ export const PostSheet = memo(function PostSheet({
 
         {/* Scrollable post */}
         <div data-sheet-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-none p-5">
-          {post === null ? (
+          {post === null || missing ? (
             missing ? (
               <EmptyState
                 plain

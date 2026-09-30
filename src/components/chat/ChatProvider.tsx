@@ -89,6 +89,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Mirror of `outgoing` for the same reason — the handler reads it to tell
   // "accepted invite" apart from a plain rejoin on `joined`.
   const outgoingRef = useRef(new Map<string, ChatUser>())
+  // Debounce for mutuals:refresh — a batch follow (onboarding) emits one
+  // event per edge, but only one reconnect is needed.
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [status, setStatus] = useState<ChatStatus>(enabled ? 'connecting' : 'disabled')
   const [self, setSelf] = useState<ChatUser | null>(null)
@@ -292,6 +295,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         // instantly without a context dependency.
         case 'badges':
         case 'feed:new':
+        case 'feed:delete':
+        case 'feed:update':
         case 'video:status': {
           window.dispatchEvent(new CustomEvent(LIVE_EVENT, { detail: msg }))
           break
@@ -314,6 +319,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           const roomName =
             typeof msg.roomName === 'string' && msg.roomName ? msg.roomName : 'your videoke'
           toast(`${from} asked to join ${roomName} hangout`)
+          break
+        }
+        case 'mutuals:refresh': {
+          // A follow edge involving us changed — our ticket's mutuals claim is
+          // stale. Closing the socket drops into the normal reconnect path,
+          // which mints a fresh ticket before re-authing.
+          if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+          refreshTimerRef.current = setTimeout(() => {
+            refreshTimerRef.current = null
+            wsRef.current?.close()
+          }, 750)
           break
         }
         case 'error': {
@@ -413,6 +429,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       cancelled = true
       document.removeEventListener('visibilitychange', onVisible)
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
       for (const timer of typingTimers.values()) clearTimeout(timer)
       typingTimers.clear()
       wsRef.current?.close()

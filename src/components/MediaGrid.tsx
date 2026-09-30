@@ -1,9 +1,18 @@
 'use client'
 
-import { memo, useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 
-import { getUserMedia, type MediaItem, type MediaType } from '@/actions/posts'
+import { getPost, getUserMedia, type MediaItem, type MediaType } from '@/actions/posts'
 import { toCdnUrl } from '@/lib/cdn'
+import {
+  LIVE_EVENT,
+  POST_DELETED,
+  POST_UPDATED,
+  type LiveEventDetail,
+  type PostDeletedDetail,
+  type PostUpdatedDetail,
+} from '@/lib/events'
+import type { PostCardData } from '@/lib/serialize'
 
 import { BlurImage } from './BlurImage'
 import { EmptyState } from './EmptyState'
@@ -68,6 +77,7 @@ export function MediaGrid({
               authorId={authorId}
               publicOnly={publicOnly}
               mediaType={value}
+              username={username}
               emptyMessage={
                 isSelf
                   ? `${label} you post will show up here.`
@@ -87,11 +97,13 @@ function MediaWall({
   authorId,
   publicOnly,
   mediaType,
+  username,
   emptyMessage,
 }: {
   authorId: number
   publicOnly: boolean
   mediaType: MediaType
+  username: string
   emptyMessage: string
 }) {
   const [items, setItems] = useState<MediaItem[] | null>(null)
@@ -100,6 +112,11 @@ function MediaWall({
   const [pending, startTransition] = useTransition()
   const [openIdx, setOpenIdx] = useState<number | null>(null)
   const [openPostId, setOpenPostId] = useState<number | null>(null)
+  const itemsRef = useRef(items)
+
+  useEffect(() => {
+    itemsRef.current = items
+  }, [items])
 
   useEffect(() => {
     let cancelled = false
@@ -112,6 +129,78 @@ function MediaWall({
       cancelled = true
     }
   }, [authorId, publicOnly, mediaType])
+
+  // Head reconcile — refetches page 1 and merges by position (tiles are
+  // post-ordered -createdAt but MediaItem carries no timestamp): tiles up to
+  // the deepest post still present in the fresh page are window-covered and
+  // drop when absent; deeper loaded tiles are kept. Covers media swaps/adds
+  // from edits and router-cache staleness on back-navigation remounts.
+  const reconcile = useCallback(async () => {
+    const result = await getUserMedia(authorId, 1, publicOnly, mediaType)
+    const freshPostIds = new Set(result.items.map((i) => i.postId))
+    const lastFreshIdx = (itemsRef.current ?? []).reduce(
+      (acc, i, idx) => (freshPostIds.has(i.postId) ? idx : acc),
+      -1,
+    )
+    const kept =
+      result.items.length === 0
+        ? []
+        : (itemsRef.current ?? [])
+            .slice(lastFreshIdx + 1)
+            .filter((i) => !freshPostIds.has(i.postId))
+    setItems([...result.items, ...kept])
+    if (kept.length === 0) {
+      setPage(1)
+      setHasMore(result.hasMore)
+    }
+  }, [authorId, publicOnly, mediaType])
+
+  // A router-cache remount can resurrect stale tiles — refresh the head
+  // once the initial load has items to merge with.
+  useEffect(() => {
+    if (itemsRef.current === null || document.hidden) return
+    void reconcile()
+  }, [reconcile])
+
+  // Deletes drop the tiles; an edit that strips the post's media takes its
+  // tile with it. A removed post also closes an open lightbox/sheet on it.
+  useEffect(() => {
+    const hasMedia = (post: PostCardData) =>
+      mediaType === 'videos' ? Boolean(post.video) : post.images.length > 0
+    const removePost = (postId: number) => {
+      setItems((prev) => prev?.filter((i) => i.postId !== postId) ?? prev)
+      setOpenPostId((cur) => (cur === postId ? null : cur))
+    }
+    const applyUpdated = (updated: PostCardData) => {
+      if (itemsRef.current?.some((i) => i.postId === updated.id) && !hasMedia(updated)) {
+        removePost(updated.id)
+        return
+      }
+      // Any other edit by this author can change media contents — a media
+      // swap, an image added to a text post, a video removed.
+      if (updated.authorUsername === username) void reconcile()
+    }
+    const onDeleted = (e: Event) => removePost((e as CustomEvent<PostDeletedDetail>).detail.postId)
+    const onUpdated = (e: Event) => applyUpdated((e as CustomEvent<PostUpdatedDetail>).detail.post)
+    const onLive = (e: Event) => {
+      const detail = (e as CustomEvent<LiveEventDetail>).detail
+      if (detail?.type === 'feed:delete') removePost(detail.postId)
+      else if (detail?.type === 'feed:update') {
+        void getPost(detail.postId).then((post) => {
+          if (post) applyUpdated(post)
+          else if (itemsRef.current?.some((i) => i.postId === detail.postId)) void reconcile()
+        })
+      }
+    }
+    window.addEventListener(POST_DELETED, onDeleted)
+    window.addEventListener(POST_UPDATED, onUpdated)
+    window.addEventListener(LIVE_EVENT, onLive)
+    return () => {
+      window.removeEventListener(POST_DELETED, onDeleted)
+      window.removeEventListener(POST_UPDATED, onUpdated)
+      window.removeEventListener(LIVE_EVENT, onLive)
+    }
+  }, [authorId, mediaType, username, reconcile])
 
   const loadMore = useCallback(() => {
     if (pending) return

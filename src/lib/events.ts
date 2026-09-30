@@ -1,3 +1,5 @@
+import type { PostCardData } from './serialize'
+
 // Client-side events used to keep mounted feeds in sync with actions taken
 // on a post card (e.g. saving a post from the Feed should update the Saved tab
 // without a full page refresh).
@@ -8,6 +10,32 @@ export interface PostSaveToggledDetail {
   saved: boolean
 }
 
+// Fired when a post is deleted anywhere in the app — every mounted list
+// (feeds, saved tab, discover, media walls, open sheets) drops the card
+// instantly, including posts past the server-rendered first page that
+// router.refresh() reconciliation can't reach.
+export const POST_DELETED = 'kitakits:post-deleted'
+
+export interface PostDeletedDetail {
+  postId: number
+}
+
+// Fired when a post's content changes (edit, comment count shift) — mounted
+// cards patch in place with the fresh hydrated data.
+export const POST_UPDATED = 'kitakits:post-updated'
+
+export interface PostUpdatedDetail {
+  post: PostCardData
+}
+
+export function emitPostDeleted(postId: number) {
+  window.dispatchEvent(new CustomEvent<PostDeletedDetail>(POST_DELETED, { detail: { postId } }))
+}
+
+export function emitPostUpdated(post: PostCardData) {
+  window.dispatchEvent(new CustomEvent<PostUpdatedDetail>(POST_UPDATED, { detail: { post } }))
+}
+
 // Server-pushed live events — the chat-server relays these over the app-wide
 // socket and ChatProvider re-dispatches them as window events, so any
 // component can subscribe without a context dependency.
@@ -16,6 +44,8 @@ export const LIVE_EVENT = 'kitakits:live'
 export type LiveEventDetail =
   | { type: 'badges' }
   | { type: 'feed:new'; authorId: number }
+  | { type: 'feed:delete'; postId: number; authorId: number }
+  | { type: 'feed:update'; postId: number; authorId: number }
   | { type: 'video:status'; videoId: number; status: string }
   | { type: 'videoke:update'; roomId: number }
   | { type: 'videoke:invite'; roomId: number; roomName: string; from: string }

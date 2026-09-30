@@ -1,16 +1,16 @@
 // Kitakits service worker — runtime caching for offline use.
 //
 // Strategy:
-//   - Navigations: network-first, fall back to the cached page, then /offline.html
+//   - Navigations + RSC flight payloads: network-first, cached page, then /offline.html
 //   - /_next/static + /icons: cache-first (content-hashed, immutable)
-//   - Other same-origin GETs (incl. RSC flight payloads): stale-while-revalidate
+//   - Other same-origin GETs: stale-while-revalidate
 //   - Cross-origin: only images are cached (UploadThing/CDN); everything else passes through
 //
 // Never cached: non-GET requests, Range requests (Bunny/HLS video breaks if
 // intercepted), /admin, and /api responses (auth-sensitive REST endpoints).
 // Bump VERSION to force a full cache refresh on the next activate.
 
-const VERSION = 'v5'
+const VERSION = 'v6'
 
 // Dev hosts — `next dev` chunks under /_next aren't content-hashed, so any
 // caching strategy serves stale code after every edit (stale server-action
@@ -141,7 +141,16 @@ self.addEventListener('fetch', (event) => {
       return
     }
 
-    // RSC flight payloads and other same-origin GETs.
+    // RSC flight payloads drive SPA navigations and router.refresh() — serving
+    // them stale paints old data permanently (the fresh copy only lands in the
+    // cache for next time). Always go to the network first; the cache is the
+    // offline fallback.
+    if (request.headers.has('rsc') || url.searchParams.has('_rsc')) {
+      event.respondWith(networkFirst(request, PAGES_CACHE, OFFLINE_URL))
+      return
+    }
+
+    // Other same-origin GETs.
     event.respondWith(staleWhileRevalidate(event, request, PAGES_CACHE))
     return
   }

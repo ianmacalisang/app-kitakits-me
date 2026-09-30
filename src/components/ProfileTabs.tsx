@@ -256,6 +256,7 @@ export function ProfileTabs({
                   ? 'Posts you share will appear on your timeline.'
                   : `@${username} hasn't posted anything yet.`
               }
+              live
               timeline
             />
           </div>

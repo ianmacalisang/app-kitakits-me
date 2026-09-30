@@ -240,6 +240,12 @@ const handleAuth = async (ws, ticket) => {
     if (!entry) {
       entry = { info: publicInfo(ws.user), mutuals: ws.mutuals, sockets: new Set() }
       online.set(id, entry)
+    } else {
+      // Latest ticket wins — a second tab authing with a fresher mutuals list
+      // must update the entry the invite check and presence broadcasts read,
+      // otherwise the stale first-auth snapshot lingers for the entry's life.
+      entry.info = publicInfo(ws.user)
+      entry.mutuals = ws.mutuals
     }
     entry.sockets.add(ws)
 

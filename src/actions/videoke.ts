@@ -106,9 +106,13 @@ const joinRequestsOf = async (payload: PayloadClient, room: VideokeRoom) => {
     depth: 2,
     overrideAccess: true,
   })
+  // One row per knocker — a user can knock again once their first request is
+  // read, and both notifications would otherwise list them twice.
+  const seen = new Set<number>()
   return docs.flatMap((n): MutualHead[] => {
     const actor = n.actor
-    if (typeof actor !== 'object' || actor === null) return []
+    if (typeof actor !== 'object' || actor === null || seen.has(actor.id)) return []
+    seen.add(actor.id)
     return [
       {
         id: actor.id,
@@ -463,7 +467,7 @@ export async function endVideokeRoom(roomId: number): Promise<ActionResult> {
   }
   if (room.status === 'ended') return { ok: true }
 
-  const next = await payload.update({
+  await payload.update({
     collection: 'videoke-rooms',
     id: room.id,
     data: {
@@ -484,7 +488,9 @@ export async function endVideokeRoom(roomId: number): Promise<ActionResult> {
     },
     overrideAccess: true,
   })
-  pokeRoom(next)
+  // Poke the pre-update doc — `next` cleared invites, and those invitees
+  // still need the push so an open invite card swaps to the ended gate.
+  pokeRoom(room)
   // Drop it from mutuals' discover lists too.
   const mutuals = await getMutualFollowIds(payload, relId(room.host) ?? user.id)
   if (mutuals.length) pushLive(mutuals, { type: 'videoke:update', roomId: room.id })
@@ -615,6 +621,9 @@ export async function requestVideokeJoin(roomId: number): Promise<ActionResult> 
     roomName: roomDisplayName(room, host?.name),
     from: user.name,
   })
+  // The knock also lands in the host's "Asking to join" list — that panel is
+  // room state, so poke the host's open room view as well.
+  pushLive(hostId, { type: 'videoke:update', roomId: room.id })
   return { ok: true }
 }
 

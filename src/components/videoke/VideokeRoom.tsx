@@ -103,7 +103,13 @@ export function VideokeRoom({
   useEffect(() => {
     const onLive = (e: Event) => {
       const detail = (e as CustomEvent<LiveEventDetail>).detail
-      if (detail?.type === 'videoke:update' && detail.roomId === initial.id) refresh()
+      // A knock arrives as videoke:request (host-targeted) — it changes the
+      // host-visible "Asking to join" list, so it refreshes the room too.
+      if (
+        (detail?.type === 'videoke:update' || detail?.type === 'videoke:request') &&
+        detail.roomId === initial.id
+      )
+        refresh()
     }
     window.addEventListener(LIVE_EVENT, onLive)
     return () => window.removeEventListener(LIVE_EVENT, onLive)

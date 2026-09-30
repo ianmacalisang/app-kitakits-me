@@ -10,20 +10,23 @@ const MUTUALS_CAP = 500
 
 // Ids of users `userId` follows AND who follow `userId` back — the only set the
 // ephemeral chat service may connect. Two indexed `follows` queries + a set
-// intersection; runs once per ticket mint (never per message).
+// intersection; runs once per ticket mint (never per message). Both lists load
+// uncapped — truncating either side before intersecting can silently drop a
+// real mutual (asymmetric lists make invites fail while presence shows them
+// online); the cap applies to the result, which the ticket caps anyway.
 export async function getMutualFollowIds(payload: Payload, userId: number): Promise<number[]> {
   const [following, followers] = await Promise.all([
     payload.find({
       collection: 'follows',
       where: { follower: { equals: userId } },
-      limit: MUTUALS_CAP,
+      limit: 0,
       depth: 0,
       overrideAccess: true,
     }),
     payload.find({
       collection: 'follows',
       where: { following: { equals: userId } },
-      limit: MUTUALS_CAP,
+      limit: 0,
       depth: 0,
       overrideAccess: true,
     }),
@@ -35,6 +38,7 @@ export async function getMutualFollowIds(payload: Payload, userId: number): Prom
   return followers.docs
     .map((f) => (typeof f.follower === 'object' ? f.follower.id : f.follower))
     .filter((id): id is number => typeof id === 'number' && followingIds.has(id))
+    .slice(0, MUTUALS_CAP)
 }
 
 // HS256 JWT the standalone chat service verifies — carries identity + mutuals
