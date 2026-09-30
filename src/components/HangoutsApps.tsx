@@ -17,7 +17,7 @@ const APPS = [
   {
     href: '/hangouts/cards',
     title: 'Unggoy-Unggoy',
-    tag: 'Play together',
+    tag: 'Card Game',
     blurb: 'Deal a round of Unggoy-Ungguyan — don’t get stuck holding the monkey.',
     icon: CardIcon,
     eq: false,

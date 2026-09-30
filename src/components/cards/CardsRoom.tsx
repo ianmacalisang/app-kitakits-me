@@ -23,7 +23,15 @@ import { UNGGOY_CARD } from '@/lib/unggoy'
 import { Avatar } from '../Avatar'
 import { Spinner } from '../Spinner'
 import { useChat } from '../chat/ChatProvider'
-import { CardIcon, CheckIcon, ChevronLeftIcon, StarIcon, UsersIcon } from '../icons'
+import {
+  CardIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  QuestionIcon,
+  StarIcon,
+  UsersIcon,
+} from '../icons'
 import { CardsMic } from './CardsMic'
 import { PlayingCard } from './PlayingCard'
 
@@ -46,6 +54,7 @@ export function CardsRoom({
   const [room, setRoomState] = useState(initial)
   const [pending, startTransition] = useTransition()
   const [drawBusy, setDrawBusy] = useState<number | null>(null)
+  const [guideOpen, setGuideOpen] = useState(false)
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const setRoom = useCallback((r: CardRoomData) => {
@@ -493,6 +502,45 @@ export function CardsRoom({
         </div>
       </section>
 
+      {/* How to play — a little rules card under the table, tucked away by
+          default; first-timers can flip it open. */}
+      <section className="glass mb-4 overflow-hidden rounded-3xl">
+        <button
+          type="button"
+          onClick={() => setGuideOpen((v) => !v)}
+          className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
+          aria-expanded={guideOpen}
+        >
+          <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+            <QuestionIcon className="h-3.5 w-3.5" />
+            How to play Unggoy-Ungguyan
+          </p>
+          <ChevronDownIcon
+            className={`h-4 w-4 text-neutral-400 transition-transform ${guideOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
+        {guideOpen && (
+          <ol className="flex flex-col gap-2.5 border-t border-black/5 px-4 py-3.5 text-[13px] leading-snug text-neutral-600 dark:border-white/10 dark:text-neutral-300">
+            <Rule n={1}>
+              Matching pairs are <b>tossed out automatically</b> — you’ll only ever hold one card
+              per rank.
+            </Rule>
+            <Rule n={2}>
+              When it&apos;s your turn, <b>tap any face-down card</b> from the player before you —
+              their cards glow when it&apos;s your go.
+            </Rule>
+            <Rule n={3}>
+              Drew a card that makes a pair? That pair gets tossed too. <b>Lose all your cards</b>{' '}
+              and you&apos;re safe for the round.
+            </Rule>
+            <Rule n={4}>
+              The <b>Q♠ never finds a match</b> — whoever&apos;s stuck with it last is the unggoy
+              and loses. Everyone who made it out earns <b>10 points</b>.
+            </Rule>
+          </ol>
+        )}
+      </section>
+
       {/* Members */}
       <section className="glass mb-4 rounded-3xl p-4">
         <div className="mb-3 flex items-center justify-between">
@@ -576,6 +624,18 @@ export function CardsRoom({
         </div>
       </section>
     </div>
+  )
+}
+
+// One numbered step in the "how to play" list.
+function Rule({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-2.5">
+      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-500/10 text-[10px] font-bold text-accent-600">
+        {n}
+      </span>
+      <span className="min-w-0">{children}</span>
+    </li>
   )
 }
 
