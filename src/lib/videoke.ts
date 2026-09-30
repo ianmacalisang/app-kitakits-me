@@ -69,6 +69,8 @@ export interface VideokeRoomSummary {
   nowPlaying: string | null
   /** Present on lobby invite cards — who sent the invite. */
   invitedBy: MutualHead | null
+  /** Present on lobby discover cards — this user already knocked. */
+  asked?: boolean
 }
 
 const toHead = (user: User | undefined | null): MutualHead | null =>

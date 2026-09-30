@@ -27,6 +27,7 @@ import { useChat } from '../chat/ChatProvider'
 import {
   ChevronLeftIcon,
   MicIcon,
+  MusicIcon,
   PauseIcon,
   PlayIcon,
   SkipForwardIcon,
@@ -116,6 +117,9 @@ export function VideokeRoom({
 
   const current = room.queue.find((q) => q.id === room.playback.itemId) ?? null
   const isPlaying = room.playback.state === 'playing' && !ended && current != null
+  // Mic rights: the host plus whoever queued the song that's playing — the
+  // LiveKit grant enforces it server-side too.
+  const canSpeak = isHost || current?.addedBy?.id === viewerId
 
   const act = useCallback(
     (promise: Promise<{ ok: true; room?: VideokeRoomData } | { ok: false; error: string }>) => {
@@ -234,42 +238,64 @@ export function VideokeRoom({
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-4 flex items-center gap-2">
-        <Link
-          href="/hangouts/videoke"
-          aria-label="Back to Videoke"
-          className="glass flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-600 transition hover:text-accent-600"
-        >
-          <ChevronLeftIcon className="h-4 w-4" />
-        </Link>
-        <div className="min-w-0 flex-1">
-          <h1 className="flex items-center gap-2 text-lg font-bold tracking-tight">
-            <span className="truncate">{room.name}</span>
-            {isPlaying && (
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-red-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-500">
-                <span className="h-1 w-1 animate-pulse rounded-full bg-red-500" />
-                Live
-              </span>
-            )}
-          </h1>
-          <p className="flex items-center gap-1 text-xs text-neutral-500">
-            <UsersIcon className="h-3 w-3" />
-            {room.members.length} {room.members.length === 1 ? 'singer' : 'singers'}
-            {room.host?.name ? ` · hosted by ${room.host.name}` : ''}
-          </p>
-        </div>
-        {isMember && !ended && (
-          <button
-            type="button"
-            onClick={leave}
-            disabled={pending}
-            className="shrink-0 rounded-full bg-black/5 px-4 py-1.5 text-xs font-semibold text-neutral-600 transition hover:bg-black/10 disabled:opacity-60 dark:bg-white/10 dark:text-neutral-300"
+      {/* Header — gradient hero matching the lobby and invite card */}
+      <header className="relative mb-4 overflow-hidden rounded-3xl bg-gradient-to-br from-accent-500 via-accent-700 to-accent-950 p-4 text-white shadow-lg shadow-accent-900/25 sm:p-5">
+        <span
+          aria-hidden
+          className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.07)_1px,transparent_1px)] bg-[size:22px_22px] [mask-image:radial-gradient(ellipse_at_top_left,black_30%,transparent_80%)]"
+        />
+        <MusicIcon
+          aria-hidden
+          className="absolute right-5 top-4 h-5 w-5 -rotate-12 text-white/25"
+        />
+        <MusicIcon
+          aria-hidden
+          className="absolute bottom-4 right-16 h-4 w-4 rotate-12 text-white/20"
+        />
+        <div className="relative flex items-center gap-3.5">
+          <Link
+            href="/hangouts/videoke"
+            aria-label="Back to Videoke"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/30 backdrop-blur-sm transition hover:bg-white/25"
           >
-            {isHost ? 'End room' : 'Leave'}
-          </button>
-        )}
-      </div>
+            <ChevronLeftIcon className="h-4 w-4" />
+          </Link>
+          {room.host ? (
+            <Avatar src={room.host.avatarUrl} name={room.host.name} size="md" />
+          ) : (
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/40 backdrop-blur-sm">
+              <MicIcon className="h-5 w-5" />
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <h1 className="flex items-center gap-2 text-lg font-bold tracking-tight">
+              <span className="truncate">{room.name}</span>
+              {isPlaying && (
+                <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-200 ring-1 ring-red-300/40">
+                  <span className="h-1 w-1 animate-pulse rounded-full bg-red-400" />
+                  Live
+                </span>
+              )}
+            </h1>
+            <p className="flex items-center gap-1 text-xs text-white/75">
+              <UsersIcon className="h-3 w-3" />
+              {room.members.length} {room.members.length === 1 ? 'singer' : 'singers'}
+              {room.host?.name ? ` · hosted by ${room.host.name}` : ''}
+            </p>
+          </div>
+          {isPlaying && <EqBars className="h-6 shrink-0 text-white/70 max-sm:hidden" />}
+          {isMember && !ended && (
+            <button
+              type="button"
+              onClick={leave}
+              disabled={pending}
+              className="shrink-0 rounded-full bg-white/15 px-4 py-1.5 text-xs font-semibold text-white ring-1 ring-white/30 backdrop-blur-sm transition hover:bg-white/25 disabled:opacity-60"
+            >
+              {isHost ? 'End room' : 'Leave'}
+            </button>
+          )}
+        </div>
+      </header>
 
       {ended && (
         <div className="glass mb-4 rounded-2xl px-4 py-3 text-center text-sm font-medium text-neutral-500">
@@ -373,7 +399,7 @@ export function VideokeRoom({
           </div>
           {canMutate && (
             <div className="flex items-center justify-between gap-2 sm:justify-normal">
-              <MicMeter roomId={room.id} />
+              <MicMeter roomId={room.id} canSpeak={canSpeak} />
               {isHost && !ended && (
                 <div className="flex shrink-0 items-center gap-2">
                   {room.playback.state === 'playing' ? (

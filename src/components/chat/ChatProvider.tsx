@@ -82,7 +82,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // One auto-expiry timer per room for the "peer is typing" flag — the wire
   // only carries "started typing", the client derives the stop.
   const typingTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
-  const unmountedRef = useRef(false)
   // Mutable mirrors used inside the WS handler — state values would churn
   // the connect effect's deps and force a reconnect on every change.
   const selfIdRef = useRef<number | null>(null)
@@ -329,26 +328,36 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   )
 
   useEffect(() => {
-    unmountedRef.current = false
     const typingTimers = typingTimersRef.current
     if (!enabled) return
+
+    // Per-run cancellation — a shared ref resets on StrictMode remount, so a
+    // stale mount's in-flight ticket fetch would still open its socket and
+    // every server push (toasts included) would land twice. `connecting`
+    // closes the same hole inside one mount: a visibilitychange or retry
+    // firing while getChatTicket is still in flight must not spawn a second
+    // socket.
+    let cancelled = false
+    let connecting = false
 
     // Recursive connect-with-backoff loop — declared inside the effect so the
     // retry timeouts and the visibility handler share this exact instance.
     const connect = () => {
-      if (unmountedRef.current) return
+      if (cancelled || connecting) return
+      connecting = true
 
       getChatTicket()
         .then(({ ticket }) => {
-          if (unmountedRef.current) return
+          connecting = false
+          if (cancelled) return
           const ws = new WebSocket(WS_URL)
           wsRef.current = ws
 
           ws.onopen = () => ws.send(JSON.stringify({ type: 'auth', ticket }))
           ws.onmessage = handleMessage
           ws.onclose = () => {
-            wsRef.current = null
-            if (unmountedRef.current) return
+            if (wsRef.current === ws) wsRef.current = null
+            if (cancelled) return
             setStatus('connecting')
             setOnlineMap(new Map())
             // Pending invites die server-side the moment we go fully offline
@@ -378,7 +387,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           ws.onerror = () => ws.close()
         })
         .catch(() => {
-          if (unmountedRef.current) return
+          connecting = false
+          if (cancelled) return
           setStatus('offline')
           const attempt = retriesRef.current++
           const delay = Math.min(30_000, 1_000 * 2 ** attempt)
@@ -400,7 +410,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     document.addEventListener('visibilitychange', onVisible)
 
     return () => {
-      unmountedRef.current = true
+      cancelled = true
       document.removeEventListener('visibilitychange', onVisible)
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
       for (const timer of typingTimers.values()) clearTimeout(timer)

@@ -1,11 +1,17 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 
 import { getCurrentUser } from '@/lib/auth'
 import { getMutualFollowIds } from '@/lib/chat'
 import { pushLive } from '@/lib/live'
-import { livekitConfigured, mintVoiceToken } from '@/lib/livekit'
+import {
+  livekitConfigured,
+  micHolderIds,
+  mintVoiceToken,
+  updateVoicePublishers,
+} from '@/lib/livekit'
 import { revalidateNavCounts } from '@/lib/nav-cache'
 import { getPayloadClient } from '@/lib/payload'
 import { checkRate } from '@/lib/rate-limit'
@@ -142,11 +148,13 @@ const requireUser = async () => {
 export async function getVideokeLobby(): Promise<{
   rooms: VideokeRoomSummary[]
   invites: VideokeRoomSummary[]
+  discover: VideokeRoomSummary[]
 }> {
   const user = await requireUser()
   const payload = await getPayloadClient()
+  const mutuals = await getMutualFollowIds(payload, user.id)
 
-  const [rooms, invited] = await Promise.all([
+  const [rooms, invited, hosted] = await Promise.all([
     payload.find({
       collection: 'videoke-rooms',
       where: { and: [{ members: { contains: user.id } }, { status: { equals: 'open' } }] },
@@ -165,9 +173,26 @@ export async function getVideokeLobby(): Promise<{
       user,
       overrideAccess: false,
     }),
+    // Open rooms run by mutuals — the card is only name/host/count, so a
+    // system read is safe; the user still can't open the room itself.
+    mutuals.length === 0
+      ? Promise.resolve({ docs: [] as VideokeRoom[] })
+      : payload.find({
+          collection: 'videoke-rooms',
+          where: { and: [{ host: { in: mutuals } }, { status: { equals: 'open' } }] },
+          sort: '-updatedAt',
+          limit: 50,
+          depth: 0,
+          overrideAccess: true,
+        }),
   ])
 
-  const all = [...rooms.docs, ...invited.docs]
+  // Skip rooms the viewer is already a party to (member or invited).
+  const discover = hosted.docs.filter(
+    (r) => !memberIdsOf(r).includes(user.id) && !inviteeIdsOf(r).includes(user.id),
+  )
+
+  const all = [...rooms.docs, ...invited.docs, ...discover]
   const ids = all.map((r) => r.id)
   const playing =
     ids.length === 0
@@ -183,6 +208,30 @@ export async function getVideokeLobby(): Promise<{
         ).docs
   const playingByRoom = new Map(playing.map((i) => [relId(i.room), i]))
 
+  // Rooms the viewer already knocked on — same unread-notification rule the
+  // room gate uses, so the card shows "Requested" instead of re-asking.
+  const knocks =
+    discover.length === 0
+      ? new Set<number>()
+      : new Set(
+          (
+            await payload.find({
+              collection: 'notifications',
+              where: {
+                and: [
+                  { type: { equals: 'hangout_request' } },
+                  { actor: { equals: user.id } },
+                  { videokeRoom: { in: discover.map((r) => r.id) } },
+                  { read: { equals: false } },
+                ],
+              },
+              limit: 50,
+              depth: 0,
+              overrideAccess: true,
+            })
+          ).docs.map((n) => relId(n.videokeRoom)),
+        )
+
   return {
     rooms: await Promise.all(
       rooms.docs.map((r) => serializeVideokeSummary(payload, r, playingByRoom.get(r.id) ?? null)),
@@ -191,6 +240,12 @@ export async function getVideokeLobby(): Promise<{
       invited.docs.map((r) =>
         serializeVideokeSummary(payload, r, playingByRoom.get(r.id) ?? null, user.id),
       ),
+    ),
+    discover: await Promise.all(
+      discover.map(async (r) => ({
+        ...(await serializeVideokeSummary(payload, r, playingByRoom.get(r.id) ?? null)),
+        asked: knocks.has(r.id),
+      })),
     ),
   }
 }
@@ -222,6 +277,10 @@ export async function createVideokeRoom(name: string): Promise<ActionResult & { 
     data: { user: user.id, room: room.id, kind: 'hosted' },
     overrideAccess: true,
   })
+
+  // Mutuals can discover this room — nudge their lobbies.
+  const mutuals = await getMutualFollowIds(payload, user.id)
+  if (mutuals.length) pushLive(mutuals, { type: 'videoke:update', roomId: room.id })
 
   return { ok: true, roomId: room.id }
 }
@@ -426,6 +485,9 @@ export async function endVideokeRoom(roomId: number): Promise<ActionResult> {
     overrideAccess: true,
   })
   pokeRoom(next)
+  // Drop it from mutuals' discover lists too.
+  const mutuals = await getMutualFollowIds(payload, relId(room.host) ?? user.id)
+  if (mutuals.length) pushLive(mutuals, { type: 'videoke:update', roomId: room.id })
   return { ok: true }
 }
 
@@ -558,6 +620,25 @@ export async function requestVideokeJoin(roomId: number): Promise<ActionResult> 
 
 // ── Voice (LiveKit) ────────────────────────────────────────────────────────
 
+// Who may hold the mic right now: the host plus whoever queued the currently
+// playing song. The SFU enforces the grant — a member's token is minted with
+// canPublish, and when the song turns over we update connected participants
+// through the admin API. Best-effort like pushLive — a missed sync must not
+// fail the underlying mutation; callers without a request context (tests)
+// fall back to a floating promise.
+const syncVoicePublishers = (payload: PayloadClient, room: VideokeRoom) => {
+  if (!livekitConfigured()) return
+  const run = async () => {
+    const items = await roomQueue(payload, room.id)
+    await updateVoicePublishers(room.id, memberIdsOf(room), micHolderIds(room, items))
+  }
+  try {
+    after(run)
+  } catch {
+    void run().catch(() => {})
+  }
+}
+
 // Mint a scoped access token so a member can join the room's LiveKit voice
 // channel (`videoke-{id}`). Members of an open room only — the SFU itself
 // does no app-auth, so the token is the whole gate. `null` means voice is
@@ -570,7 +651,9 @@ export async function getVideokeVoiceTicket(
   const payload = await getPayloadClient()
   const room = await loadVisibleRoom(payload, roomId, user)
   if (!room || room.status !== 'open' || !memberIdsOf(room).includes(user.id)) return null
-  return mintVoiceToken(user, room.id)
+
+  const items = await roomQueue(payload, room.id)
+  return mintVoiceToken(user, room.id, micHolderIds(room, items).has(user.id))
 }
 
 // ── YouTube search + queue ─────────────────────────────────────────────────
@@ -651,6 +734,7 @@ export async function queueVideokeSong(roomId: number, videoId: string): Promise
         },
         overrideAccess: true,
       })
+      syncVoicePublishers(payload, next)
     }
   }
 
@@ -777,6 +861,7 @@ export async function videokePlay(roomId: number): Promise<ActionResult> {
     },
     overrideAccess: true,
   })
+  syncVoicePublishers(payload, next)
   pokeRoom(next)
   return { ok: true, room: await serializeFor(payload, next, user) }
 }
@@ -863,6 +948,7 @@ export async function videokeAdvance(
       overrideAccess: true,
     })
   }
+  syncVoicePublishers(payload, next)
   pokeRoom(next)
   return { ok: true, room: await serializeFor(payload, next, user) }
 }

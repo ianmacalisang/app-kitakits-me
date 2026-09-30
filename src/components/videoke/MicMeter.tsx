@@ -1,6 +1,14 @@
 'use client'
 
-import { type LocalAudioTrack, type RemoteTrack, Room, RoomEvent, Track } from 'livekit-client'
+import {
+  type LocalAudioTrack,
+  type LocalTrackPublication,
+  type Participant,
+  type RemoteTrack,
+  Room,
+  RoomEvent,
+  Track,
+} from 'livekit-client'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 
 import { getVideokeVoiceTicket } from '@/actions/videoke'
@@ -8,20 +16,41 @@ import { toast } from '@/lib/events'
 
 import { MicIcon } from '../icons'
 
+const SINGER_EVENTS = [
+  RoomEvent.TrackPublished,
+  RoomEvent.TrackUnpublished,
+  RoomEvent.TrackMuted,
+  RoomEvent.TrackUnmuted,
+  RoomEvent.LocalTrackPublished,
+  RoomEvent.LocalTrackUnpublished,
+  RoomEvent.ParticipantConnected,
+  RoomEvent.ParticipantDisconnected,
+]
+
 // "Use mic" control on the stage transport bar. When the deployment has a
 // LiveKit SFU configured this also joins the room's voice channel
 // (`videoke-{roomId}`): remote singers attach as hidden <audio> elements and
-// the button publishes/unpublishes the local mic. Without LiveKit it degrades
-// to the original local-only level meter (AnalyserNode → RMS, painted via
-// direct style writes so it never re-renders).
-export const MicMeter = memo(function MicMeter({ roomId }: { roomId: number }) {
+// the button publishes/unpublishes the local mic. Only the host and the
+// member who queued the playing song may publish (`canSpeak`) — everyone
+// else gets a passive chip showing who's on the mic. The SFU enforces the
+// grant too, so the UI isn't the only gate. Without LiveKit it degrades to
+// a local-only level meter (AnalyserNode → RMS, painted via direct style
+// writes so it never re-renders).
+export const MicMeter = memo(function MicMeter({
+  roomId,
+  canSpeak,
+}: {
+  roomId: number
+  canSpeak: boolean
+}) {
   const [live, setLive] = useState(false)
   const [busy, setBusy] = useState(false)
   const [voice, setVoice] = useState(false)
+  const [singers, setSingers] = useState<string[]>([])
   const lkRef = useRef<Room | null>(null)
   const audioRef = useRef<HTMLDivElement>(null)
   // Set when the meter reads a stream we own (local fallback) — LiveKit tracks
-  // are stopped via setMicrophoneEnabled(false) instead.
+  // are stopped via unpublishTrack instead.
   const ownStreamRef = useRef<MediaStream | null>(null)
   const ctxRef = useRef<AudioContext | null>(null)
   const rafRef = useRef(0)
@@ -62,6 +91,40 @@ export const MicMeter = memo(function MicMeter({ roomId }: { roomId: number }) {
     rafRef.current = requestAnimationFrame(tick)
   }, [])
 
+  // setMicrophoneEnabled(false) only MUTES — the device keeps capturing
+  // (stopMicTrackOnMute defaults off). Unpublish + stop actually releases
+  // the mic and clears the browser indicator.
+  const micOff = useCallback(async () => {
+    stopMeter()
+    setLive(false)
+    const room = lkRef.current
+    if (!room) return
+    try {
+      const pub = room.localParticipant.getTrackPublication(Track.Source.Microphone)
+      if (pub?.track) await room.localParticipant.unpublishTrack(pub.track, true)
+    } catch {}
+  }, [stopMeter])
+
+  // Names of whoever currently holds the mic — shown to members without
+  // publish rights so the transport bar still says who's singing.
+  const refreshSingers = useCallback(() => {
+    const room = lkRef.current
+    if (!room) {
+      setSingers([])
+      return
+    }
+    const hasMic = (p: Participant) => {
+      const pub = p.getTrackPublication(Track.Source.Microphone)
+      return Boolean(pub?.track && !pub.track.isMuted)
+    }
+    const names: string[] = []
+    if (hasMic(room.localParticipant)) names.push(room.localParticipant.name || 'You')
+    for (const p of room.remoteParticipants.values()) {
+      if (hasMic(p)) names.push(p.name || 'Someone')
+    }
+    setSingers(names)
+  }, [])
+
   // Join the room's voice channel when LiveKit is configured. Members reach
   // this component only in an open room; the server action is the gate.
   useEffect(() => {
@@ -72,14 +135,24 @@ export const MicMeter = memo(function MicMeter({ roomId }: { roomId: number }) {
       if (track.kind === Track.Kind.Audio) audioRef.current?.append(track.attach())
     }
     const onUnsub = (track: RemoteTrack) => track.detach().forEach((el) => el.remove())
+    // Server-side permission revoke (or our own unpublish) — clear the meter.
+    const onLocalUnpub = (pub: LocalTrackPublication) => {
+      if (pub.source === Track.Source.Microphone) {
+        stopMeter()
+        setLive(false)
+      }
+    }
     const onDisc = () => {
       stopMeter()
       setVoice(false)
       setLive(false)
+      setSingers([])
     }
     room.on(RoomEvent.TrackSubscribed, onSub)
     room.on(RoomEvent.TrackUnsubscribed, onUnsub)
+    room.on(RoomEvent.LocalTrackUnpublished, onLocalUnpub)
     room.on(RoomEvent.Disconnected, onDisc)
+    for (const ev of SINGER_EVENTS) room.on(ev, refreshSingers)
     getVideokeVoiceTicket(roomId)
       .then(async (ticket) => {
         if (!ticket || cancelled) return
@@ -91,6 +164,7 @@ export const MicMeter = memo(function MicMeter({ roomId }: { roomId: number }) {
           }
           lkRef.current = room
           setVoice(true)
+          refreshSingers()
         } catch {
           // Voice service unreachable — the mic stays in local-meter mode.
         }
@@ -101,23 +175,21 @@ export const MicMeter = memo(function MicMeter({ roomId }: { roomId: number }) {
       lkRef.current = null
       room.disconnect()
     }
-  }, [roomId, stopMeter])
+  }, [roomId, stopMeter, refreshSingers])
+
+  // The song turned over while our mic was live — the server revokes
+  // canPublish too, but release it locally without waiting for the SFU.
+  useEffect(() => {
+    if (!canSpeak && live) void micOff()
+  }, [canSpeak, live, micOff])
 
   const toggle = async () => {
     if (live) {
-      stopMeter()
-      setLive(false)
-      if (lkRef.current) {
-        try {
-          // setMicrophoneEnabled(false) only MUTES — the device keeps
-          // capturing (stopMicTrackOnMute defaults off). Unpublish + stop
-          // actually releases the mic and clears the browser indicator.
-          const pub = lkRef.current.localParticipant.getTrackPublication(Track.Source.Microphone)
-          if (pub?.track) {
-            await lkRef.current.localParticipant.unpublishTrack(pub.track, true)
-          }
-        } catch {}
-      }
+      await micOff()
+      return
+    }
+    if (!canSpeak) {
+      toast('Only the host and the singer on stage can use the mic.')
       return
     }
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -150,7 +222,7 @@ export const MicMeter = memo(function MicMeter({ roomId }: { roomId: number }) {
       toast(
         e instanceof DOMException && e.name === 'NotAllowedError'
           ? 'Microphone access was denied.'
-          : 'No microphone is available on this device.',
+          : "Couldn't enable the mic — it may not be your turn to sing.",
       )
     } finally {
       setBusy(false)
@@ -177,22 +249,34 @@ export const MicMeter = memo(function MicMeter({ roomId }: { roomId: number }) {
           />
         </span>
       )}
-      <button
-        type="button"
-        onClick={toggle}
-        disabled={busy}
-        className={`flex h-10 items-center gap-1.5 rounded-full px-4 text-xs font-semibold ring-1 transition disabled:opacity-50 ${
-          live
-            ? 'bg-emerald-500/15 text-emerald-300 ring-emerald-400/40 hover:bg-emerald-500/25'
-            : 'bg-white/10 text-white ring-white/15 hover:bg-white/20'
-        }`}
-      >
-        <MicIcon className="h-3.5 w-3.5" />
-        {live ? 'Mic on' : busy ? 'Mic…' : 'Use mic'}
-        {voice && (
-          <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-sky-400" title="Voice connected" />
-        )}
-      </button>
+      {canSpeak ? (
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={busy}
+          className={`flex h-10 items-center gap-1.5 rounded-full px-4 text-xs font-semibold ring-1 transition disabled:opacity-50 ${
+            live
+              ? 'bg-emerald-500/15 text-emerald-300 ring-emerald-400/40 hover:bg-emerald-500/25'
+              : 'bg-white/10 text-white ring-white/15 hover:bg-white/20'
+          }`}
+        >
+          <MicIcon className="h-3.5 w-3.5" />
+          {live ? 'Mic on' : busy ? 'Mic…' : 'Use mic'}
+          {voice && (
+            <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-sky-400" title="Voice connected" />
+          )}
+        </button>
+      ) : (
+        <span className="flex h-10 items-center gap-1.5 rounded-full bg-white/[0.06] px-4 text-xs font-medium text-white/50 ring-1 ring-white/10">
+          <MicIcon className="h-3.5 w-3.5" />
+          {singers.length > 0
+            ? `${singers.join(' + ')} on the mic`
+            : 'Only the host & singer can sing'}
+          {voice && (
+            <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-sky-400" title="Voice connected" />
+          )}
+        </span>
+      )}
     </div>
   )
 })

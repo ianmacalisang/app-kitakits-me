@@ -310,7 +310,7 @@ describe('Videoke rooms', () => {
     process.env.LIVEKIT_API_SECRET = 'testsecret-testsecret-testsecret'
     process.env.NEXT_PUBLIC_LIVEKIT_URL = 'wss://voice.test.dev'
     const { mintVoiceToken } = await import('@/lib/livekit')
-    const { token, url } = await mintVoiceToken(alice, room.id)
+    const { token, url } = await mintVoiceToken(alice, room.id, true)
     expect(url).toBe('wss://voice.test.dev')
     const claims = decodeJwt(token)
     expect(claims.iss).toBe('testkey')
@@ -321,6 +321,64 @@ describe('Videoke rooms', () => {
       room: `videoke-${room.id}`,
       canPublish: true,
       canSubscribe: true,
+    })
+  })
+
+  it('limits mic holders to the host and the current singer', async () => {
+    const { micHolderIds } = await import('@/lib/livekit')
+    const mkItem = (addedBy: number, position: number, title: string) =>
+      payload.create({
+        collection: 'videoke-queue-items',
+        data: {
+          room: room.id,
+          videoId: 'abcdefghijk',
+          title,
+          addedBy,
+          state: 'queued',
+          position,
+        },
+        overrideAccess: true,
+      })
+    const setPlaying = (itemId: number | null) =>
+      payload.update({
+        collection: 'videoke-rooms',
+        id: room.id,
+        data: {
+          playback: itemId
+            ? {
+                item: itemId,
+                state: 'playing',
+                startedAt: new Date().toISOString(),
+                positionSec: 0,
+              }
+            : { item: null, state: 'idle', startedAt: null, positionSec: 0 },
+        },
+        overrideAccess: true,
+      })
+
+    // Idle stage — host only.
+    room = await setPlaying(null)
+    expect([...micHolderIds(room, [])]).toEqual([alice.id])
+
+    // Bob's song is playing → host + bob; carol is a listener.
+    const bobsSong = await mkItem(bob.id, 10, 'Bobs pick')
+    const playing = await setPlaying(bobsSong.id)
+    const holders = micHolderIds(playing, [bobsSong])
+    expect(holders.has(alice.id)).toBe(true)
+    expect(holders.has(bob.id)).toBe(true)
+    expect(holders.has(carol.id)).toBe(false)
+
+    // Host queued the playing song → still exactly one holder.
+    const alicesSong = await mkItem(alice.id, 11, 'Alices pick')
+    const selfHosted = await setPlaying(alicesSong.id)
+    expect([...micHolderIds(selfHosted, [alicesSong])]).toEqual([alice.id])
+
+    // Reset playback for the "ended rooms" spec that follows.
+    room = await payload.update({
+      collection: 'videoke-rooms',
+      id: room.id,
+      data: { playback: { item: null, state: 'idle', startedAt: null, positionSec: 0 } },
+      overrideAccess: true,
     })
   })
 

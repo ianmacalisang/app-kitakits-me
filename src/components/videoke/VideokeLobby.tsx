@@ -4,7 +4,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 
-import { createVideokeRoom, getVideokeLobby, respondVideokeInvite } from '@/actions/videoke'
+import {
+  createVideokeRoom,
+  getVideokeLobby,
+  requestVideokeJoin,
+  respondVideokeInvite,
+} from '@/actions/videoke'
 import { LIVE_EVENT, type LiveEventDetail, toast } from '@/lib/events'
 import type { VideokeRoomSummary } from '@/lib/videoke'
 
@@ -14,7 +19,11 @@ import { Spinner } from '../Spinner'
 import { MicIcon, MusicIcon, PlusIcon, UsersIcon } from '../icons'
 import { EqBars } from './EqBars'
 
-type Lobby = { rooms: VideokeRoomSummary[]; invites: VideokeRoomSummary[] }
+type Lobby = {
+  rooms: VideokeRoomSummary[]
+  invites: VideokeRoomSummary[]
+  discover: VideokeRoomSummary[]
+}
 
 // Videoke lobby — create a room, answer pending invites, jump back into open
 // rooms. Live updates arrive as LIVE_EVENTs pushed over the app-wide socket.
@@ -75,6 +84,26 @@ export function VideokeLobby({ initial }: { initial: Lobby }) {
       }
       if (accept) router.push(`/hangouts/videoke/${roomId}`)
       else refresh()
+    })
+  }
+
+  // "Join" on a mutual's room knocks — the host lets you in through the
+  // normal invite path.
+  const askToJoin = (roomId: number) => {
+    setBusyInvite(roomId)
+    startTransition(async () => {
+      const res = await requestVideokeJoin(roomId)
+      setBusyInvite(null)
+      if (!res.ok) {
+        toast(res.error)
+        refresh()
+        return
+      }
+      setLobby((l) => ({
+        ...l,
+        discover: l.discover.map((r) => (r.id === roomId ? { ...r, asked: true } : r)),
+      }))
+      toast('Request sent — the host can let you in.')
     })
   }
 
@@ -141,13 +170,13 @@ export function VideokeLobby({ initial }: { initial: Lobby }) {
                 key={room.id}
                 className="glass flex items-center gap-3 rounded-2xl p-3 ring-1 ring-accent-500/20"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-accent-500 to-accent-700 text-white shadow-md shadow-accent-600/30">
-                  {room.invitedBy?.avatarUrl ? (
-                    <Avatar src={room.invitedBy.avatarUrl} name={room.invitedBy.name} size="md" />
-                  ) : (
+                {room.invitedBy ? (
+                  <Avatar src={room.invitedBy.avatarUrl} name={room.invitedBy.name} size="md" />
+                ) : (
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent-500 to-accent-700 text-white shadow-md shadow-accent-600/30">
                     <MicIcon className="h-5 w-5" />
-                  )}
-                </span>
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{room.name}</p>
                   <p className="truncate text-xs text-neutral-500">
@@ -174,6 +203,53 @@ export function VideokeLobby({ initial }: { initial: Lobby }) {
                 </button>
               </li>
             ))}
+          </ul>
+        </section>
+      )}
+
+      {lobby.discover.length > 0 && (
+        <section className="mb-4">
+          <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+            Friends&apos; rooms
+          </p>
+          <ul className="flex flex-col gap-2">
+            {lobby.discover.map((room) => {
+              const host = room.members.find((m) => m.id === room.hostId) ?? null
+              return (
+                <li key={room.id} className="glass flex items-center gap-3 rounded-2xl p-3">
+                  {host ? (
+                    <Avatar src={host.avatarUrl} name={host.name} size="md" />
+                  ) : (
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent-500 to-accent-700 text-white shadow-md shadow-accent-600/30">
+                      <MicIcon className="h-5 w-5" />
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{room.name}</p>
+                    <p className="truncate text-xs text-neutral-500">
+                      {host ? `Hosted by ${host.name}` : 'Open room'} · {room.memberCount}{' '}
+                      {room.memberCount === 1 ? 'singer' : 'singers'}
+                      {room.nowPlaying ? ' · on stage' : ''}
+                    </p>
+                  </div>
+                  {room.nowPlaying && (
+                    <span className="flex shrink-0 items-center gap-1 rounded-full bg-red-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-500">
+                      <span className="h-1 w-1 animate-pulse rounded-full bg-red-500" />
+                      Live
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    disabled={busyInvite === room.id || room.asked}
+                    onClick={() => askToJoin(room.id)}
+                    className="btn-primary flex shrink-0 items-center gap-1 rounded-full px-3.5 py-1.5 text-xs disabled:opacity-60"
+                  >
+                    {busyInvite === room.id ? <Spinner className="h-3.5 w-3.5" /> : null}
+                    {room.asked ? 'Requested' : 'Join'}
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         </section>
       )}
