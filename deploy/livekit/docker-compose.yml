@@ -1,0 +1,17 @@
+# Coolify: create a "Docker Compose (empty)" service, paste this file, and set
+# the env vars below. Point a domain at port 7880 for the wss:// endpoint —
+# Coolify's proxy terminates TLS for it. 7881/7882 publish directly on the
+# host (WebRTC media can't traverse the HTTP proxy); open 7882/udp in the VPS
+# firewall / Contabo panel firewall if one is assigned.
+services:
+  livekit:
+    build: .
+    command: --config /livekit.yaml
+    expose:
+      - "7880"
+    ports:
+      - "7881:7881"
+      - "7882:7882/udp"
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+    restart: always

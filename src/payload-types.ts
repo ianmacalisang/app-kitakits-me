@@ -447,7 +447,7 @@ export interface Notification {
   id: number;
   recipient: number | User;
   actor: number | User;
-  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge' | 'hangout_invite';
+  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge' | 'hangout_invite' | 'hangout_request';
   post?: (number | null) | Post;
   comment?: (number | null) | Comment;
   testimonial?: (number | null) | Testimonial;

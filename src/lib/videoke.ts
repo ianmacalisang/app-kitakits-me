@@ -36,11 +36,27 @@ export interface VideokeRoomData {
   host: MutualHead | null
   members: MutualHead[]
   invites: VideokeInviteData[]
+  /** Users who knocked and are waiting on the host — host-only, empty for
+      everyone else. */
+  requests?: MutualHead[]
   playback: PlaybackData
   queue: QueueItemData[]
   // Server clock at serialization time — the client derives its skew so
   // playback position math doesn't depend on device clocks being right.
   serverNow: number
+}
+
+// What a non-member sees when they land on a room link — enough to render
+// the "ask to join" gate without leaking room contents.
+export interface VideokeGateData {
+  exists: boolean
+  open: boolean
+  name: string | null
+  hostName: string | null
+  /** A knock would be accepted — open room, not a party, mutual of the host. */
+  canAsk: boolean
+  /** A knock is already pending and unread by the host. */
+  asked: boolean
 }
 
 export interface VideokeRoomSummary {

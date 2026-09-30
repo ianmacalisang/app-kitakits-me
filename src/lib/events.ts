@@ -19,6 +19,7 @@ export type LiveEventDetail =
   | { type: 'video:status'; videoId: number; status: string }
   | { type: 'videoke:update'; roomId: number }
   | { type: 'videoke:invite'; roomId: number; roomName: string; from: string }
+  | { type: 'videoke:request'; roomId: number; roomName: string; from: string }
 
 // Lightweight toast hints — any client component can fire one and the
 // ToastHost mounted in the app layout renders it.

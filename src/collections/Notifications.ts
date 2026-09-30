@@ -48,7 +48,15 @@ export const Notifications: CollectionConfig = {
     {
       name: 'type',
       type: 'select',
-      options: ['like', 'comment', 'follow', 'testimonial', 'badge', 'hangout_invite'],
+      options: [
+        'like',
+        'comment',
+        'follow',
+        'testimonial',
+        'badge',
+        'hangout_invite',
+        'hangout_request',
+      ],
       required: true,
       access: {
         update: isAdminField,

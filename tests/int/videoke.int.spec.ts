@@ -6,6 +6,7 @@
 
 // @vitest-environment node
 
+import { decodeJwt } from 'jose'
 import { getPayload, Payload } from 'payload'
 import config from '@/payload.config'
 import { getFollowingActivities } from '@/lib/activities'
@@ -261,6 +262,30 @@ describe('Videoke rooms', () => {
     expect(data?.videokeRoomName).toBe('Test room')
   })
 
+  it('serializes a hangout_request notification with the room link', async () => {
+    const created = await payload.create({
+      collection: 'notifications',
+      data: {
+        recipient: alice.id,
+        actor: bob.id,
+        type: 'hangout_request',
+        videokeRoom: room.id,
+      },
+      overrideAccess: true,
+    })
+    const full = await payload.findByID({
+      collection: 'notifications',
+      id: created.id,
+      depth: 2,
+      overrideAccess: true,
+    })
+    const data = toNotificationData(full)
+    expect(data?.type).toBe('hangout_request')
+    expect(data?.actorUsername).toBe(bob.username)
+    expect(data?.videokeRoomId).toBe(room.id)
+    expect(data?.videokeRoomName).toBe('Test room')
+  })
+
   it('surfaces a hangout join in the activities feed', async () => {
     await payload.create({
       collection: 'hangout-joins',
@@ -278,6 +303,25 @@ describe('Videoke rooms', () => {
     expect(join?.videokeRoomId).toBe(room.id)
     expect(join?.videokeRoomName).toBe('Test room')
     expect(join?.hangoutJoinKind).toBe('joined')
+  })
+
+  it('mints a room-scoped LiveKit voice token', async () => {
+    process.env.LIVEKIT_API_KEY = 'testkey'
+    process.env.LIVEKIT_API_SECRET = 'testsecret-testsecret-testsecret'
+    process.env.NEXT_PUBLIC_LIVEKIT_URL = 'wss://voice.test.dev'
+    const { mintVoiceToken } = await import('@/lib/livekit')
+    const { token, url } = await mintVoiceToken(alice, room.id)
+    expect(url).toBe('wss://voice.test.dev')
+    const claims = decodeJwt(token)
+    expect(claims.iss).toBe('testkey')
+    expect(claims.sub).toBe(String(alice.id))
+    expect(claims.name).toBe(alice.name)
+    expect((claims as Record<string, unknown>).video).toMatchObject({
+      roomJoin: true,
+      room: `videoke-${room.id}`,
+      canPublish: true,
+      canSubscribe: true,
+    })
   })
 
   it('ended rooms stay readable by members but drop out of the open list', async () => {

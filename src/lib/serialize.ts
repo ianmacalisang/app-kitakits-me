@@ -530,7 +530,8 @@ export function toTestimonialData(
 
 export interface NotificationData {
   id: number
-  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge' | 'hangout_invite'
+  type:
+    'like' | 'comment' | 'follow' | 'testimonial' | 'badge' | 'hangout_invite' | 'hangout_request'
   read: boolean
   createdAt: string
   actorName: string
@@ -549,7 +550,8 @@ export interface NotificationData {
   badgeName?: string
   badgeIcon?: string
   badgeTier?: 'bronze' | 'silver' | 'gold'
-  // Set on type 'hangout_invite' — the room the actor invited you to.
+  // Set on 'hangout_invite' (room you were invited to) and 'hangout_request'
+  // (room the actor asked to join).
   videokeRoomId?: number
   videokeRoomName?: string
 }

@@ -37,6 +37,7 @@ const typeIcon = {
   testimonial: <QuoteIcon className="h-2.5 w-2.5" />,
   badge: <MedalIcon className="h-2.5 w-2.5" />,
   hangout_invite: <MicIcon className="h-2.5 w-2.5" />,
+  hangout_request: <MicIcon className="h-2.5 w-2.5" />,
 }
 
 // Larger variant for the timeline icons inside expanded stacks.
@@ -47,6 +48,7 @@ const typeIconLg = {
   testimonial: <QuoteIcon className="h-3 w-3" />,
   badge: <MedalIcon className="h-3 w-3" />,
   hangout_invite: <MicIcon className="h-3 w-3" />,
+  hangout_request: <MicIcon className="h-3 w-3" />,
 }
 
 const notificationText = (n: NotificationData) => {
@@ -56,6 +58,9 @@ const notificationText = (n: NotificationData) => {
   if (n.type === 'badge') return `earned the “${n.badgeName ?? 'new'}” badge`
   if (n.type === 'hangout_invite') {
     return `invited you to a ${n.videokeRoomName ?? 'videoke'} hangout`
+  }
+  if (n.type === 'hangout_request') {
+    return `asked to join your ${n.videokeRoomName ?? 'videoke'} hangout`
   }
   return n.testimonialEvent === 'approved' ? 'approved your testimonial' : 'wrote you a testimonial'
 }
@@ -112,6 +117,16 @@ const stackText = (items: NotificationData[]) => {
           : `invited you to ${hangoutInvites.length} hangouts`,
     })
   }
+  const hangoutRequests = items.filter((n) => n.type === 'hangout_request')
+  if (hangoutRequests.length > 0) {
+    parts.push({
+      idx: items.findIndex((n) => n.type === 'hangout_request'),
+      text:
+        hangoutRequests.length === 1
+          ? notificationText(hangoutRequests[0])
+          : `asked to join ${hangoutRequests.length} hangouts`,
+    })
+  }
 
   parts.sort((a, b) => a.idx - b.idx)
   const phrases = parts.map((p) => p.text)
@@ -126,6 +141,7 @@ const typeColor = {
   testimonial: 'bg-accent-500 text-white',
   badge: 'bg-amber-500 text-white',
   hangout_invite: 'bg-accent-500 text-white',
+  hangout_request: 'bg-violet-500 text-white',
 }
 
 const sectionLabel = 'mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400'
@@ -258,7 +274,10 @@ export function NotificationsView({
         router.push(`/profile/${notification.actorUsername}`)
       } else if (notification.type === 'testimonial') {
         router.push('/testimonials')
-      } else if (notification.type === 'hangout_invite') {
+      } else if (
+        notification.type === 'hangout_invite' ||
+        notification.type === 'hangout_request'
+      ) {
         router.push(
           notification.videokeRoomId
             ? `/hangouts/videoke/${notification.videokeRoomId}`

@@ -1,7 +1,8 @@
 import { notFound, redirect } from 'next/navigation'
 
 import { getChatMutuals } from '@/actions/chat'
-import { getVideokeRoom } from '@/actions/videoke'
+import { getVideokeGate, getVideokeRoom } from '@/actions/videoke'
+import { VideokeGate } from '@/components/videoke/VideokeGate'
 import { VideokeRoom } from '@/components/videoke/VideokeRoom'
 import { getCurrentUser } from '@/lib/auth'
 
@@ -13,8 +14,10 @@ export default async function VideokeRoomPage({ params }: { params: Promise<{ id
 
   const [user, room] = await Promise.all([getCurrentUser(), getVideokeRoom(roomId)])
   if (!user) redirect('/login')
-  // No access at all → back to the lobby rather than a bare 404.
-  if (!room) redirect('/hangouts/videoke')
+
+  // Members and invitees land in the room; everyone else gets the knock
+  // gate — coming back (or first entry) needs the host's permission.
+  if (!room) return <VideokeGate roomId={roomId} gate={await getVideokeGate(roomId)} />
 
   // InvitePicker pages client-side — give it the full first 200.
   const mutuals = await getChatMutuals(1, 200)

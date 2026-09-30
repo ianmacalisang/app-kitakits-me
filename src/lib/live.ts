@@ -24,6 +24,7 @@ export type LiveEvent =
   | { type: 'video:status'; videoId: number; status: 'ready' | 'failed' }
   | { type: 'videoke:update'; roomId: number }
   | { type: 'videoke:invite'; roomId: number; roomName: string; from: string }
+  | { type: 'videoke:request'; roomId: number; roomName: string; from: string }
 
 const emit = async (ids: number[], event: LiveEvent): Promise<void> => {
   if (ids.length === 0 || !EMIT_SECRET) return

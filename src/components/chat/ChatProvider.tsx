@@ -309,6 +309,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           toast(`${from} invited you to ${roomName} hangout`)
           break
         }
+        case 'videoke:request': {
+          window.dispatchEvent(new CustomEvent(LIVE_EVENT, { detail: msg }))
+          const from = typeof msg.from === 'string' && msg.from ? msg.from : 'Someone'
+          const roomName =
+            typeof msg.roomName === 'string' && msg.roomName ? msg.roomName : 'your videoke'
+          toast(`${from} asked to join ${roomName} hangout`)
+          break
+        }
         case 'error': {
           // Surface server rejections (rate limit, peer went offline,
           // non-mutual) — a silently-dropped invite looks like a dead button.

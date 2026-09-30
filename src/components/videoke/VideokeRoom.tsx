@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import {
   endVideokeRoom,
   getVideokeRoom,
+  inviteToVideoke,
   leaveVideokeRoom,
   removeVideokeSong,
   reorderVideokeQueue,
@@ -77,10 +78,13 @@ export function VideokeRoom({
       getVideokeRoom(initial.id)
         .then((r) => {
           if (r) setRoom(r)
+          // Lost access — let the server re-render this route, which swaps
+          // the room for the ask-to-join gate.
+          else router.refresh()
         })
         .catch(() => {})
     }, 250)
-  }, [initial.id, setRoom])
+  }, [initial.id, setRoom, router])
 
   useEffect(
     () => () => {
@@ -88,6 +92,12 @@ export function VideokeRoom({
     },
     [],
   )
+
+  // Re-verify on mount — a router-cache/bfcache render can carry room data
+  // the viewer no longer has rights to (e.g. they left on another tab).
+  useEffect(() => {
+    refresh()
+  }, [refresh])
 
   useEffect(() => {
     const onLive = (e: Event) => {
@@ -363,7 +373,7 @@ export function VideokeRoom({
           </div>
           {canMutate && (
             <div className="flex items-center justify-between gap-2 sm:justify-normal">
-              <MicMeter />
+              <MicMeter roomId={room.id} />
               {isHost && !ended && (
                 <div className="flex shrink-0 items-center gap-2">
                   {room.playback.state === 'playing' ? (
@@ -413,6 +423,31 @@ export function VideokeRoom({
           </p>
           {isHost && !ended && <InvitePicker room={room} mutuals={mutuals} onRoom={setRoom} />}
         </div>
+        {/* Join requests — members who knocked while the door was shut.
+            Letting them in goes through the normal invite path. */}
+        {isHost && !ended && (room.requests ?? []).length > 0 && (
+          <div className="mb-3 rounded-2xl bg-black/[0.04] p-3 dark:bg-white/5">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+              Asking to join
+            </p>
+            <ul className="flex flex-col gap-2">
+              {(room.requests ?? []).map((r) => (
+                <li key={r.id} className="flex items-center gap-2.5">
+                  <Avatar src={r.avatarUrl} name={r.name} size="sm" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{r.name}</span>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => act(inviteToVideoke(room.id, [r.id]))}
+                    className="btn-primary shrink-0 rounded-full px-3.5 py-1.5 text-xs"
+                  >
+                    Let in
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-4">
           {room.members.map((m) => (
             <div key={m.id} className="flex flex-col items-center gap-1">
