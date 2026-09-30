@@ -8,7 +8,8 @@
 
 import { getPayload, Payload } from 'payload'
 import config from '@/payload.config'
-import { relId } from '@/lib/serialize'
+import { getFollowingActivities } from '@/lib/activities'
+import { relId, toNotificationData } from '@/lib/serialize'
 import { serializeVideokeRoom } from '@/lib/videoke'
 import type { User, VideokeRoom } from '@/payload-types'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -64,6 +65,13 @@ describe('Videoke rooms', () => {
         collection: 'videoke-queue-items',
         where: { room: { in: roomIds } },
       })
+    }
+    await payload.delete({
+      collection: 'notifications',
+      where: { or: [{ recipient: { in: ids } }, { actor: { in: ids } }] },
+    })
+    if (roomIds.length) {
+      await payload.delete({ collection: 'hangout-joins', where: { room: { in: roomIds } } })
     }
     await payload.delete({ collection: 'videoke-rooms', where: { host: { in: ids } } })
     for (const id of ids) {
@@ -227,6 +235,49 @@ describe('Videoke rooms', () => {
       overrideAccess: true,
     })
     expect(system.totalDocs).toBe(3)
+  })
+
+  it('serializes a hangout_invite notification with the room link', async () => {
+    const created = await payload.create({
+      collection: 'notifications',
+      data: {
+        recipient: bob.id,
+        actor: alice.id,
+        type: 'hangout_invite',
+        videokeRoom: room.id,
+      },
+      overrideAccess: true,
+    })
+    const full = await payload.findByID({
+      collection: 'notifications',
+      id: created.id,
+      depth: 2,
+      overrideAccess: true,
+    })
+    const data = toNotificationData(full)
+    expect(data?.type).toBe('hangout_invite')
+    expect(data?.actorUsername).toBe(alice.username)
+    expect(data?.videokeRoomId).toBe(room.id)
+    expect(data?.videokeRoomName).toBe('Test room')
+  })
+
+  it('surfaces a hangout join in the activities feed', async () => {
+    await payload.create({
+      collection: 'hangout-joins',
+      data: { user: bob.id, room: room.id, invitedBy: alice.id, kind: 'joined' },
+      overrideAccess: true,
+    })
+    // Carol follows Bob but is not a party to the room — access-checked
+    // population can't load join.room for her, so the feed hydrates the
+    // room/head docs itself. Her feed must still show the join.
+    const feed = await getFollowingActivities(carol, [bob.id], 1)
+    const join = feed.items.find((a) => a.type === 'hangout_join')
+    expect(join).toBeDefined()
+    expect(join?.actorUsername).toBe(bob.username)
+    expect(join?.targetUsername).toBe(alice.username)
+    expect(join?.videokeRoomId).toBe(room.id)
+    expect(join?.videokeRoomName).toBe('Test room')
+    expect(join?.hangoutJoinKind).toBe('joined')
   })
 
   it('ended rooms stay readable by members but drop out of the open list', async () => {

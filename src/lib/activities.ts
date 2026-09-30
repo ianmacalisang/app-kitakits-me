@@ -3,18 +3,27 @@ import type { Where } from 'payload'
 import type {
   Comment,
   Follow,
+  HangoutJoin,
   Like,
   Post,
   ProfileView,
   Testimonial,
   User,
   UserBadge,
+  VideokeRoom,
 } from '@/payload-types'
 
 import { getTopBadgesForUsers, toBadgeData } from './gamification'
 import { getPayloadClient } from './payload'
 import { hydratePosts } from './posts'
-import { type ActivityData, type BadgeData, type Paged, avatarUrl, snippet } from './serialize'
+import {
+  type ActivityData,
+  type BadgeData,
+  type Paged,
+  avatarUrl,
+  relId,
+  snippet,
+} from './serialize'
 
 const ACTIVITY_PAGE_SIZE = 20
 
@@ -140,6 +149,34 @@ const toProfileViewActivity = (view: ProfileView, badges: BadgeMap | null): Acti
   }
 }
 
+const toHangoutJoinActivity = (
+  join: HangoutJoin,
+  heads: Map<number, User>,
+  rooms: Map<number, VideokeRoom>,
+  badges: BadgeMap | null,
+): ActivityData | null => {
+  const actor = heads.get(relId(join.user) ?? -1) ?? null
+  const room = rooms.get(relId(join.room) ?? -1) ?? null
+  if (!actor || !room) return null
+  // The member who invited them shows as the activity's target — "hosted by".
+  const inviter = heads.get(relId(join.invitedBy) ?? -1) ?? null
+  const name = typeof room.name === 'string' && room.name.trim() ? room.name.trim() : undefined
+  return {
+    id: `hangoutjoin-${join.id}`,
+    type: 'hangout_join',
+    // updatedAt is the latest join — re-joins resurface the row.
+    createdAt: join.updatedAt,
+    ...actorFields(actor, badges),
+    targetName: inviter?.name,
+    targetUsername: inviter?.username,
+    targetAvatarUrl: inviter ? avatarUrl(inviter) : undefined,
+    targetBadge: badgeFor(badges, inviter),
+    videokeRoomId: room.id,
+    videokeRoomName: name,
+    hangoutJoinKind: join.kind === 'hosted' ? 'hosted' : 'joined',
+  }
+}
+
 // Latest likes, comments, and follows made by the given users, plus profile
 // views aimed at the viewer — powers the home "Activities" tab. Each source
 // is sorted newest-first, so fetching the top page*PAGE_SIZE of each and
@@ -176,78 +213,127 @@ export async function getFollowingActivities(
     ],
   }
 
-  const [likes, comments, follows, testimonials, badgeAwards, profileViews] = await Promise.all([
-    // Depth 3 so the embedded post is fully usable by hydratePosts: post
-    // images (2), the post author's avatar (3), and a shared original's
-    // author (3) all come back populated.
-    payload.find({
-      collection: 'likes',
-      where: { and: [{ user: { in: authorIds } }, visiblePost] },
-      sort: '-createdAt',
-      limit,
-      depth: 3,
-      user: viewer,
-      overrideAccess: false,
-    }),
-    payload.find({
-      collection: 'comments',
-      where: { and: [{ author: { in: authorIds } }, visiblePost] },
-      sort: '-createdAt',
-      limit,
-      depth: 3,
-      user: viewer,
-      overrideAccess: false,
-    }),
-    payload.find({
-      collection: 'follows',
-      where: {
-        and: [{ follower: { in: authorIds } }, { 'following.isPrivate': { not_equals: true } }],
-      },
-      sort: '-createdAt',
-      limit,
-      depth: 2,
-      user: viewer,
-      overrideAccess: false,
-    }),
-    payload.find({
-      collection: 'testimonials',
-      where: { and: [{ author: { in: authorIds } }, { status: { equals: 'approved' } }] },
-      sort: '-createdAt',
-      limit,
-      depth: 2,
-      user: viewer,
-      overrideAccess: false,
-    }),
-    // Badge awards are public celebration moments — no visibility filter.
-    // Depth 2 populates the badge definition for toBadgeData.
-    payload.find({
-      collection: 'user-badges',
-      where: { user: { in: authorIds } },
-      sort: '-createdAt',
-      limit,
-      depth: 2,
-      user: viewer,
-      overrideAccess: false,
-    }),
-    // Who viewed the feed owner's profile — reciprocal: rows only exist for
-    // opted-in viewers, and a viewer who later opts out drops off the list.
-    optedIn
+  const [likes, comments, follows, testimonials, badgeAwards, profileViews, hangoutJoins] =
+    await Promise.all([
+      // Depth 3 so the embedded post is fully usable by hydratePosts: post
+      // images (2), the post author's avatar (3), and a shared original's
+      // author (3) all come back populated.
+      payload.find({
+        collection: 'likes',
+        where: { and: [{ user: { in: authorIds } }, visiblePost] },
+        sort: '-createdAt',
+        limit,
+        depth: 3,
+        user: viewer,
+        overrideAccess: false,
+      }),
+      payload.find({
+        collection: 'comments',
+        where: { and: [{ author: { in: authorIds } }, visiblePost] },
+        sort: '-createdAt',
+        limit,
+        depth: 3,
+        user: viewer,
+        overrideAccess: false,
+      }),
+      payload.find({
+        collection: 'follows',
+        where: {
+          and: [{ follower: { in: authorIds } }, { 'following.isPrivate': { not_equals: true } }],
+        },
+        sort: '-createdAt',
+        limit,
+        depth: 2,
+        user: viewer,
+        overrideAccess: false,
+      }),
+      payload.find({
+        collection: 'testimonials',
+        where: { and: [{ author: { in: authorIds } }, { status: { equals: 'approved' } }] },
+        sort: '-createdAt',
+        limit,
+        depth: 2,
+        user: viewer,
+        overrideAccess: false,
+      }),
+      // Badge awards are public celebration moments — no visibility filter.
+      // Depth 2 populates the badge definition for toBadgeData.
+      payload.find({
+        collection: 'user-badges',
+        where: { user: { in: authorIds } },
+        sort: '-createdAt',
+        limit,
+        depth: 2,
+        user: viewer,
+        overrideAccess: false,
+      }),
+      // Who viewed the feed owner's profile — reciprocal: rows only exist for
+      // opted-in viewers, and a viewer who later opts out drops off the list.
+      optedIn
+        ? payload.find({
+            collection: 'profile-views',
+            where: {
+              and: [
+                { viewed: { equals: viewer.id } },
+                { 'viewer.profileViewTracking': { equals: true } },
+              ],
+            },
+            sort: '-updatedAt',
+            limit,
+            depth: 2,
+            user: viewer,
+            overrideAccess: false,
+          })
+        : Promise.resolve({ docs: [] as ProfileView[], hasNextPage: false }),
+      // Hangout joins by followed users — sorted by updatedAt because a
+      // re-join bumps the existing row instead of creating a new one. Depth 0:
+      // the room/user heads hydrate separately below with system access —
+      // a follower isn't a room party, so access-checked population would
+      // leave join.room as a bare id and the row would drop from the feed.
+      payload.find({
+        collection: 'hangout-joins',
+        where: { user: { in: authorIds } },
+        sort: '-updatedAt',
+        limit,
+        depth: 0,
+        user: viewer,
+        overrideAccess: false,
+      }),
+    ])
+
+  const joinUserIds = new Set<number>()
+  const joinRoomIds = new Set<number>()
+  for (const join of hangoutJoins.docs) {
+    const uid = relId(join.user)
+    const iid = relId(join.invitedBy)
+    const rid = relId(join.room)
+    if (uid) joinUserIds.add(uid)
+    if (iid) joinUserIds.add(iid)
+    if (rid) joinRoomIds.add(rid)
+  }
+  const [joinHeads, joinRooms] = await Promise.all([
+    joinUserIds.size
       ? payload.find({
-          collection: 'profile-views',
-          where: {
-            and: [
-              { viewed: { equals: viewer.id } },
-              { 'viewer.profileViewTracking': { equals: true } },
-            ],
-          },
-          sort: '-updatedAt',
-          limit,
-          depth: 2,
-          user: viewer,
-          overrideAccess: false,
+          collection: 'users',
+          where: { id: { in: [...joinUserIds] } },
+          limit: joinUserIds.size,
+          // Depth 1 so avatar media populates — avatarUrl needs the Media doc.
+          depth: 1,
+          overrideAccess: true,
         })
-      : Promise.resolve({ docs: [] as ProfileView[], hasNextPage: false }),
+      : { docs: [] as User[] },
+    joinRoomIds.size
+      ? payload.find({
+          collection: 'videoke-rooms',
+          where: { id: { in: [...joinRoomIds] } },
+          limit: joinRoomIds.size,
+          depth: 0,
+          overrideAccess: true,
+        })
+      : { docs: [] as VideokeRoom[] },
   ])
+  const joinUserMap = new Map(joinHeads.docs.map((u) => [u.id, u]))
+  const joinRoomMap = new Map(joinRooms.docs.map((r) => [r.id, r]))
 
   // One badge lookup for every named user — actors, post authors, and targets.
   const badgeUserIds = new Set<number>()
@@ -262,6 +348,11 @@ export async function getFollowingActivities(
     collect(asUser(testimonial.author), asUser(testimonial.recipient))
   for (const award of badgeAwards.docs) collect(asUser(award.user))
   for (const view of profileViews.docs) collect(asUser(view.viewer))
+  for (const join of hangoutJoins.docs)
+    collect(
+      joinUserMap.get(relId(join.user) ?? -1) ?? null,
+      joinUserMap.get(relId(join.invitedBy) ?? -1) ?? null,
+    )
   const topBadges = await getTopBadgesForUsers(payload, [...badgeUserIds])
 
   const entries = [
@@ -286,6 +377,10 @@ export async function getFollowingActivities(
       data: toProfileViewActivity(view, topBadges),
       post: null,
     })),
+    ...hangoutJoins.docs.map((join) => ({
+      data: toHangoutJoinActivity(join, joinUserMap, joinRoomMap, topBadges),
+      post: null,
+    })),
   ]
     .filter((e): e is { data: ActivityData; post: Post | null } => e.data !== null)
     .sort((a, b) => b.data.createdAt.localeCompare(a.data.createdAt))
@@ -299,7 +394,8 @@ export async function getFollowingActivities(
     follows.hasNextPage ||
     testimonials.hasNextPage ||
     badgeAwards.hasNextPage ||
-    profileViews.hasNextPage
+    profileViews.hasNextPage ||
+    hangoutJoins.hasNextPage
 
   // Hydrate the distinct posts shown on this page in one batched pass so each
   // like/comment row can render the full post card, not just a snippet.

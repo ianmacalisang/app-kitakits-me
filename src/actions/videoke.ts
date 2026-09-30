@@ -5,10 +5,12 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { getMutualFollowIds } from '@/lib/chat'
 import { pushLive } from '@/lib/live'
+import { revalidateNavCounts } from '@/lib/nav-cache'
 import { getPayloadClient } from '@/lib/payload'
 import { checkRate } from '@/lib/rate-limit'
 import { relId } from '@/lib/serialize'
 import {
+  roomDisplayName,
   roomMemberIds,
   serializeVideokeRoom,
   serializeVideokeSummary,
@@ -170,6 +172,16 @@ export async function createVideokeRoom(name: string): Promise<ActionResult & { 
     user,
     overrideAccess: false,
   })
+
+  // Hosts become members through the create hook, not the invite path — so
+  // record the join here too or their hangout never shows in the activities
+  // feed.
+  await payload.create({
+    collection: 'hangout-joins',
+    data: { user: user.id, room: room.id, kind: 'hosted' },
+    overrideAccess: true,
+  })
+
   return { ok: true, roomId: room.id }
 }
 
@@ -191,7 +203,7 @@ export async function inviteToVideoke(roomId: number, targetIds: number[]): Prom
   const room = await loadVisibleRoom(payload, roomId, user)
   if (!room) return fail('Room not found.')
   if (room.status !== 'open') return fail('This room has ended.')
-  if (!memberIdsOf(room).includes(user.id)) return fail('Only room members can invite.')
+  if (relId(room.host) !== user.id) return fail('Only the host can invite.')
 
   const wanted = [...new Set(targetIds.filter((id) => Number.isInteger(id) && id > 0))].slice(
     0,
@@ -222,7 +234,27 @@ export async function inviteToVideoke(roomId: number, targetIds: number[]): Prom
     overrideAccess: true,
   })
 
-  pushLive(targets, { type: 'videoke:invite', roomId: room.id, from: user.name })
+  await Promise.all(
+    targets.map((id) =>
+      payload.create({
+        collection: 'notifications',
+        data: {
+          recipient: id,
+          actor: user.id,
+          type: 'hangout_invite',
+          videokeRoom: room.id,
+        },
+      }),
+    ),
+  )
+  for (const id of targets) revalidateNavCounts(id)
+
+  pushLive(targets, {
+    type: 'videoke:invite',
+    roomId: room.id,
+    roomName: roomDisplayName(room, user.name),
+    from: user.name,
+  })
   pushLive(memberIdsOf(next), { type: 'videoke:update', roomId: room.id })
   return { ok: true, room: await serialize(payload, next) }
 }
@@ -257,6 +289,32 @@ export async function respondVideokeInvite(roomId: number, accept: boolean): Pro
     data: { invites: remainingInvites, members: [...memberIdsOf(room), user.id] },
     overrideAccess: true,
   })
+
+  // Record the join for the activities feed — one row per (user, room); a
+  // re-join bumps the row so it resurfaces instead of duplicating.
+  const invitedBy = relId(myInvite.invitedBy)
+  const existing = await payload.find({
+    collection: 'hangout-joins',
+    where: { and: [{ user: { equals: user.id } }, { room: { equals: room.id } }] },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (existing.docs[0]) {
+    await payload.update({
+      collection: 'hangout-joins',
+      id: existing.docs[0].id,
+      data: { invitedBy, kind: 'joined' },
+      overrideAccess: true,
+    })
+  } else {
+    await payload.create({
+      collection: 'hangout-joins',
+      data: { user: user.id, room: room.id, invitedBy, kind: 'joined' },
+      overrideAccess: true,
+    })
+  }
+
   pokeRoom(next)
   return { ok: true, room: await serialize(payload, next) }
 }

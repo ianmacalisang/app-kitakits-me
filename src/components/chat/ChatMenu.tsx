@@ -20,17 +20,40 @@ export function ChatMenu() {
   const chat = useChat()
   const open = chat?.menuOpen ?? false
   const [mutuals, setMutuals] = useState<MutualHead[]>([])
+  const [mutualsHasMore, setMutualsHasMore] = useState(false)
+  const [mutualsTotal, setMutualsTotal] = useState(0)
+  const [mutualsPage, setMutualsPage] = useState(1)
   const [loaded, setLoaded] = useState(false)
   const [, startTransition] = useTransition()
+  const [morePending, startMoreTransition] = useTransition()
   const boxRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
   const refresh = useCallback(() => {
     startTransition(async () => {
-      setMutuals(await getChatMutuals())
+      const res = await getChatMutuals(1)
+      setMutuals(res.items)
+      setMutualsHasMore(res.hasMore)
+      setMutualsTotal(res.total)
+      setMutualsPage(1)
       setLoaded(true)
     })
   }, [])
+
+  const loadMoreMutuals = useCallback(() => {
+    if (morePending || !mutualsHasMore) return
+    startMoreTransition(async () => {
+      const next = mutualsPage + 1
+      const res = await getChatMutuals(next)
+      setMutuals((prev) => {
+        const seen = new Set(prev.map((m) => m.id))
+        return [...prev, ...res.items.filter((m) => !seen.has(m.id))]
+      })
+      setMutualsHasMore(res.hasMore)
+      setMutualsTotal(res.total)
+      setMutualsPage(next)
+    })
+  }, [morePending, mutualsHasMore, mutualsPage])
 
   // Load the roster whenever the menu opens — covers opens triggered by the
   // invite/accepted banners, not just the toggle button.
@@ -150,7 +173,13 @@ export function ChatMenu() {
           {active ? (
             <ChatRoom room={active} />
           ) : loaded ? (
-            <ChatClient mutuals={mutuals} />
+            <ChatClient
+              mutuals={mutuals}
+              mutualsHasMore={mutualsHasMore}
+              mutualsTotal={mutualsTotal}
+              mutualsPending={morePending}
+              onLoadMoreMutuals={loadMoreMutuals}
+            />
           ) : (
             <div className="flex justify-center p-3 py-12">
               <Spinner className="h-5 w-5 text-neutral-400" />

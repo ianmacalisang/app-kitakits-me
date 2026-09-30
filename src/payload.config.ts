@@ -25,6 +25,7 @@ import { Badges } from './collections/Badges'
 import { UserBadges } from './collections/UserBadges'
 import { PointEvents } from './collections/PointEvents'
 import { ProfileViews } from './collections/ProfileViews'
+import { HangoutJoins } from './collections/HangoutJoins'
 import { VideokeQueueItems } from './collections/VideokeQueueItems'
 import { VideokeRooms } from './collections/VideokeRooms'
 import { SiteSettings } from './globals/SiteSettings'
@@ -67,6 +68,7 @@ export default buildConfig({
     ProfileViews,
     VideokeRooms,
     VideokeQueueItems,
+    HangoutJoins,
   ],
   globals: [SiteSettings],
   editor: lexicalEditor(),

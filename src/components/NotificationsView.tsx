@@ -22,6 +22,7 @@ import {
   CommentIcon,
   HeartIcon,
   MedalIcon,
+  MicIcon,
   QuoteIcon,
   UserIcon,
 } from './icons'
@@ -35,6 +36,7 @@ const typeIcon = {
   follow: <UserIcon className="h-2.5 w-2.5" />,
   testimonial: <QuoteIcon className="h-2.5 w-2.5" />,
   badge: <MedalIcon className="h-2.5 w-2.5" />,
+  hangout_invite: <MicIcon className="h-2.5 w-2.5" />,
 }
 
 // Larger variant for the timeline icons inside expanded stacks.
@@ -44,6 +46,7 @@ const typeIconLg = {
   follow: <UserIcon className="h-3 w-3" />,
   testimonial: <QuoteIcon className="h-3 w-3" />,
   badge: <MedalIcon className="h-3 w-3" />,
+  hangout_invite: <MicIcon className="h-3 w-3" />,
 }
 
 const notificationText = (n: NotificationData) => {
@@ -51,6 +54,9 @@ const notificationText = (n: NotificationData) => {
   if (n.type === 'comment') return 'commented on your post'
   if (n.type === 'follow') return 'started following you'
   if (n.type === 'badge') return `earned the “${n.badgeName ?? 'new'}” badge`
+  if (n.type === 'hangout_invite') {
+    return `invited you to a ${n.videokeRoomName ?? 'videoke'} hangout`
+  }
   return n.testimonialEvent === 'approved' ? 'approved your testimonial' : 'wrote you a testimonial'
 }
 
@@ -96,6 +102,16 @@ const stackText = (items: NotificationData[]) => {
       text: badges.length === 1 ? notificationText(badges[0]) : `earned ${badges.length} badges`,
     })
   }
+  const hangoutInvites = items.filter((n) => n.type === 'hangout_invite')
+  if (hangoutInvites.length > 0) {
+    parts.push({
+      idx: items.findIndex((n) => n.type === 'hangout_invite'),
+      text:
+        hangoutInvites.length === 1
+          ? notificationText(hangoutInvites[0])
+          : `invited you to ${hangoutInvites.length} hangouts`,
+    })
+  }
 
   parts.sort((a, b) => a.idx - b.idx)
   const phrases = parts.map((p) => p.text)
@@ -109,6 +125,7 @@ const typeColor = {
   follow: 'bg-accent-500 text-white',
   testimonial: 'bg-accent-500 text-white',
   badge: 'bg-amber-500 text-white',
+  hangout_invite: 'bg-accent-500 text-white',
 }
 
 const sectionLabel = 'mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400'
@@ -241,6 +258,12 @@ export function NotificationsView({
         router.push(`/profile/${notification.actorUsername}`)
       } else if (notification.type === 'testimonial') {
         router.push('/testimonials')
+      } else if (notification.type === 'hangout_invite') {
+        router.push(
+          notification.videokeRoomId
+            ? `/hangouts/videoke/${notification.videokeRoomId}`
+            : '/hangouts/videoke',
+        )
       } else if (notification.postId) {
         if (notification.type === 'like') setViewPostId(notification.postId)
         else setOpenPostId(notification.postId)

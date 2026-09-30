@@ -11,6 +11,7 @@ import type {
   Thread,
   User,
   Video,
+  VideokeRoom,
 } from '@/payload-types'
 
 import { streamHostname } from './bunny'
@@ -529,7 +530,7 @@ export function toTestimonialData(
 
 export interface NotificationData {
   id: number
-  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge'
+  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge' | 'hangout_invite'
   read: boolean
   createdAt: string
   actorName: string
@@ -548,6 +549,9 @@ export interface NotificationData {
   badgeName?: string
   badgeIcon?: string
   badgeTier?: 'bronze' | 'silver' | 'gold'
+  // Set on type 'hangout_invite' — the room the actor invited you to.
+  videokeRoomId?: number
+  videokeRoomName?: string
 }
 
 export const snippet = (value: unknown): string | undefined => {
@@ -576,6 +580,14 @@ export function toNotificationData(
 
   const badge = isObj(notification.badge) ? (notification.badge as Badge) : null
 
+  const videokeRoom = isObj(notification.videokeRoom)
+    ? (notification.videokeRoom as VideokeRoom)
+    : null
+  const videokeRoomName = videokeRoom
+    ? (typeof videokeRoom.name === 'string' && videokeRoom.name.trim()) ||
+      `${isObj(videokeRoom.host) ? (videokeRoom.host as User).name : 'Someone'}'s videoke`
+    : undefined
+
   return {
     id: notification.id,
     type: notification.type,
@@ -598,6 +610,8 @@ export function toNotificationData(
         : badge
           ? 'bronze'
           : undefined,
+    videokeRoomId: relId(notification.videokeRoom) ?? undefined,
+    videokeRoomName,
   }
 }
 
@@ -607,7 +621,7 @@ export function toNotificationData(
 // target fields for follow/testimonial.
 export interface ActivityData {
   id: string
-  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge' | 'profile_view'
+  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge' | 'profile_view' | 'hangout_join'
   createdAt: string
   actorName: string
   actorUsername: string
@@ -629,6 +643,11 @@ export interface ActivityData {
   targetUsername?: string
   targetAvatarUrl?: string
   targetBadge?: BadgeData
+  // Set on 'hangout_join' — the room the actor joined. target* fields carry
+  // the member who invited them.
+  videokeRoomId?: number
+  videokeRoomName?: string
+  hangoutJoinKind?: 'joined' | 'hosted'
 }
 
 export interface ThreadData {

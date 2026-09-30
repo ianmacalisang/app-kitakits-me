@@ -177,40 +177,45 @@ export function VideokeRoom({
   if (!isMember && isInvitee) {
     const inviter = room.invites.find((i) => i.user.id === viewerId)?.invitedBy ?? null
     return (
-      <div className="glass mx-auto mt-10 max-w-md overflow-hidden rounded-3xl p-0 text-center">
-        <div className="relative bg-gradient-to-br from-accent-500 via-accent-700 to-accent-950 px-6 py-8 text-white">
-          <span
-            aria-hidden
-            className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.07)_1px,transparent_1px)] bg-[size:20px_20px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_75%)]"
-          />
-          <span className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/40 backdrop-blur-sm">
-            <MicIcon className="h-8 w-8" />
-          </span>
-          <EqBars className="absolute bottom-3 right-4 h-4 text-white/60" />
-        </div>
-        <div className="p-6">
-          <h1 className="text-xl font-bold tracking-tight">{room.name}</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            {inviter ? `${inviter.name} invited you` : "You've been invited"} — join to sing along.
-          </p>
-          <div className="mt-5 flex justify-center gap-2">
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => respond(false)}
-              className="rounded-full bg-black/5 px-5 py-2 text-sm font-semibold text-neutral-600 transition hover:bg-black/10 disabled:opacity-60 dark:bg-white/10 dark:text-neutral-300"
-            >
-              Decline
-            </button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => respond(true)}
-              className="btn-primary flex items-center gap-2 rounded-full px-5 py-2 text-sm"
-            >
-              {pending && <Spinner className="h-4 w-4" />}
-              Join room
-            </button>
+      // Fill the content area between the top nav (pt-24) and bottom dock
+      // (pb-28) so the invite card lands dead-center, not just near the top.
+      <div className="flex min-h-[calc(100dvh-13rem)] items-center justify-center">
+        <div className="glass w-full max-w-md overflow-hidden rounded-3xl p-0 text-center">
+          <div className="relative bg-gradient-to-br from-accent-500 via-accent-700 to-accent-950 px-6 py-8 text-white">
+            <span
+              aria-hidden
+              className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.07)_1px,transparent_1px)] bg-[size:20px_20px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_75%)]"
+            />
+            <span className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/40 backdrop-blur-sm">
+              <MicIcon className="h-8 w-8" />
+            </span>
+            <EqBars className="absolute bottom-3 right-4 h-4 text-white/60" />
+          </div>
+          <div className="p-6">
+            <h1 className="text-xl font-bold tracking-tight">{room.name}</h1>
+            <p className="mt-1 text-sm text-neutral-500">
+              {inviter ? `${inviter.name} invited you` : "You've been invited"} — join to sing
+              along.
+            </p>
+            <div className="mt-5 flex justify-center gap-2">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => respond(false)}
+                className="rounded-full bg-black/5 px-5 py-2 text-sm font-semibold text-neutral-600 transition hover:bg-black/10 disabled:opacity-60 dark:bg-white/10 dark:text-neutral-300"
+              >
+                Decline
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => respond(true)}
+                className="btn-primary flex items-center gap-2 rounded-full px-5 py-2 text-sm"
+              >
+                {pending && <Spinner className="h-4 w-4" />}
+                Join room
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -406,7 +411,7 @@ export function VideokeRoom({
           <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
             In the room
           </p>
-          {canMutate && <InvitePicker room={room} mutuals={mutuals} onRoom={setRoom} />}
+          {isHost && !ended && <InvitePicker room={room} mutuals={mutuals} onRoom={setRoom} />}
         </div>
         <div className="flex flex-wrap items-center gap-4">
           {room.members.map((m) => (
@@ -420,13 +425,13 @@ export function VideokeRoom({
                   >
                     <StarIcon className="h-2.5 w-2.5" />
                   </span>
-                ) : (
+                ) : m.id !== viewerId ? (
                   <span
                     className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-neutral-900 ${
                       onlineIds.has(m.id) ? 'bg-emerald-500' : 'bg-neutral-300'
                     }`}
                   />
-                )}
+                ) : null}
               </span>
               <span className="max-w-16 truncate text-[11px] text-neutral-600 dark:text-neutral-300">
                 {m.name.split(' ')[0]}

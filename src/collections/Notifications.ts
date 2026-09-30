@@ -48,7 +48,7 @@ export const Notifications: CollectionConfig = {
     {
       name: 'type',
       type: 'select',
-      options: ['like', 'comment', 'follow', 'testimonial', 'badge'],
+      options: ['like', 'comment', 'follow', 'testimonial', 'badge', 'hangout_invite'],
       required: true,
       access: {
         update: isAdminField,
@@ -82,6 +82,14 @@ export const Notifications: CollectionConfig = {
       name: 'badge',
       type: 'relationship',
       relationTo: 'badges',
+      access: {
+        update: isAdminField,
+      },
+    },
+    {
+      name: 'videokeRoom',
+      type: 'relationship',
+      relationTo: 'videoke-rooms',
       access: {
         update: isAdminField,
       },

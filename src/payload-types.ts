@@ -87,6 +87,7 @@ export interface Config {
     'profile-views': ProfileView;
     'videoke-rooms': VideokeRoom;
     'videoke-queue-items': VideokeQueueItem;
+    'hangout-joins': HangoutJoin;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -114,6 +115,7 @@ export interface Config {
     'profile-views': ProfileViewsSelect<false> | ProfileViewsSelect<true>;
     'videoke-rooms': VideokeRoomsSelect<false> | VideokeRoomsSelect<true>;
     'videoke-queue-items': VideokeQueueItemsSelect<false> | VideokeQueueItemsSelect<true>;
+    'hangout-joins': HangoutJoinsSelect<false> | HangoutJoinsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -445,11 +447,12 @@ export interface Notification {
   id: number;
   recipient: number | User;
   actor: number | User;
-  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge';
+  type: 'like' | 'comment' | 'follow' | 'testimonial' | 'badge' | 'hangout_invite';
   post?: (number | null) | Post;
   comment?: (number | null) | Comment;
   testimonial?: (number | null) | Testimonial;
   badge?: (number | null) | Badge;
+  videokeRoom?: (number | null) | VideokeRoom;
   read?: boolean | null;
   updatedAt: string;
   createdAt: string;
@@ -498,6 +501,53 @@ export interface Badge {
    * Lower sorts first on the profile badge shelf.
    */
   sort?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "videoke-rooms".
+ */
+export interface VideokeRoom {
+  id: number;
+  host: number | User;
+  name?: string | null;
+  members: (number | User)[];
+  /**
+   * Pending invitations — invitee, who invited them, and when.
+   */
+  invites?:
+    | {
+        user: number | User;
+        invitedBy?: (number | null) | User;
+        invitedAt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  status?: ('open' | 'ended') | null;
+  playback?: {
+    item?: (number | null) | VideokeQueueItem;
+    state?: ('idle' | 'playing' | 'paused') | null;
+    startedAt?: string | null;
+    positionSec?: number | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "videoke-queue-items".
+ */
+export interface VideokeQueueItem {
+  id: number;
+  room: number | VideokeRoom;
+  videoId: string;
+  title: string;
+  thumbnail?: string | null;
+  durationSec?: number | null;
+  addedBy: number | User;
+  state?: ('queued' | 'playing' | 'done' | 'skipped') | null;
+  position: number;
   updatedAt: string;
   createdAt: string;
 }
@@ -638,48 +688,14 @@ export interface ProfileView {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "videoke-rooms".
+ * via the `definition` "hangout-joins".
  */
-export interface VideokeRoom {
+export interface HangoutJoin {
   id: number;
-  host: number | User;
-  name?: string | null;
-  members: (number | User)[];
-  /**
-   * Pending invitations — invitee, who invited them, and when.
-   */
-  invites?:
-    | {
-        user: number | User;
-        invitedBy?: (number | null) | User;
-        invitedAt?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  status?: ('open' | 'ended') | null;
-  playback?: {
-    item?: (number | null) | VideokeQueueItem;
-    state?: ('idle' | 'playing' | 'paused') | null;
-    startedAt?: string | null;
-    positionSec?: number | null;
-  };
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "videoke-queue-items".
- */
-export interface VideokeQueueItem {
-  id: number;
+  user: number | User;
   room: number | VideokeRoom;
-  videoId: string;
-  title: string;
-  thumbnail?: string | null;
-  durationSec?: number | null;
-  addedBy: number | User;
-  state?: ('queued' | 'playing' | 'done' | 'skipped') | null;
-  position: number;
+  invitedBy?: (number | null) | User;
+  kind: 'joined' | 'hosted';
   updatedAt: string;
   createdAt: string;
 }
@@ -786,6 +802,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'videoke-queue-items';
         value: number | VideokeQueueItem;
+      } | null)
+    | ({
+        relationTo: 'hangout-joins';
+        value: number | HangoutJoin;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -1074,6 +1094,7 @@ export interface NotificationsSelect<T extends boolean = true> {
   comment?: T;
   testimonial?: T;
   badge?: T;
+  videokeRoom?: T;
   read?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1266,6 +1287,18 @@ export interface VideokeQueueItemsSelect<T extends boolean = true> {
   addedBy?: T;
   state?: T;
   position?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hangout-joins_select".
+ */
+export interface HangoutJoinsSelect<T extends boolean = true> {
+  user?: T;
+  room?: T;
+  invitedBy?: T;
+  kind?: T;
   updatedAt?: T;
   createdAt?: T;
 }

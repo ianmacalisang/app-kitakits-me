@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 
 import type { PostCategory } from '@/lib/categories'
-import type { MutualHead } from '@/lib/mutuals'
+import type { MutualsPage } from '@/lib/mutuals'
 import type { ActivityData, MediaFilter, PostCardData } from '@/lib/serialize'
 
 import { ActivitiesView } from './ActivitiesView'
@@ -42,7 +42,7 @@ export function HomeTabs({
   savedHasMore,
   savedCount,
 }: {
-  mutuals: MutualHead[]
+  mutuals: MutualsPage
   feedPosts: PostCardData[]
   feedHasMore: boolean
   initialMediaFilter?: MediaFilter

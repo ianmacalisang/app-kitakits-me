@@ -1,30 +1,53 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 
-import type { MutualHead } from '@/lib/mutuals'
+import { getChatMutuals } from '@/actions/chat'
+import type { MutualsPage } from '@/lib/mutuals'
 
 import { Avatar } from './Avatar'
+import { Spinner } from './Spinner'
 import { useChat } from './chat/ChatProvider'
 import { pairKey } from './chat/ChatRoom'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons'
 
-// Horizontal strip of all mutual follows above the home tab bar. Presence
-// comes from the chat socket — online mutuals sort first with an emerald dot,
-// the rest show grey. Hidden only when the user has no mutuals at all.
-export function OnlineMutuals({ mutuals }: { mutuals: MutualHead[] }) {
+// Horizontal strip of mutual follows above the home tab bar. Presence comes
+// from the chat socket — online mutuals sort first with an emerald dot, the
+// rest show grey. The roster is paged server-side; a "show more" tile at the
+// end of the rail appends the next page. Hidden only when the user has no
+// mutuals at all.
+export function OnlineMutuals({ mutuals }: { mutuals: MutualsPage }) {
   const chat = useChat()
   const railRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
 
+  const [items, setItems] = useState(mutuals.items)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(mutuals.hasMore)
+  const [total, setTotal] = useState(mutuals.total)
+  const [pending, startTransition] = useTransition()
+
+  // A fresh first page from a server re-render replaces local pages — the
+  // roster is small enough that reloading the tail is cheaper than merging.
+  const [prevMutuals, setPrevMutuals] = useState(mutuals)
+  if (prevMutuals !== mutuals) {
+    setPrevMutuals(mutuals)
+    setItems(mutuals.items)
+    setPage(1)
+    setHasMore(mutuals.hasMore)
+    setTotal(mutuals.total)
+  }
+
   useEffect(() => {
     const rail = railRef.current
-    if (!rail || mutuals.length === 0) return
+    if (!rail || items.length === 0) return
     const updateEdges = () => {
       setCanScrollLeft(rail.scrollLeft > 4)
-      setCanScrollRight(rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 4)
+      // Keep the arrow alive while a next page can still be fetched — the
+      // sentinel tile sits past the current scroll end.
+      setCanScrollRight(hasMore || rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 4)
     }
     updateEdges()
     rail.addEventListener('scroll', updateEdges, { passive: true })
@@ -33,21 +56,42 @@ export function OnlineMutuals({ mutuals }: { mutuals: MutualHead[] }) {
       rail.removeEventListener('scroll', updateEdges)
       window.removeEventListener('resize', updateEdges)
     }
-  }, [mutuals.length])
+  }, [items.length, hasMore])
 
-  if (mutuals.length === 0) return null
+  if (items.length === 0) return null
 
   const online = new Set(
     chat?.enabled && chat.status === 'online' ? chat.online.map((u) => u.id) : [],
   )
-  const onlineCount = mutuals.filter((u) => online.has(u.id)).length
-  const sorted = [...mutuals].sort((a, b) => Number(online.has(b.id)) - Number(online.has(a.id)))
+  const onlineCount = items.filter((u) => online.has(u.id)).length
+  const sorted = [...items].sort((a, b) => Number(online.has(b.id)) - Number(online.has(a.id)))
+  const remaining = Math.max(total - items.length, 0)
+
+  const loadMore = () => {
+    if (pending || !hasMore) return
+    startTransition(async () => {
+      const next = page + 1
+      const res = await getChatMutuals(next)
+      setItems((prev) => {
+        const seen = new Set(prev.map((m) => m.id))
+        return [...prev, ...res.items.filter((m) => !seen.has(m.id))]
+      })
+      setPage(next)
+      setHasMore(res.hasMore)
+      setTotal(res.total)
+    })
+  }
 
   return (
     <div className="glass mb-3 rounded-3xl p-4">
       <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-neutral-500">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        Mutuals{onlineCount > 0 ? ` · ${onlineCount} online` : ''}
+        Mutuals
+        {onlineCount > 0 && (
+          <span className="ml-auto rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 ring-1 ring-emerald-500/20 dark:text-emerald-400">
+            {onlineCount} online
+          </span>
+        )}
       </p>
       <div className="relative">
         <div
@@ -93,6 +137,21 @@ export function OnlineMutuals({ mutuals }: { mutuals: MutualHead[] }) {
               </Link>
             )
           })}
+          {hasMore && (
+            <button
+              type="button"
+              onClick={loadMore}
+              disabled={pending}
+              className="flex w-20 shrink-0 flex-col items-center gap-1.5 disabled:opacity-60"
+            >
+              <span className="flex h-20 w-20 items-center justify-center rounded-full bg-white/60 text-sm font-semibold text-neutral-600 ring-1 ring-neutral-200 transition hover:ring-accent-300 dark:bg-white/5 dark:text-neutral-300 dark:ring-white/10">
+                {pending ? <Spinner className="h-5 w-5" /> : `+${remaining}`}
+              </span>
+              <span className="w-full truncate text-center text-xs leading-tight text-neutral-600">
+                Show more
+              </span>
+            </button>
+          )}
         </div>
         {canScrollLeft && (
           <button

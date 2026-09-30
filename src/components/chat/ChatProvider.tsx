@@ -304,7 +304,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         case 'videoke:invite': {
           window.dispatchEvent(new CustomEvent(LIVE_EVENT, { detail: msg }))
           const from = typeof msg.from === 'string' && msg.from ? msg.from : 'Someone'
-          toast(`${from} invited you to Videoke`)
+          const roomName =
+            typeof msg.roomName === 'string' && msg.roomName ? msg.roomName : 'a videoke'
+          toast(`${from} invited you to ${roomName} hangout`)
           break
         }
         case 'error': {

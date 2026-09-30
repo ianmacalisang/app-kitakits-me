@@ -4,6 +4,7 @@ import type { MutualHead } from '@/lib/mutuals'
 
 import { Avatar } from '../Avatar'
 import { EmptyState } from '../EmptyState'
+import { LoadSentinel } from '../LoadSentinel'
 import { Spinner } from '../Spinner'
 import { ChatIcon, XIcon } from '../icons'
 import { useChat } from './ChatProvider'
@@ -12,8 +13,21 @@ import { pairKey } from './ChatRoom'
 // Chat dropdown body — lists all mutual follows (online first, with status
 // dots) and live rooms inside the panel; selecting a room swaps the panel to
 // the conversation. Presence comes from ChatProvider's in-memory WS session;
-// the mutual roster is fetched by ChatMenu when the dropdown opens.
-export function ChatClient({ mutuals }: { mutuals: MutualHead[] }) {
+// the mutual roster is fetched by ChatMenu when the dropdown opens — paged,
+// with a sentinel at the bottom of the list loading the next page.
+export function ChatClient({
+  mutuals,
+  mutualsHasMore = false,
+  mutualsTotal,
+  mutualsPending = false,
+  onLoadMoreMutuals,
+}: {
+  mutuals: MutualHead[]
+  mutualsHasMore?: boolean
+  mutualsTotal?: number
+  mutualsPending?: boolean
+  onLoadMoreMutuals?: () => void
+}) {
   const chat = useChat()
 
   if (!chat) return null
@@ -146,7 +160,7 @@ export function ChatClient({ mutuals }: { mutuals: MutualHead[] }) {
 
           <section className="flex flex-col gap-1">
             <h3 className="px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
-              Mutual follows ({roster.length})
+              Mutual follows ({mutualsTotal ?? roster.length})
             </h3>
             {roster.length === 0 ? (
               <EmptyState
@@ -209,6 +223,14 @@ export function ChatClient({ mutuals }: { mutuals: MutualHead[] }) {
                   )
                 })}
               </ul>
+            )}
+            {onLoadMoreMutuals && (
+              <LoadSentinel
+                hasMore={mutualsHasMore}
+                pending={mutualsPending}
+                onLoadAction={onLoadMoreMutuals}
+                rootMargin="200px 0px"
+              />
             )}
           </section>
         </div>

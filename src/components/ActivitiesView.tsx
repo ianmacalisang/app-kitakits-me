@@ -18,6 +18,7 @@ import {
   EyeIcon,
   HeartIcon,
   MedalIcon,
+  MicIcon,
   QuoteIcon,
   UserIcon,
 } from './icons'
@@ -33,6 +34,7 @@ const typeIcon = {
   testimonial: <QuoteIcon className="h-3.5 w-3.5" />,
   badge: <MedalIcon className="h-3.5 w-3.5" />,
   profile_view: <EyeIcon className="h-3.5 w-3.5" />,
+  hangout_join: <MicIcon className="h-3.5 w-3.5" />,
 }
 
 const typeColor = {
@@ -42,6 +44,7 @@ const typeColor = {
   testimonial: 'bg-violet-500 text-white',
   badge: 'bg-amber-500 text-white',
   profile_view: 'bg-sky-500 text-white',
+  hangout_join: 'bg-violet-500 text-white',
 }
 
 // "Maria liked Juan's post" — actor and target names in semibold, the verb plain.
@@ -98,6 +101,19 @@ const ActivityText = ({ activity }: { activity: ActivityData }) => {
       )
     case 'profile_view':
       return <>{actor} viewed your profile</>
+    case 'hangout_join':
+      return activity.hangoutJoinKind === 'hosted' ? (
+        <>
+          {actor} started a{' '}
+          <span className="font-semibold">{activity.videokeRoomName ?? 'videoke'}</span> hangout
+        </>
+      ) : (
+        <>
+          {actor} joined a{' '}
+          <span className="font-semibold">{activity.videokeRoomName ?? 'videoke'}</span> hangout
+          {target ? <> hosted by {target}</> : null}
+        </>
+      )
   }
 }
 
@@ -268,6 +284,12 @@ export function ActivitiesView({
         router.push(`/profile/${activity.actorUsername}`)
       } else if (activity.type === 'badge') {
         setBadgeActivity(activity)
+      } else if (activity.type === 'hangout_join') {
+        router.push(
+          activity.videokeRoomId
+            ? `/hangouts/videoke/${activity.videokeRoomId}`
+            : '/hangouts/videoke',
+        )
       } else if (activity.postId) {
         if (activity.type === 'like') setViewPostId(activity.postId)
         else setOpenPostId(activity.postId)
