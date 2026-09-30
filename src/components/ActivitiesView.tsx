@@ -101,19 +101,22 @@ const ActivityText = ({ activity }: { activity: ActivityData }) => {
       )
     case 'profile_view':
       return <>{actor} viewed your profile</>
-    case 'hangout_join':
+    case 'hangout_join': {
+      const roomName =
+        activity.cardRoomName ??
+        activity.videokeRoomName ??
+        (activity.hangoutKind === 'cards' ? 'card game' : 'videoke')
       return activity.hangoutJoinKind === 'hosted' ? (
         <>
-          {actor} started a{' '}
-          <span className="font-semibold">{activity.videokeRoomName ?? 'videoke'}</span> hangout
+          {actor} started a <span className="font-semibold">{roomName}</span> hangout
         </>
       ) : (
         <>
-          {actor} joined a{' '}
-          <span className="font-semibold">{activity.videokeRoomName ?? 'videoke'}</span> hangout
+          {actor} joined a <span className="font-semibold">{roomName}</span> hangout
           {target ? <> hosted by {target}</> : null}
         </>
       )
+    }
   }
 }
 
@@ -286,9 +289,11 @@ export function ActivitiesView({
         setBadgeActivity(activity)
       } else if (activity.type === 'hangout_join') {
         router.push(
-          activity.videokeRoomId
-            ? `/hangouts/videoke/${activity.videokeRoomId}`
-            : '/hangouts/videoke',
+          activity.cardRoomId
+            ? `/hangouts/cards/${activity.cardRoomId}`
+            : activity.videokeRoomId
+              ? `/hangouts/videoke/${activity.videokeRoomId}`
+              : '/hangouts',
         )
       } else if (activity.postId) {
         if (activity.type === 'like') setViewPostId(activity.postId)

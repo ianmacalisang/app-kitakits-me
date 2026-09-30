@@ -629,6 +629,15 @@ export const StarIcon = (props: IconProps) => (
   </svg>
 )
 
+export const CardIcon = (props: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...props}>
+    <rect x="5" y="3" width="14" height="18" rx="2" />
+    {/* Spade pip — upside-down heart with a stem */}
+    <path d="M12 7c-1.8 2.2-3.6 3.5-3.6 5a2 2 0 0 0 3.6 1.2A2 2 0 0 0 15.6 12c0-1.5-1.8-2.8-3.6-5z" />
+    <path d="M12 13.2V15.5" />
+  </svg>
+)
+
 export const MicIcon = (props: IconProps) => (
   <svg viewBox="0 0 24 24" {...base} {...props}>
     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />

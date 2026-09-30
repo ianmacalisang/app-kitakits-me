@@ -1,5 +1,6 @@
 import type {
   Badge,
+  CardRoom,
   Comment,
   MailAttachment,
   MailDraft,
@@ -551,9 +552,12 @@ export interface NotificationData {
   badgeIcon?: string
   badgeTier?: 'bronze' | 'silver' | 'gold'
   // Set on 'hangout_invite' (room you were invited to) and 'hangout_request'
-  // (room the actor asked to join).
+  // (room the actor asked to join) — exactly one of the two is populated,
+  // matching which hangout app the room belongs to.
   videokeRoomId?: number
   videokeRoomName?: string
+  cardRoomId?: number
+  cardRoomName?: string
 }
 
 export const snippet = (value: unknown): string | undefined => {
@@ -590,6 +594,12 @@ export function toNotificationData(
       `${isObj(videokeRoom.host) ? (videokeRoom.host as User).name : 'Someone'}'s videoke`
     : undefined
 
+  const cardRoom = isObj(notification.cardRoom) ? (notification.cardRoom as CardRoom) : null
+  const cardRoomName = cardRoom
+    ? (typeof cardRoom.name === 'string' && cardRoom.name.trim()) ||
+      `${isObj(cardRoom.host) ? (cardRoom.host as User).name : 'Someone'}'s card game`
+    : undefined
+
   return {
     id: notification.id,
     type: notification.type,
@@ -614,6 +624,8 @@ export function toNotificationData(
           : undefined,
     videokeRoomId: relId(notification.videokeRoom) ?? undefined,
     videokeRoomName,
+    cardRoomId: relId(notification.cardRoom) ?? undefined,
+    cardRoomName,
   }
 }
 
@@ -646,10 +658,14 @@ export interface ActivityData {
   targetAvatarUrl?: string
   targetBadge?: BadgeData
   // Set on 'hangout_join' — the room the actor joined. target* fields carry
-  // the member who invited them.
+  // the member who invited them. Exactly one of videokeRoomId/cardRoomId is
+  // populated; hangoutKind names the app for feed wording/links.
   videokeRoomId?: number
   videokeRoomName?: string
+  cardRoomId?: number
+  cardRoomName?: string
   hangoutJoinKind?: 'joined' | 'hosted'
+  hangoutKind?: 'videoke' | 'cards'
 }
 
 export interface ThreadData {

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { ArrowUpRightIcon, MicIcon, MusicIcon } from './icons'
+import { ArrowUpRightIcon, CardIcon, MicIcon } from './icons'
 import { EqBars } from './videoke/EqBars'
 
 // The Hangouts tab's in-app apps list — one card per mini-app. Each card
@@ -12,6 +12,15 @@ const APPS = [
     tag: 'Sing together',
     blurb: 'Open a karaoke room, invite your mutuals, and queue songs from YouTube.',
     icon: MicIcon,
+    eq: true,
+  },
+  {
+    href: '/hangouts/cards',
+    title: 'Unggoy-Unggoy',
+    tag: 'Play together',
+    blurb: 'Deal a round of Unggoy-Ungguyan — don’t get stuck holding the monkey.',
+    icon: CardIcon,
+    eq: false,
   },
 ] as const
 
@@ -22,7 +31,7 @@ export function HangoutsApps() {
         Apps
       </p>
       <ul className="grid gap-3 sm:grid-cols-2">
-        {APPS.map(({ href, title, tag, blurb, icon: Icon }) => (
+        {APPS.map(({ href, title, tag, blurb, icon: Icon, eq }) => (
           <li key={href}>
             <Link
               href={href}
@@ -38,18 +47,18 @@ export function HangoutsApps() {
                   aria-hidden
                   className="absolute -top-10 left-1/2 h-24 w-40 -translate-x-1/2 rounded-full bg-white/20 blur-2xl"
                 />
-                <MusicIcon
+                <Icon
                   aria-hidden
                   className="absolute left-5 top-5 h-5 w-5 -rotate-12 text-white/35 transition-transform duration-500 group-hover:-translate-y-1"
                 />
-                <MusicIcon
+                <Icon
                   aria-hidden
                   className="absolute right-8 top-4 h-4 w-4 rotate-12 text-white/25 transition-transform duration-500 group-hover:-translate-y-1"
                 />
                 <span className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/40 backdrop-blur-sm transition-transform duration-300 group-hover:scale-105">
                   <Icon className="h-7 w-7" />
                 </span>
-                <EqBars className="absolute bottom-3 right-4 h-5 text-white/70" />
+                {eq && <EqBars className="absolute bottom-3 right-4 h-5 text-white/70" />}
               </div>
 
               {/* Body */}

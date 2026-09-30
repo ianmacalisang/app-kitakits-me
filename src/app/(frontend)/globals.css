@@ -681,6 +681,20 @@ body::after {
   }
 }
 
+/* Card deal-in — rises from the table and settles into the card's inline
+   fan transform. `backwards` fills the stagger delay so cards don't flash
+   their final pose before their turn to animate. */
+@utility animate-card-deal {
+  animation: card-deal 0.45s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+}
+
+@keyframes card-deal {
+  from {
+    opacity: 0;
+    transform: translateY(16px) rotate(0deg) scale(0.8);
+  }
+}
+
 /* ------------------------------------------------------------------
    Dark theme — activated by the `dark` class on <html> (user's theme
    preference on their account) or a scoped `.dark` container (the design

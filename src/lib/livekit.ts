@@ -12,7 +12,12 @@ import { relId } from './serialize'
 // and the current singer may hold the mic.
 const TOKEN_TTL_SECONDS = 4 * 60 * 60
 
-export const livekitRoomName = (roomId: number) => `videoke-${roomId}`
+// Voice rooms are namespaced per hangout app — `videoke-3` and `cards-3` are
+// distinct SFU rooms even though both flow through mintVoiceToken.
+export type VoiceRoomKind = 'videoke' | 'cards'
+
+export const livekitRoomName = (roomId: number, kind: VoiceRoomKind = 'videoke') =>
+  `${kind}-${roomId}`
 
 // Who may hold the mic right now: the host plus whoever queued the currently
 // playing song. One entry when they're the same person, or when the stage is
@@ -38,6 +43,7 @@ export async function mintVoiceToken(
   user: User,
   roomId: number,
   canPublish: boolean,
+  kind: VoiceRoomKind = 'videoke',
 ): Promise<{ token: string; url: string; expiresAt: number }> {
   const apiKey = process.env.LIVEKIT_API_KEY
   const apiSecret = process.env.LIVEKIT_API_SECRET
@@ -50,7 +56,7 @@ export async function mintVoiceToken(
     name: user.name,
     video: {
       roomJoin: true,
-      room: livekitRoomName(roomId),
+      room: livekitRoomName(roomId, kind),
       canPublish,
       canSubscribe: true,
     },

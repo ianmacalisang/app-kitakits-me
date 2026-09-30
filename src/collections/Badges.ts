@@ -14,6 +14,7 @@ export const BADGE_RULES = [
   { label: 'Testimonials received (approved)', value: 'testimonials' },
   { label: 'Total points', value: 'points' },
   { label: 'Profile complete (avatar + bio)', value: 'profile-complete' },
+  { label: 'Unggoy escapes', value: 'unggoy-wins' },
   { label: 'Manual (admin grants)', value: 'manual' },
 ] as const
 
@@ -139,7 +140,8 @@ export const Badges: CollectionConfig = {
       index: true,
       admin: {
         position: 'sidebar',
-        description: 'Disabled badges stop auto-awarding but stay on profiles that already have them.',
+        description:
+          'Disabled badges stop auto-awarding but stay on profiles that already have them.',
       },
     },
     {

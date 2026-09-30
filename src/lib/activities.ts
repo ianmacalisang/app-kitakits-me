@@ -1,6 +1,7 @@
 import type { Where } from 'payload'
 
 import type {
+  CardRoom,
   Comment,
   Follow,
   HangoutJoin,
@@ -153,10 +154,14 @@ const toHangoutJoinActivity = (
   join: HangoutJoin,
   heads: Map<number, User>,
   rooms: Map<number, VideokeRoom>,
+  cardRooms: Map<number, CardRoom>,
   badges: BadgeMap | null,
 ): ActivityData | null => {
   const actor = heads.get(relId(join.user) ?? -1) ?? null
-  const room = rooms.get(relId(join.room) ?? -1) ?? null
+  // A join targets exactly one hangout app — whichever FK is set.
+  const videoke = rooms.get(relId(join.room) ?? -1) ?? null
+  const cards = cardRooms.get(relId(join.cardRoom) ?? -1) ?? null
+  const room = videoke ?? cards
   if (!actor || !room) return null
   // The member who invited them shows as the activity's target — "hosted by".
   const inviter = heads.get(relId(join.invitedBy) ?? -1) ?? null
@@ -171,9 +176,12 @@ const toHangoutJoinActivity = (
     targetUsername: inviter?.username,
     targetAvatarUrl: inviter ? avatarUrl(inviter) : undefined,
     targetBadge: badgeFor(badges, inviter),
-    videokeRoomId: room.id,
-    videokeRoomName: name,
+    videokeRoomId: videoke?.id,
+    videokeRoomName: videoke ? name : undefined,
+    cardRoomId: cards?.id,
+    cardRoomName: cards ? name : undefined,
     hangoutJoinKind: join.kind === 'hosted' ? 'hosted' : 'joined',
+    hangoutKind: cards ? 'cards' : 'videoke',
   }
 }
 
@@ -303,15 +311,18 @@ export async function getFollowingActivities(
 
   const joinUserIds = new Set<number>()
   const joinRoomIds = new Set<number>()
+  const joinCardRoomIds = new Set<number>()
   for (const join of hangoutJoins.docs) {
     const uid = relId(join.user)
     const iid = relId(join.invitedBy)
     const rid = relId(join.room)
+    const cid = relId(join.cardRoom)
     if (uid) joinUserIds.add(uid)
     if (iid) joinUserIds.add(iid)
     if (rid) joinRoomIds.add(rid)
+    if (cid) joinCardRoomIds.add(cid)
   }
-  const [joinHeads, joinRooms] = await Promise.all([
+  const [joinHeads, joinRooms, joinCardRooms] = await Promise.all([
     joinUserIds.size
       ? payload.find({
           collection: 'users',
@@ -331,9 +342,19 @@ export async function getFollowingActivities(
           overrideAccess: true,
         })
       : { docs: [] as VideokeRoom[] },
+    joinCardRoomIds.size
+      ? payload.find({
+          collection: 'card-rooms',
+          where: { id: { in: [...joinCardRoomIds] } },
+          limit: joinCardRoomIds.size,
+          depth: 0,
+          overrideAccess: true,
+        })
+      : { docs: [] as CardRoom[] },
   ])
   const joinUserMap = new Map(joinHeads.docs.map((u) => [u.id, u]))
   const joinRoomMap = new Map(joinRooms.docs.map((r) => [r.id, r]))
+  const joinCardRoomMap = new Map(joinCardRooms.docs.map((r) => [r.id, r]))
 
   // One badge lookup for every named user — actors, post authors, and targets.
   const badgeUserIds = new Set<number>()
@@ -378,7 +399,7 @@ export async function getFollowingActivities(
       post: null,
     })),
     ...hangoutJoins.docs.map((join) => ({
-      data: toHangoutJoinActivity(join, joinUserMap, joinRoomMap, topBadges),
+      data: toHangoutJoinActivity(join, joinUserMap, joinRoomMap, joinCardRoomMap, topBadges),
       post: null,
     })),
   ]

@@ -87,6 +87,7 @@ export interface Config {
     'profile-views': ProfileView;
     'videoke-rooms': VideokeRoom;
     'videoke-queue-items': VideokeQueueItem;
+    'card-rooms': CardRoom;
     'hangout-joins': HangoutJoin;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -115,6 +116,7 @@ export interface Config {
     'profile-views': ProfileViewsSelect<false> | ProfileViewsSelect<true>;
     'videoke-rooms': VideokeRoomsSelect<false> | VideokeRoomsSelect<true>;
     'videoke-queue-items': VideokeQueueItemsSelect<false> | VideokeQueueItemsSelect<true>;
+    'card-rooms': CardRoomsSelect<false> | CardRoomsSelect<true>;
     'hangout-joins': HangoutJoinsSelect<false> | HangoutJoinsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -453,6 +455,7 @@ export interface Notification {
   testimonial?: (number | null) | Testimonial;
   badge?: (number | null) | Badge;
   videokeRoom?: (number | null) | VideokeRoom;
+  cardRoom?: (number | null) | CardRoom;
   read?: boolean | null;
   updatedAt: string;
   createdAt: string;
@@ -488,7 +491,15 @@ export interface Badge {
    */
   tier: 'bronze' | 'silver' | 'gold';
   rule:
-    'posts' | 'comments' | 'likes-received' | 'followers' | 'testimonials' | 'points' | 'profile-complete' | 'manual';
+    | 'posts'
+    | 'comments'
+    | 'likes-received'
+    | 'followers'
+    | 'testimonials'
+    | 'points'
+    | 'profile-complete'
+    | 'unggoy-wins'
+    | 'manual';
   /**
    * Count needed to earn the badge.
    */
@@ -548,6 +559,72 @@ export interface VideokeQueueItem {
   addedBy: number | User;
   state?: ('queued' | 'playing' | 'done' | 'skipped') | null;
   position: number;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "card-rooms".
+ */
+export interface CardRoom {
+  id: number;
+  host: number | User;
+  name?: string | null;
+  members: (number | User)[];
+  /**
+   * Pending invitations — invitee, who invited them, and when.
+   */
+  invites?:
+    | {
+        user: number | User;
+        invitedBy?: (number | null) | User;
+        invitedAt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  status?: ('open' | 'ended') | null;
+  game: {
+    variant: 'unggoy';
+    state?: ('lobby' | 'playing' | 'finished') | null;
+    round?: number | null;
+    /**
+     * Seat order (clockwise) — fixed at deal time for the round.
+     */
+    seats?:
+      | {
+          user: number | User;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Live hands keyed by user — card codes stay pair-free between draws.
+     */
+    hands?:
+      | {
+          user: number | User;
+          cards?:
+            | {
+                [k: string]: unknown;
+              }
+            | unknown[]
+            | string
+            | number
+            | boolean
+            | null;
+          id?: string | null;
+        }[]
+      | null;
+    turnSeat?: number | null;
+    lastDraw?: {
+      by?: (number | null) | User;
+      from?: (number | null) | User;
+      paired?: boolean | null;
+    };
+    /**
+     * Set on finish — the player left holding the unggoy.
+     */
+    loser?: (number | null) | User;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -664,6 +741,7 @@ export interface PointEvent {
     | 'follow-received'
     | 'testimonial-received'
     | 'testimonial-given'
+    | 'unggoy-win'
     | 'manual';
   points: number;
   post?: (number | null) | Post;
@@ -693,7 +771,8 @@ export interface ProfileView {
 export interface HangoutJoin {
   id: number;
   user: number | User;
-  room: number | VideokeRoom;
+  room?: (number | null) | VideokeRoom;
+  cardRoom?: (number | null) | CardRoom;
   invitedBy?: (number | null) | User;
   kind: 'joined' | 'hosted';
   updatedAt: string;
@@ -802,6 +881,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'videoke-queue-items';
         value: number | VideokeQueueItem;
+      } | null)
+    | ({
+        relationTo: 'card-rooms';
+        value: number | CardRoom;
       } | null)
     | ({
         relationTo: 'hangout-joins';
@@ -1095,6 +1178,7 @@ export interface NotificationsSelect<T extends boolean = true> {
   testimonial?: T;
   badge?: T;
   videokeRoom?: T;
+  cardRoom?: T;
   read?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1292,11 +1376,61 @@ export interface VideokeQueueItemsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "card-rooms_select".
+ */
+export interface CardRoomsSelect<T extends boolean = true> {
+  host?: T;
+  name?: T;
+  members?: T;
+  invites?:
+    | T
+    | {
+        user?: T;
+        invitedBy?: T;
+        invitedAt?: T;
+        id?: T;
+      };
+  status?: T;
+  game?:
+    | T
+    | {
+        variant?: T;
+        state?: T;
+        round?: T;
+        seats?:
+          | T
+          | {
+              user?: T;
+              id?: T;
+            };
+        hands?:
+          | T
+          | {
+              user?: T;
+              cards?: T;
+              id?: T;
+            };
+        turnSeat?: T;
+        lastDraw?:
+          | T
+          | {
+              by?: T;
+              from?: T;
+              paired?: T;
+            };
+        loser?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "hangout-joins_select".
  */
 export interface HangoutJoinsSelect<T extends boolean = true> {
   user?: T;
   room?: T;
+  cardRoom?: T;
   invitedBy?: T;
   kind?: T;
   updatedAt?: T;

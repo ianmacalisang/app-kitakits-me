@@ -28,6 +28,7 @@ import { ProfileViews } from './collections/ProfileViews'
 import { HangoutJoins } from './collections/HangoutJoins'
 import { VideokeQueueItems } from './collections/VideokeQueueItems'
 import { VideokeRooms } from './collections/VideokeRooms'
+import { CardRooms } from './collections/CardRooms'
 import { SiteSettings } from './globals/SiteSettings'
 
 const filename = fileURLToPath(import.meta.url)
@@ -68,6 +69,7 @@ export default buildConfig({
     ProfileViews,
     VideokeRooms,
     VideokeQueueItems,
+    CardRooms,
     HangoutJoins,
   ],
   globals: [SiteSettings],

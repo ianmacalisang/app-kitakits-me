@@ -103,6 +103,14 @@ export const Notifications: CollectionConfig = {
       },
     },
     {
+      name: 'cardRoom',
+      type: 'relationship',
+      relationTo: 'card-rooms',
+      access: {
+        update: isAdminField,
+      },
+    },
+    {
       name: 'read',
       type: 'checkbox',
       defaultValue: false,

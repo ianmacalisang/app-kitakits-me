@@ -17,6 +17,7 @@ export const POINT_KINDS = [
   { label: 'Follower gained', value: 'follow-received' },
   { label: 'Testimonial received (approved)', value: 'testimonial-received' },
   { label: 'Testimonial written (approved)', value: 'testimonial-given' },
+  { label: 'Unggoy game survived', value: 'unggoy-win' },
   { label: 'Admin adjustment', value: 'manual' },
 ] as const
 

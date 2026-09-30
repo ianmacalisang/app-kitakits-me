@@ -21,6 +21,7 @@ export const POINT_VALUES = {
   'follow-received': 5,
   'testimonial-received': 10,
   'testimonial-given': 5,
+  'unggoy-win': 10,
   manual: 0,
 } as const
 
@@ -168,6 +169,17 @@ const statForRule = async (
       ).totalDocs
     case 'points':
       return user.points ?? 0
+    // Escapes are already ledgered — count the point-events rows.
+    case 'unggoy-wins':
+      return (
+        await payload.count({
+          collection: 'point-events',
+          where: {
+            and: [{ user: { equals: userId } }, { kind: { equals: 'unggoy-win' } }],
+          },
+          req,
+        })
+      ).totalDocs
     case 'profile-complete':
       return user.avatar && (user.bio ?? '').trim() ? 1 : 0
     default:
@@ -332,6 +344,7 @@ const RULE_UNIT: Record<BadgeRule, string> = {
   testimonials: 'testimonials',
   points: 'pts',
   'profile-complete': '',
+  'unggoy-wins': 'escapes',
   manual: '',
 }
 

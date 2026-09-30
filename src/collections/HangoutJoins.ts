@@ -4,13 +4,18 @@ import { isAdmin, isAuthenticated } from '../access'
 
 // One row per (user, room) pair — createdAt is the first join, updatedAt the
 // most recent. Re-joining a room bumps the row instead of appending, so the
-// activity feed resurfaces it like re-views do for profile-views.
+// activity feed resurfaces it like re-views do for profile-views. The room
+// reference is whichever of `room`/`cardRoom` is set — a join targets exactly
+// one hangout app.
 export const HangoutJoins: CollectionConfig = {
   slug: 'hangout-joins',
   admin: {
-    defaultColumns: ['user', 'room', 'invitedBy', 'updatedAt'],
+    defaultColumns: ['user', 'room', 'cardRoom', 'invitedBy', 'updatedAt'],
   },
-  indexes: [{ unique: true, fields: ['user', 'room'] }],
+  indexes: [
+    { unique: true, fields: ['user', 'room'] },
+    { unique: true, fields: ['user', 'cardRoom'] },
+  ],
   access: {
     // Reads feed the activities stream — the query scopes rows to followed
     // actors, so any signed-in member may read them.
@@ -35,7 +40,15 @@ export const HangoutJoins: CollectionConfig = {
       name: 'room',
       type: 'relationship',
       relationTo: 'videoke-rooms',
-      required: true,
+      index: true,
+      access: {
+        update: () => false,
+      },
+    },
+    {
+      name: 'cardRoom',
+      type: 'relationship',
+      relationTo: 'card-rooms',
       index: true,
       access: {
         update: () => false,
