@@ -614,6 +614,34 @@ body::after {
   }
 }
 
+/* Hero underline — draws left-to-right just after the page settles in */
+@utility animate-underline-draw {
+  animation: underline-draw 0.55s cubic-bezier(0.32, 0.72, 0, 1) 0.5s backwards;
+}
+
+@keyframes underline-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Seamless marquee — the track holds the list twice; translating exactly
+   -50% lands the duplicate copy where the original started, so the loop has
+   no seam. Paused on hover (see the strip's group-hover rule) and parked
+   until the InView wrapper scrolls into view. */
+@utility animate-marquee {
+  animation: marquee 45s linear infinite;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 /* InView wrapper — every descendant animation stays parked (entrance pieces
    hold their `from` frame, loops freeze) until the element scrolls into view */
 [data-inview-root]:not([data-inview]) * {

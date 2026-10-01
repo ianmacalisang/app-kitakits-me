@@ -11,10 +11,12 @@ export const metadata = { title: 'Register' }
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>
+  searchParams: Promise<{ next?: string; username?: string }>
 }) {
-  const { next } = await searchParams
+  const { next, username } = await searchParams
   const safeNext = safeConnectPath(next)
+  // Landing "claim your handle" deep-links here with a prefilled username.
+  const initialUsername = username && /^[a-zA-Z0-9_]{3,30}$/.test(username) ? username : undefined
 
   const user = await getCurrentUser()
   if (user) redirect(safeNext ?? '/home')
@@ -32,7 +34,7 @@ export default async function RegisterPage({
           <h2 className="mb-4 text-center text-sm font-semibold text-neutral-700">
             {settings.registerPrompt}
           </h2>
-          <RegisterForm next={safeNext ?? undefined} />
+          <RegisterForm next={safeNext ?? undefined} initialUsername={initialUsername} />
         </div>
       </div>
     </main>

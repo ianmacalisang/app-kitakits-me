@@ -275,13 +275,19 @@ export function ResetPasswordForm({ token }: { token: string }) {
   )
 }
 
-const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,30}$/
+export const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,30}$/
 
 type UsernameStatus = 'idle' | 'invalid' | 'checking' | 'available' | 'taken'
 
-export function RegisterForm({ next }: { next?: string }) {
+export function RegisterForm({
+  next,
+  initialUsername,
+}: {
+  next?: string
+  initialUsername?: string
+}) {
   const [state, formAction, pending] = useActionState(register, {})
-  const [username, setUsername] = useState('')
+  const [username, setUsername] = useState(initialUsername ?? '')
   const [checked, setChecked] = useState<{ username: string; available: boolean } | null>(null)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -371,7 +377,7 @@ export function RegisterForm({ next }: { next?: string }) {
             minLength={3}
             maxLength={30}
             placeholder="juandc"
-            defaultValue={state.values?.username}
+            defaultValue={state.values?.username ?? initialUsername}
             onChange={(e) => setUsername(e.target.value)}
             aria-invalid={usernameStatus === 'taken' || usernameStatus === 'invalid'}
             aria-describedby="username-hint"
@@ -429,6 +435,37 @@ export function RegisterForm({ next }: { next?: string }) {
           ) : undefined
         }
       />
+      <label
+        htmlFor="agreeTerms"
+        className="flex cursor-pointer items-start gap-2.5 text-xs font-medium text-neutral-600"
+      >
+        <input
+          id="agreeTerms"
+          name="agreeTerms"
+          type="checkbox"
+          required
+          className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-neutral-300 accent-accent-600"
+        />
+        <span>
+          I agree to the{' '}
+          <Link
+            href="/terms"
+            target="_blank"
+            className="font-semibold text-accent-700 hover:underline"
+          >
+            Terms of Service
+          </Link>{' '}
+          and{' '}
+          <Link
+            href="/privacy"
+            target="_blank"
+            className="font-semibold text-accent-700 hover:underline"
+          >
+            Privacy Policy
+          </Link>
+          .
+        </span>
+      </label>
       {state.error && (
         <p role="alert" className={errorClass}>
           {state.error}

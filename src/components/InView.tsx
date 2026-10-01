@@ -12,8 +12,12 @@ export function InView({ className, children, ...rest }: React.HTMLAttributes<HT
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    // threshold 0 + a slight bottom inset: fires as soon as any part of the
+    // element scrolls into the lower viewport — 0.25 would never trip for
+    // containers taller than ~4x the viewport (e.g. the post masonry).
     const io = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
-      threshold: 0.25,
+      threshold: 0,
+      rootMargin: '0px 0px -8% 0px',
     })
     io.observe(el)
     return () => io.disconnect()

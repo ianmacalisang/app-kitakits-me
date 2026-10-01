@@ -83,6 +83,12 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
   if (!name || !username || !email || !password) {
     return { error: 'All fields are required.', values }
   }
+  if (formData.get('agreeTerms') !== 'on') {
+    return {
+      error: 'You need to agree to the Terms of Service and Privacy Policy to continue.',
+      values,
+    }
+  }
   if (password !== confirmPassword) {
     return { error: 'Passwords do not match.', values }
   }

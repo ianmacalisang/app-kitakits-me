@@ -30,6 +30,8 @@ export const viewport: Viewport = {
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings()
   return {
+    // Absolute base for canonical + OG URLs — matches payload.config.serverURL.
+    metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
     title: {
       default: settings.metaTitle,
       template: `%s — ${settings.appName}`,

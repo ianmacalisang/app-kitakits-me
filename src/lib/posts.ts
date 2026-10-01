@@ -53,6 +53,30 @@ export function publicPostClauses(): Where[] {
   return [{ visibility: { not_equals: 'followers' } }, { 'author.isPrivate': { not_equals: true } }]
 }
 
+// A short strip of recent public posts for the landing page — same anonymous
+// constraint as Discover, plus two tightenings for the front door: original
+// posts only (no share cards) and no NSFW category. Uncategorized posts stay
+// (they serialize as Kwento), so the exclusion is wrapped in an `or` with
+// exists:false — a bare not_equals would drop them too.
+export async function getLandingPosts(viewer: User | null, limit = 6): Promise<PostCardData[]> {
+  const payload = await getPayloadClient()
+  const result = await payload.find({
+    collection: 'posts',
+    where: {
+      and: [
+        ...publicPostClauses(),
+        { sharedPost: { exists: false } },
+        { or: [{ category: { exists: false } }, { category: { not_equals: 'nsfw' } }] },
+      ],
+    },
+    sort: '-createdAt',
+    limit,
+    depth: 2,
+    ...(viewer ? { user: viewer, overrideAccess: false as const } : {}),
+  })
+  return hydratePosts(result.docs, viewer)
+}
+
 // Posts the viewer has saved, most recently saved first — powers the home
 // "Saved" tab. Saves are paginated first, then the posts are fetched in one
 // query and reordered to match save order; posts the viewer can no longer see

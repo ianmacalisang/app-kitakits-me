@@ -1,9 +1,15 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { Avatar } from '@/components/Avatar'
+import { BadgeMark } from '@/components/BadgeMark'
+import { BlurImage } from '@/components/BlurImage'
 import { BrandMark } from '@/components/Branding'
-import { CategoryChip } from '@/components/CategoryChip'
+import { CategoryChip, CATEGORY_ICONS } from '@/components/CategoryChip'
+import { HandleClaim } from '@/components/HandleClaim'
 import {
   BookmarkIcon,
+  CardIcon,
   CheckIcon,
   ChevronRightIcon,
   CommentIcon,
@@ -14,7 +20,9 @@ import {
   LockIcon,
   MailboxIcon,
   MailIcon,
+  MicIcon,
   MoonIcon,
+  PlayIcon,
   QuoteIcon,
   SearchIcon,
   ShareIcon,
@@ -27,7 +35,13 @@ import {
 import { InView } from '@/components/InView'
 import { LandingUserSearch } from '@/components/LandingUserSearch'
 import { PublicPageTheme } from '@/components/PublicPageTheme'
+import { RelativeTime } from '@/components/RelativeTime'
+import { EqBars } from '@/components/videoke/EqBars'
 import { getCurrentUser } from '@/lib/auth'
+import { CATEGORY_TINTS, POST_CATEGORIES, postCategory } from '@/lib/categories'
+import { toCdnUrl } from '@/lib/cdn'
+import { getLandingPosts } from '@/lib/posts'
+import type { PostCardData } from '@/lib/serialize'
 import { getSiteSettings } from '@/lib/settings'
 
 type Feature = {
@@ -39,6 +53,9 @@ type Feature = {
   // Featured cards span two columns with a taller preview — the headline
   // feature (feed) up top, testimonials closing the grid.
   featured?: boolean
+  // Stagger offset for the scroll-in rise — parked until the grid's InView
+  // wrapper enters the viewport.
+  delay?: number
 }
 
 // Shared building blocks for the previews: soft neutral bars read as text,
@@ -229,6 +246,40 @@ const FEATURES: Feature[] = [
     ),
   },
   {
+    icon: MicIcon,
+    title: 'Hangouts kasama ang tropa',
+    description: 'Live videoke at card rooms — kanta, laro, at tambay kasama ang community.',
+    preview: (
+      <div className="flex flex-col gap-1.5">
+        {/* Videoke room — mic badge + animated equalizer, like the lobby */}
+        <MiniRow>
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-md bg-rose-500/15">
+            <MicIcon className="h-2.5 w-2.5 text-rose-500" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <Bar className="w-14 bg-neutral-300" />
+            <Bar className="mt-1 w-20 bg-neutral-200" />
+          </span>
+          <EqBars className="h-3.5 text-accent-500" />
+        </MiniRow>
+        {/* Card table — CardIcon badge + a "live" presence pill */}
+        <MiniRow>
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-md bg-accent-500/15">
+            <CardIcon className="h-2.5 w-2.5 text-accent-600" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <Bar className="w-16 bg-neutral-300" />
+            <Bar className="mt-1 w-12 bg-neutral-200" />
+          </span>
+          <span className="flex items-center gap-1">
+            <Disc className="h-1.5 w-1.5 bg-emerald-500" />
+            <span className="h-2.5 w-7 rounded-full bg-emerald-500/15" />
+          </span>
+        </MiniRow>
+      </div>
+    ),
+  },
+  {
     icon: QuoteIcon,
     featured: true,
     title: 'Bumalik na ang testimonials',
@@ -290,12 +341,32 @@ const STEPS: { title: string; description: string }[] = [
   },
 ]
 
-function FeatureCard({ icon: Icon, title, description, preview, featured }: Feature) {
+// Category rail under the live posts strip — a curated, landing-safe subset
+// (no nsfw/rant/promotion) that deep-links into Discover filters.
+const LANDING_CATEGORIES = ['kwento', 'tanong', 'feels', 'food', 'gala', 'music', 'memes']
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings()
+  return {
+    title: { absolute: settings.metaTitle },
+    description: settings.metaDescription,
+    alternates: { canonical: '/' },
+    openGraph: {
+      type: 'website',
+      title: settings.metaTitle,
+      description: settings.metaDescription,
+      ...(settings.ogImageUrl ? { images: [{ url: settings.ogImageUrl }] } : {}),
+    },
+  }
+}
+
+function FeatureCard({ icon: Icon, title, description, preview, featured, delay = 0 }: Feature) {
   return (
     <div
-      className={`glass group relative overflow-hidden rounded-3xl p-5 transition-all duration-200 hover:-translate-y-1 hover:border-accent-300/60 hover:shadow-xl hover:shadow-accent-600/10 ${
+      className={`glass group relative overflow-hidden rounded-3xl p-5 transition-all duration-200 motion-safe:animate-post-rise hover:-translate-y-1 hover:border-accent-300/60 hover:shadow-xl hover:shadow-accent-600/10 ${
         featured ? 'sm:col-span-2' : ''
       }`}
+      style={{ animationDelay: `${delay}s` }}
     >
       {/* Soft glow that fades in behind the tile on hover */}
       <span
@@ -342,13 +413,120 @@ function FloatChip({
   )
 }
 
+// Presentational card for the landing marquee — real post content rendered
+// in the landing's own glass-card language (matching FeatureCard and the
+// decorative feed mock) rather than the in-app DiscoverPostCard. The whole
+// marquee rail is pointer-events-none, so engagement renders as static
+// counts instead of the working button rail used inside the app.
+function MarqueePostCard({ post }: { post: PostCardData }) {
+  const entry = postCategory(post.category)
+  const tint = entry ? CATEGORY_TINTS[entry.tint].card : ''
+  const image = post.images[0]
+  return (
+    <article
+      className={`glass flex h-72 w-64 shrink-0 select-none flex-col overflow-hidden rounded-3xl p-4 sm:w-72 ${tint}`}
+    >
+      <div className="flex items-center gap-2.5">
+        <Avatar src={post.authorAvatarUrl} name={post.authorName} size="sm" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold leading-tight text-neutral-800">
+            {post.authorName} <BadgeMark badge={post.authorBadge} />
+          </span>
+          <span className="block truncate text-xs leading-tight text-neutral-500">
+            @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
+          </span>
+        </span>
+        {post.category && <CategoryChip category={post.category} className="ml-auto shrink-0" />}
+      </div>
+      {image ? (
+        <>
+          {post.content && (
+            <p className="mt-3 line-clamp-2 text-sm leading-snug text-neutral-700">
+              {post.content}
+            </p>
+          )}
+          <div className="relative mt-3 min-h-0 flex-1 overflow-hidden rounded-2xl">
+            <BlurImage
+              src={toCdnUrl(image.url)}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </div>
+        </>
+      ) : post.video ? (
+        <>
+          {post.content && (
+            <p className="mt-3 line-clamp-2 text-sm leading-snug text-neutral-700">
+              {post.content}
+            </p>
+          )}
+          <div className="relative mt-3 min-h-0 flex-1 overflow-hidden rounded-2xl bg-gradient-to-br from-neutral-800 to-neutral-900">
+            {post.video.thumbnailUrl && (
+              <BlurImage
+                src={post.video.thumbnailUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            )}
+            <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white ring-1 ring-white/30 backdrop-blur-sm">
+                <PlayIcon className="ml-0.5 h-4 w-4" />
+              </span>
+            </span>
+          </div>
+        </>
+      ) : (
+        <p className="mt-3 line-clamp-6 whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">
+          {post.content}
+        </p>
+      )}
+      <div className="mt-auto flex items-center gap-4 border-t border-black/5 pt-3 text-xs font-medium text-neutral-400">
+        <span className={`flex items-center gap-1.5 ${post.likeCount > 0 ? 'text-rose-500' : ''}`}>
+          <HeartIcon filled={post.likeCount > 0} className="h-4 w-4" />
+          {post.likeCount}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <CommentIcon className="h-4 w-4" />
+          {post.commentCount}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <ShareIcon className="h-4 w-4" />
+          {post.shareCount}
+        </span>
+        {post.likers.length > 0 && (
+          <span className="ml-auto flex -space-x-1.5">
+            {post.likers.slice(0, 3).map((liker) => (
+              <Avatar key={liker.username} src={liker.avatarUrl} name={liker.name} size="xs" />
+            ))}
+          </span>
+        )}
+      </div>
+    </article>
+  )
+}
+
 export default async function LandingPage() {
   const user = await getCurrentUser()
-  const settings = await getSiteSettings()
+  const [settings, landingPosts] = await Promise.all([
+    getSiteSettings(),
+    // 10 cards ≈ 3200px per marquee half — covers ultrawide viewports before
+    // the -50% loop point so the seam never shows.
+    getLandingPosts(user, 10),
+  ])
 
-  // Signed-in visitors keep the landing page — every signup CTA just routes to
-  // their profile instead of /register.
-  const primaryHref = user ? `/profile/${user.username}` : '/register'
+  // Signed-in visitors keep the landing page — every signup CTA routes them
+  // back into the feed, where engagement actually happens.
+  const primaryHref = user ? '/home' : '/register'
+  const primaryLabel = user ? 'Balik sa feed' : 'Gumawa ka na ng account'
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: settings.appName,
+    description: settings.metaDescription,
+    ...(appUrl ? { url: appUrl } : {}),
+  }
 
   return (
     <main className="animate-page-in">
@@ -361,19 +539,83 @@ export default async function LandingPage() {
         }}
       />
       <PublicPageTheme theme="light" visitorTheme={user?.theme ?? 'light'} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
+      {/* Header — same inline row as Discover: brand left, CTAs right,
+          inside the shared max-w-3xl container. */}
+      <header className="mx-auto w-full max-w-3xl px-4 pt-6">
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/" aria-label={settings.appName} className="flex w-fit items-center gap-2.5">
+            <BrandMark size="sm" />
+          </Link>
+          {user ? (
+            <Link href="/home" className="btn-primary rounded-full px-4 py-2 text-xs font-semibold">
+              Balik sa feed
+            </Link>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/login"
+                className="glass rounded-full px-4 py-2 text-xs font-semibold text-neutral-700 transition-colors hover:text-neutral-900"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/register"
+                className="btn-primary rounded-full px-4 py-2 text-xs font-semibold"
+              >
+                Sign up
+              </Link>
+            </div>
+          )}
+        </div>
+      </header>
 
       {/* Hero */}
-      <section className="mx-auto flex max-w-3xl flex-col items-center px-4 pb-16 pt-12 text-center sm:pt-20">
+      <section className="relative mx-auto flex w-full max-w-3xl flex-col items-center px-4 pb-20 pt-10 text-center sm:pt-14">
+        {/* Backdrop — faint grid + soft accent glow, masked so it dissolves
+            into the page. Painted first so content stacks above it. */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <span className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.045)_1px,transparent_1px)] bg-[size:26px_26px] [mask-image:radial-gradient(ellipse_60%_55%_at_50%_28%,black_20%,transparent_75%)]" />
+          <span className="absolute left-1/2 top-20 h-52 w-[34rem] -translate-x-1/2 rounded-full bg-accent-400/15 blur-3xl" />
+        </div>
+
+        {/* Floating notification chips flanking the hero — a taste of the
+            activity inside, parked until the section scrolls into view. */}
+        <FloatChip className="left-0 top-24 hidden lg:flex" rotate="-3deg" delay="0.6s">
+          <HeartIcon filled className="h-3.5 w-3.5 text-rose-500" />
+          Nag-like si Maria ng kwento mo
+        </FloatChip>
+        <FloatChip className="right-0 top-44 hidden lg:flex" rotate="2.5deg" delay="1.7s">
+          <UsersIcon className="h-3.5 w-3.5 text-accent-600" />
+          Nag-follow si @jose sa&apos;yo
+        </FloatChip>
+        <FloatChip className="bottom-52 left-4 hidden xl:flex" rotate="2deg" delay="2.6s">
+          <MailIcon className="h-3.5 w-3.5 text-accent-600" />
+          May mail ka kay Ate Kim
+        </FloatChip>
+
         <BrandMark size="lg" />
         <p className="mt-6 inline-flex items-center gap-1.5 rounded-full bg-accent-500/10 px-3.5 py-1.5 text-xs font-semibold text-accent-700 ring-1 ring-inset ring-accent-500/20">
           {settings.appName} — {settings.heroTagline}
         </p>
-        <h1 className="mt-5 max-w-2xl text-balance bg-gradient-to-br from-accent-700 via-accent-600 to-accent-600 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-6xl">
-          Ang social media na dapat,{' '}
+        {/* bg-clip-text lives on text-only spans — WebKit masks ALL
+            descendants of a clipped element to the text glyphs, which
+            clipped the underline SVG away on mobile. The svg now sits as a
+            sibling of the clipped text inside the unclipped wrapper. */}
+        <h1 className="mt-5 max-w-2xl text-balance text-5xl font-bold leading-[1.05] tracking-tight sm:text-7xl">
+          <span className="bg-gradient-to-br from-accent-700 via-accent-600 to-accent-600 bg-clip-text text-transparent">
+            Bumalik na ang social media na{' '}
+          </span>
           <span className="relative whitespace-nowrap">
-            bumalik na
+            <span className="bg-gradient-to-br from-accent-700 via-accent-600 to-accent-600 bg-clip-text text-transparent">
+              para sa&apos;yo
+            </span>
             <svg
-              className="absolute -bottom-1 left-0 w-full text-accent-500/70"
+              className="absolute -bottom-1.5 left-0 w-full origin-left text-accent-500/70 motion-safe:animate-underline-draw"
               viewBox="0 0 120 8"
               fill="none"
               preserveAspectRatio="none"
@@ -387,7 +629,9 @@ export default async function LandingPage() {
               />
             </svg>
           </span>
-          !
+          <span className="bg-gradient-to-br from-accent-700 via-accent-600 to-accent-600 bg-clip-text text-transparent">
+            !
+          </span>
         </h1>
         <p className="mt-4 max-w-xl text-balance text-lg leading-relaxed text-neutral-600">
           Walang algorithms. Walang persona. Ikaw at ang{' '}
@@ -409,7 +653,7 @@ export default async function LandingPage() {
             href={primaryHref}
             className="btn-primary group flex items-center gap-1.5 rounded-full px-7 py-3.5 text-sm"
           >
-            {user ? 'Go to Profile' : 'Gumawa ka na ng account'}
+            {primaryLabel}
             <ChevronRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
           {!user && (
@@ -421,11 +665,22 @@ export default async function LandingPage() {
             </Link>
           )}
         </div>
-        {!user && <p className="mt-3 text-xs text-neutral-400">Isang minuto lang, promise.</p>}
+        {!user && (
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs font-medium text-neutral-500">
+            {['Libre forever', 'Walang ads', 'Walang trackers', 'Isang minuto lang'].map(
+              (label) => (
+                <span key={label} className="inline-flex items-center gap-1">
+                  <CheckIcon className="h-3 w-3 text-accent-600" />
+                  {label}
+                </span>
+              ),
+            )}
+          </div>
+        )}
       </section>
 
       {/* The promise — what we left behind vs. what you get */}
-      <section className="mx-auto max-w-5xl px-4 pb-16 sm:pb-20">
+      <section className="mx-auto max-w-3xl px-4 pb-16 sm:pb-20">
         <div className="mx-auto max-w-xl text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-accent-600">
             Ang promise
@@ -438,8 +693,8 @@ export default async function LandingPage() {
           </p>
         </div>
 
-        <div className="relative mt-8 grid gap-3 md:grid-cols-2">
-          <div className="glass rounded-3xl p-5 sm:p-6">
+        <InView className="relative mt-8 grid gap-3 md:grid-cols-2">
+          <div className="glass rounded-3xl p-5 motion-safe:animate-post-rise sm:p-6">
             <div className="flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-500/10 text-neutral-400">
                 <XIcon className="h-4 w-4" />
@@ -458,7 +713,10 @@ export default async function LandingPage() {
             </ul>
           </div>
 
-          <div className="glass rounded-3xl p-5 ring-2 ring-accent-500/25 sm:p-6">
+          <div
+            className="glass rounded-3xl p-5 ring-2 ring-accent-500/25 motion-safe:animate-post-rise sm:p-6"
+            style={{ animationDelay: '0.12s' }}
+          >
             <div className="flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-accent-500/15 text-accent-600">
                 <SparklesIcon className="h-4 w-4" />
@@ -484,7 +742,7 @@ export default async function LandingPage() {
           >
             VS
           </span>
-        </div>
+        </InView>
       </section>
 
       {/* Divider — a perforated edge, like tearing the page */}
@@ -492,118 +750,214 @@ export default async function LandingPage() {
         <span className="block border-t-2 border-dashed border-neutral-300" />
       </div>
 
-      {/* Decorative feed preview — suggests the timeline without a screenshot,
+      {/* Live community strip — real public posts flowing past on a marquee,
+          rendered as non-interactive showcase cards. Falls back to the
+          decorative mock when there's nothing public to show yet. */}
+      {landingPosts.length > 0 ? (
+        <section
+          id="community"
+          className="mx-auto w-full max-w-3xl scroll-mt-24 px-4 pb-16 sm:pb-20"
+        >
+          <div className="mx-auto max-w-xl text-center">
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-accent-600">
+              <span className="relative flex h-2 w-2" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              Live mula sa community
+            </p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
+              Sariwang kwento, ngayon lang
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-neutral-500">
+              Totoong posts mula sa mga members — chronological, walang nagdidiktang algorithm.
+            </p>
+          </div>
+
+          {/* Category rail — deep links into Discover filters */}
+          <nav
+            aria-label="Post categories"
+            className="mt-6 flex flex-wrap items-center justify-center gap-1.5"
+          >
+            <Link
+              href="/discover"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/10 bg-black/5 px-3 py-1.5 text-xs font-semibold text-neutral-600 transition-colors hover:bg-black/10"
+            >
+              All
+            </Link>
+            {POST_CATEGORIES.filter((c) => LANDING_CATEGORIES.includes(c.value)).map((c) => {
+              const Icon = CATEGORY_ICONS[c.icon]
+              return (
+                <Link
+                  key={c.value}
+                  href={`/discover?category=${c.value}`}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${CATEGORY_TINTS[c.tint].chip}`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {c.label}
+                </Link>
+              )
+            })}
+          </nav>
+
+          {/* Marquee — the list is rendered twice so the -50% loop lands
+              seamlessly. Pauses on hover; reduced-motion users get a plain
+              scrollable rail with the duplicate half removed. The rail is
+              pointer-events-none — these are showcase cards, not the app's
+              interactive post cards. */}
+          <InView className="group relative mt-8">
+            {/* Nested masks — the outer one fades the cards' bottom edge into
+                the page, the inner one fades the left/right edges. Nesting
+                avoids mask-composite; masking the rail itself dissolves the
+                actual pixels instead of overlaying a solid color band that
+                can mismatch the background. */}
+            <div className="[mask-image:linear-gradient(to_bottom,black_55%,black_72%,transparent)]">
+              <div className="no-scrollbar overflow-x-auto [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)] motion-safe:overflow-hidden">
+                <div className="pointer-events-none flex w-max motion-safe:animate-marquee group-hover:[animation-play-state:paused]">
+                  {[0, 1].map((half) => (
+                    // pr-4 on each half makes the halves exactly equal width —
+                    // the loop point lands on a card boundary, not mid-gap.
+                    <div
+                      key={half}
+                      aria-hidden={half === 1 || undefined}
+                      inert={half === 1 || undefined}
+                      className={`flex gap-4 pr-4 ${half === 1 ? 'motion-reduce:hidden' : ''}`}
+                    >
+                      {landingPosts.map((post) => (
+                        <MarqueePostCard key={post.id} post={post} />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </InView>
+
+          <div className="mt-4 text-center">
+            <Link
+              href="/discover"
+              className="btn-primary group inline-flex items-center gap-1.5 rounded-full px-7 py-3.5 text-sm"
+            >
+              Tingnan lahat sa Discover
+              <ChevronRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </section>
+      ) : (
+        /* Decorative feed preview — suggests the timeline without a screenshot,
           with floating notification chips for a sense of life. Animations stay
-          parked until the InView wrapper scrolls into view. */}
-      <section className="mx-auto w-full max-w-lg px-4 pb-16 sm:pb-20">
-        <InView className="relative" aria-hidden={true}>
-          {/* The transform on this wrapper makes it the containing block for
+          parked until the InView wrapper scrolls into view. */
+        <section className="mx-auto w-full max-w-lg px-4 pb-16 sm:pb-20">
+          <InView className="relative" aria-hidden={true}>
+            {/* The transform on this wrapper makes it the containing block for
               the stacked cards, so they drift together with the post. Each
               layer shows a mini post header in its peeking bottom strip —
               reads as the next posts in the feed, not plain paper sheets. */}
-          <div className="motion-safe:animate-float-soft">
-            <div
-              className="glass absolute inset-x-10 -bottom-11 top-20 -rotate-2 rounded-3xl opacity-60 motion-safe:animate-post-rise"
-              style={{ animationDelay: '0.1s' }}
-            >
-              <span className="absolute inset-x-3.5 bottom-2 flex items-center gap-1.5">
-                <Disc className="h-4 w-4 bg-gradient-to-br from-accent-400/60 to-accent-500/60" />
-                <Bar className="w-16 bg-neutral-300/80" />
-                <Bar className="w-8 bg-neutral-200" />
-              </span>
-            </div>
-            <div
-              className="glass absolute inset-x-5 -bottom-5 top-10 rotate-[1.2deg] rounded-3xl opacity-80 motion-safe:animate-post-rise"
-              style={{ animationDelay: '0.2s' }}
-            >
-              <span className="absolute inset-x-3.5 bottom-2 flex items-center gap-1.5">
-                <Disc className="h-4 w-4 bg-gradient-to-br from-accent-400/80 to-accent-500/80" />
-                <Bar className="w-14 bg-neutral-300" />
-                <Bar className="w-10 bg-neutral-200" />
-              </span>
-            </div>
+            <div className="motion-safe:animate-float-soft">
+              <div
+                className="glass absolute inset-x-10 -bottom-11 top-20 -rotate-2 rounded-3xl opacity-60 motion-safe:animate-post-rise"
+                style={{ animationDelay: '0.1s' }}
+              >
+                <span className="absolute inset-x-3.5 bottom-2 flex items-center gap-1.5">
+                  <Disc className="h-4 w-4 bg-gradient-to-br from-accent-400/60 to-accent-500/60" />
+                  <Bar className="w-16 bg-neutral-300/80" />
+                  <Bar className="w-8 bg-neutral-200" />
+                </span>
+              </div>
+              <div
+                className="glass absolute inset-x-5 -bottom-5 top-10 rotate-[1.2deg] rounded-3xl opacity-80 motion-safe:animate-post-rise"
+                style={{ animationDelay: '0.2s' }}
+              >
+                <span className="absolute inset-x-3.5 bottom-2 flex items-center gap-1.5">
+                  <Disc className="h-4 w-4 bg-gradient-to-br from-accent-400/80 to-accent-500/80" />
+                  <Bar className="w-14 bg-neutral-300" />
+                  <Bar className="w-10 bg-neutral-200" />
+                </span>
+              </div>
 
-            <FloatChip className="-top-6 right-3 flex" rotate="2deg" delay="0.4s">
-              <HeartIcon filled className="h-3.5 w-3.5 text-accent-500" />
-              Nag-like si Maria ng kwento mo
-            </FloatChip>
-            <FloatChip className="-left-7 top-1/3 hidden sm:flex" rotate="-2deg" delay="1.4s">
-              <UsersIcon className="h-3.5 w-3.5 text-accent-600" />
-              Nag-follow si @jose sa&apos;yo
-            </FloatChip>
-            <FloatChip className="-bottom-8 right-5 hidden sm:flex" rotate="1.5deg" delay="2.3s">
-              <MailIcon className="h-3.5 w-3.5 text-accent-600" />
-              May mail ka kay Ate Kim
-            </FloatChip>
-            <FloatChip className="-bottom-10 left-3 hidden sm:flex" rotate="-1.5deg" delay="3.1s">
-              <QuoteIcon className="h-3.5 w-3.5 text-accent-600" />
-              May testimonial ka kay Ana
-            </FloatChip>
+              <FloatChip className="-top-6 right-3 flex" rotate="2deg" delay="0.4s">
+                <HeartIcon filled className="h-3.5 w-3.5 text-accent-500" />
+                Nag-like si Maria ng kwento mo
+              </FloatChip>
+              <FloatChip className="-left-7 top-1/3 hidden sm:flex" rotate="-2deg" delay="1.4s">
+                <UsersIcon className="h-3.5 w-3.5 text-accent-600" />
+                Nag-follow si @jose sa&apos;yo
+              </FloatChip>
+              <FloatChip className="-bottom-8 right-5 hidden sm:flex" rotate="1.5deg" delay="2.3s">
+                <MailIcon className="h-3.5 w-3.5 text-accent-600" />
+                May mail ka kay Ate Kim
+              </FloatChip>
+              <FloatChip className="-bottom-10 left-3 hidden sm:flex" rotate="-1.5deg" delay="3.1s">
+                <QuoteIcon className="h-3.5 w-3.5 text-accent-600" />
+                May testimonial ka kay Ana
+              </FloatChip>
 
-            <article
-              className="glass relative rounded-3xl border-amber-500/40! p-4 text-left motion-safe:animate-post-rise"
-              style={{ animationDelay: '0.35s' }}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent-400 to-accent-600 text-sm font-bold text-white ring-1 ring-accent-900/10">
-                    C
+              <article
+                className="glass relative rounded-3xl border-amber-500/40! p-4 text-left motion-safe:animate-post-rise"
+                style={{ animationDelay: '0.35s' }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent-400 to-accent-600 text-sm font-bold text-white ring-1 ring-accent-900/10">
+                      C
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold leading-tight text-neutral-800">
+                        Crisostomo Ibarra
+                      </span>
+                      <span className="block truncate text-xs leading-tight text-neutral-500">
+                        @crisostomoibarra · 2h
+                      </span>
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <CategoryChip category="kwento" />
+                    <BookmarkIcon className="h-5 w-5 text-neutral-500" />
+                  </div>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-neutral-700">
+                  Walang algorithm dito, walang arte — kwento lang. Parang internet dati. Tambay
+                  tayo!
+                </p>
+                <div className="relative mt-3 flex h-36 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-accent-400/50 via-accent-300/40 to-accent-300/40 text-accent-700/50">
+                  <ImageIcon className="h-6 w-6 motion-safe:animate-processing-glow" />
+                  <span className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent motion-safe:animate-shimmer" />
+                </div>
+                <div className="mt-3 flex items-center gap-4 border-t border-black/5 pt-3 text-sm font-medium text-neutral-500">
+                  <span className="flex items-center gap-1.5 text-rose-500">
+                    <HeartIcon filled className="h-5 w-5 motion-safe:animate-heart-pop" /> 24
                   </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold leading-tight text-neutral-800">
-                      Crisostomo Ibarra
-                    </span>
-                    <span className="block truncate text-xs leading-tight text-neutral-500">
-                      @crisostomoibarra · 2h
-                    </span>
+                  <span className="flex items-center gap-1.5">
+                    <CommentIcon className="h-5 w-5" /> 6
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <ShareIcon className="h-5 w-5" /> 3
+                  </span>
+                  {/* Overlapping liker avatars, same as the real card */}
+                  <span className="ml-auto flex items-center -space-x-2">
+                    <Disc className="h-6 w-6 bg-gradient-to-br from-accent-300 to-accent-500 ring-2 ring-white" />
+                    <Disc className="h-6 w-6 bg-gradient-to-br from-neutral-300 to-neutral-400 ring-2 ring-white" />
+                    <Disc className="h-6 w-6 bg-gradient-to-br from-accent-400 to-accent-600 ring-2 ring-white" />
                   </span>
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <CategoryChip category="kwento" />
-                  <BookmarkIcon className="h-5 w-5 text-neutral-500" />
-                </div>
-              </div>
-              <p className="mt-3 text-sm leading-relaxed text-neutral-700">
-                Walang algorithm dito, walang arte — kwento lang. Parang internet dati. Tambay tayo!
-              </p>
-              <div className="relative mt-3 flex h-36 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-accent-400/50 via-accent-300/40 to-accent-300/40 text-accent-700/50">
-                <ImageIcon className="h-6 w-6 motion-safe:animate-processing-glow" />
-                <span className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent motion-safe:animate-shimmer" />
-              </div>
-              <div className="mt-3 flex items-center gap-4 border-t border-black/5 pt-3 text-sm font-medium text-neutral-500">
-                <span className="flex items-center gap-1.5 text-rose-500">
-                  <HeartIcon filled className="h-5 w-5 motion-safe:animate-heart-pop" /> 24
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CommentIcon className="h-5 w-5" /> 6
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <ShareIcon className="h-5 w-5" /> 3
-                </span>
-                {/* Overlapping liker avatars, same as the real card */}
-                <span className="ml-auto flex items-center -space-x-2">
-                  <Disc className="h-6 w-6 bg-gradient-to-br from-accent-300 to-accent-500 ring-2 ring-white" />
-                  <Disc className="h-6 w-6 bg-gradient-to-br from-neutral-300 to-neutral-400 ring-2 ring-white" />
-                  <Disc className="h-6 w-6 bg-gradient-to-br from-accent-400 to-accent-600 ring-2 ring-white" />
-                </span>
-              </div>
-            </article>
+              </article>
+            </div>
+          </InView>
+          {/* Extra top margin clears the peeking stack layers and float chips */}
+          <div className="mt-20 text-center">
+            <Link
+              href="/discover"
+              className="btn-primary group inline-flex items-center gap-1.5 rounded-full px-7 py-3.5 text-sm"
+            >
+              Discover stories
+              <ChevronRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
           </div>
-        </InView>
-        {/* Extra top margin clears the peeking stack layers and float chips */}
-        <div className="mt-20 text-center">
-          <Link
-            href="/discover"
-            className="btn-primary group inline-flex items-center gap-1.5 rounded-full px-7 py-3.5 text-sm"
-          >
-            Discover stories
-            <ChevronRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Features */}
-      <section className="mx-auto max-w-5xl px-4 pb-16 sm:pb-20">
+      <section id="features" className="mx-auto max-w-3xl scroll-mt-24 px-4 pb-16 sm:pb-20">
         <div className="mx-auto max-w-xl text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-accent-600">
             Nasa isang lugar na lahat
@@ -616,17 +970,20 @@ export default async function LandingPage() {
             following, messaging — at tinapon na ang iba.
           </p>
         </div>
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((feature) => (
-            <FeatureCard key={feature.title} {...feature} />
+        {/* Two columns — the featured tiles span both; the narrower
+            max-w-3xl container (matching Discover) leaves no room for a
+            third column. */}
+        <InView className="mt-8 grid gap-3 sm:grid-cols-2">
+          {FEATURES.map((feature, i) => (
+            <FeatureCard key={feature.title} {...feature} delay={i * 0.06} />
           ))}
-        </div>
+        </InView>
         <p className="mt-8 text-center text-sm">
           <Link
             href={primaryHref}
             className="inline-flex items-center gap-1 font-semibold text-accent-700 hover:underline"
           >
-            {user ? 'Go to Profile' : 'Gumawa ka na ng account para makita mo lahat'}
+            {user ? 'Balik sa feed' : 'Gumawa ka na ng account para makita mo lahat'}
             <ChevronRightIcon className="h-3.5 w-3.5" />
           </Link>
         </p>
@@ -642,35 +999,37 @@ export default async function LandingPage() {
             Ang corner mo sa internet, nagsisimula sa @
           </h2>
 
-          {/* Decorative handle pill — looks like the visitor is mid-signup */}
-          <div
-            className="mx-auto mt-5 flex w-fit items-center gap-1.5 rounded-full border border-neutral-200/60 bg-white/70 py-2.5 pl-5 pr-2.5 text-sm shadow-sm backdrop-blur-sm"
-            aria-hidden="true"
-          >
-            <span className="font-semibold text-neutral-400">@</span>
-            <span className="font-semibold text-neutral-800">yourname</span>
-            <span className="h-5 w-0.5 animate-pulse bg-accent-500" />
-            <span className="ml-1.5 flex items-center gap-1 rounded-full bg-accent-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent-600">
-              <CheckIcon className="h-3 w-3" />
-              Pwede
-            </span>
-          </div>
-
           <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-neutral-500">
             Ang @handle mo ay shareable profile page na rin — public kung gusto mo. Kuhanin mo na
             ang maganda bago ka maunahan.
           </p>
-          <Link
-            href={primaryHref}
-            className="btn-primary mt-6 inline-block rounded-full px-7 py-3 text-sm"
-          >
-            {user ? 'Go to Profile' : 'Claim mo na'}
-          </Link>
+
+          {user ? (
+            <>
+              {/* Claimed state — the signed-in visitor already owns a handle */}
+              <div className="mx-auto mt-5 flex w-fit items-center gap-1.5 rounded-full border border-accent-300/60 bg-white/70 py-2.5 pl-5 pr-2.5 text-sm shadow-sm backdrop-blur-sm">
+                <span className="font-semibold text-neutral-400">@</span>
+                <span className="font-semibold text-neutral-800">{user.username}</span>
+                <span className="ml-1.5 flex items-center gap-1 rounded-full bg-accent-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent-600">
+                  <CheckIcon className="h-3 w-3" />
+                  Sa&apos;yo na
+                </span>
+              </div>
+              <Link
+                href={primaryHref}
+                className="btn-primary mt-6 inline-block rounded-full px-7 py-3 text-sm"
+              >
+                Balik sa feed
+              </Link>
+            </>
+          ) : (
+            <HandleClaim />
+          )}
         </div>
       </section>
 
       {/* How it works */}
-      <section className="mx-auto max-w-4xl px-4 pb-16 sm:pb-20">
+      <section id="how-it-works" className="mx-auto max-w-3xl scroll-mt-24 px-4 pb-16 sm:pb-20">
         <div className="mx-auto max-w-xl text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-accent-600">
             Mabilisang simula lang
@@ -679,28 +1038,34 @@ export default async function LandingPage() {
             Tatlong steps, tapos ka na
           </h2>
         </div>
-        <ol className="mt-8 grid gap-3 sm:grid-cols-3">
-          {STEPS.map((step, i) => (
-            <li key={step.title} className="glass overflow-hidden rounded-3xl">
-              {/* Progress strip — fills a third further on each step */}
-              <div className="h-1 bg-accent-500/10" aria-hidden="true">
-                <div
-                  className="h-full bg-gradient-to-r from-accent-400 to-accent-500"
-                  style={{ width: `${((i + 1) / STEPS.length) * 100}%` }}
-                />
-              </div>
-              <div className="p-5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent-500 to-accent-600 text-sm font-bold text-white shadow-md shadow-accent-600/30 ring-4 ring-accent-500/15">
-                  {i + 1}
-                </span>
-                <h3 className="mt-3 text-sm font-semibold text-neutral-800">{step.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-neutral-500">
-                  {step.description}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ol>
+        <InView>
+          <ol className="mt-8 grid gap-3 sm:grid-cols-3">
+            {STEPS.map((step, i) => (
+              <li
+                key={step.title}
+                className="glass overflow-hidden rounded-3xl motion-safe:animate-post-rise"
+                style={{ animationDelay: `${i * 0.1}s` }}
+              >
+                {/* Progress strip — fills a third further on each step */}
+                <div className="h-1 bg-accent-500/10" aria-hidden="true">
+                  <div
+                    className="h-full bg-gradient-to-r from-accent-400 to-accent-500"
+                    style={{ width: `${((i + 1) / STEPS.length) * 100}%` }}
+                  />
+                </div>
+                <div className="p-5">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent-500 to-accent-600 text-sm font-bold text-white shadow-md shadow-accent-600/30 ring-4 ring-accent-500/15">
+                    {i + 1}
+                  </span>
+                  <h3 className="mt-3 text-sm font-semibold text-neutral-800">{step.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-neutral-500">
+                    {step.description}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </InView>
       </section>
 
       {/* Closing CTA — solid gradient card so the ask stands out from the glass */}
@@ -721,7 +1086,7 @@ export default async function LandingPage() {
             href={primaryHref}
             className="relative mt-7 inline-flex items-center gap-1.5 rounded-full bg-white px-8 py-3.5 text-sm font-bold text-accent-700 shadow-lg transition-all hover:scale-[1.03] hover:shadow-xl active:scale-[0.98]"
           >
-            {user ? 'Go to Profile' : 'Gumawa ka na — libre lang'}
+            {user ? 'Balik sa feed' : 'Gumawa ka na — libre lang'}
             <ChevronRightIcon className="h-4 w-4" />
           </Link>
           {!user && (
@@ -737,6 +1102,26 @@ export default async function LandingPage() {
           )}
         </div>
       </section>
+
+      {/* Footer — legal links above the centered brand mark */}
+      <footer className="mx-auto w-full max-w-3xl px-4 pb-10">
+        <div className="flex flex-col items-center gap-4 border-t border-black/10 pt-8">
+          <nav
+            aria-label="Legal"
+            className="flex items-center gap-5 text-xs font-medium text-neutral-500"
+          >
+            <Link href="/privacy" className="transition-colors hover:text-neutral-900">
+              Privacy
+            </Link>
+            <Link href="/terms" className="transition-colors hover:text-neutral-900">
+              Terms
+            </Link>
+          </nav>
+          <Link href="/" aria-label={settings.appName}>
+            <BrandMark size="sm" />
+          </Link>
+        </div>
+      </footer>
     </main>
   )
 }

@@ -11,18 +11,23 @@ import { Avatar } from './Avatar'
 import { BadgeMark } from './BadgeMark'
 import { BlurImage } from './BlurImage'
 import { CategoryChip } from './CategoryChip'
-import { ChevronLeftIcon, ChevronRightIcon } from './icons'
+import { CommentsSheet } from './CommentsSheet'
+import { ChevronLeftIcon, ChevronRightIcon, CommentIcon } from './icons'
 import { ImageLightbox } from './ImageLightbox'
+import { LikeButton } from './LikeButton'
 import { PostVideo } from './PostVideo'
 import { RelativeTime } from './RelativeTime'
+import { ShareButton } from './ShareButton'
 import { TestimonialQuote } from './TestimonialQuote'
 
-// Content-only post card for the public Discover page — no like/comment/
-// share rail or save button; the card's shape is driven by the media like
-// the Explore grid: videos get a reel-style tall player, photos get a
-// media-first card, and text-only posts render as a pull-quote block.
-// Discover excludes shared posts, so there's no share-card branch, and
-// author links go to the public @handle pages.
+// Content-first post card for public surfaces (Discover + the landing
+// strip) — the card's shape is driven by the media like the Explore grid:
+// videos get a reel-style tall player, photos get a media-first card, and
+// text-only posts render as a pull-quote block. Discover excludes shared
+// posts, so there's no share-card branch, and author links go to the
+// public @handle pages. The engagement rail gates on
+// post.viewerAuthenticated: signed-out visitors can read comments in the
+// sheet, but liking/reposting pops the AuthPrompt signup modal.
 export const DiscoverPostCard = memo(function DiscoverPostCard({ post }: { post: PostCardData }) {
   const entry = postCategory(post.category)
   const cardTint = entry ? CATEGORY_TINTS[entry.tint].card : ''
@@ -31,6 +36,83 @@ export const DiscoverPostCard = memo(function DiscoverPostCard({ post }: { post:
   if (post.images.length > 0) return <PhotoCard post={post} cardTint={cardTint} />
   return <QuoteCard post={post} cardTint={cardTint} />
 })
+
+// Like / comment / share row shared by the card variants. `vertical` stacks
+// the buttons for the reel overlay; the comment sheet it mounts shows the
+// full post on top since captions here are clamped.
+function ActionRail({
+  post,
+  onDark = false,
+  vertical = false,
+}: {
+  post: PostCardData
+  onDark?: boolean
+  vertical?: boolean
+}) {
+  const [commentsOpen, setCommentsOpen] = useState(false)
+  const closeComments = useCallback(() => setCommentsOpen(false), [])
+  const authenticated = post.viewerAuthenticated
+
+  return (
+    <>
+      <div
+        className={
+          vertical
+            ? 'flex flex-col items-center gap-4 text-sm'
+            : 'flex items-center gap-4 text-sm font-medium text-neutral-500'
+        }
+      >
+        <LikeButton
+          postId={post.id}
+          initialLiked={post.likedByMe}
+          initialCount={post.likeCount}
+          authenticated={authenticated}
+          onDark={onDark}
+        />
+        <button
+          type="button"
+          onClick={() => setCommentsOpen(true)}
+          aria-label="View comments"
+          className={`flex items-center gap-1.5 text-sm transition-colors ${
+            onDark ? 'text-white/85 hover:text-white' : 'text-neutral-500 hover:text-accent-500'
+          }`}
+        >
+          <CommentIcon className="h-5 w-5" />
+          <span>{post.commentCount}</span>
+        </button>
+        {(post.canShare || !authenticated) && (
+          <ShareButton
+            postId={post.sharedPost?.id ?? post.id}
+            initialShared={post.sharedByMe}
+            initialCount={post.shareCount}
+            authenticated={authenticated}
+            onDark={onDark}
+          />
+        )}
+      </div>
+      <CommentsSheet
+        postId={post.id}
+        open={commentsOpen}
+        onCloseAction={closeComments}
+        authenticated={authenticated}
+        commentsDisabled={post.commentsDisabled}
+        showPost
+      />
+    </>
+  )
+}
+
+// Overlapping liker avatars — same stack the in-app cards render.
+function LikerStack({ post }: { post: PostCardData }) {
+  if (post.likers.length === 0) return null
+  return (
+    <span className="flex items-center -space-x-2">
+      {post.likers.map((liker) => (
+        <Avatar key={liker.username} src={liker.avatarUrl} name={liker.name} size="xs" />
+      ))}
+    </span>
+  )
+}
 
 // Video post — ReelPost minus the action rail: the video fills a tall frame
 // with the author and caption floating on a scrim. Aspect-based height (not
@@ -51,8 +133,13 @@ function ReelCard({ post, cardTint }: { post: PostCardData; cardTint: string }) 
         <CategoryChip category={post.category} solid className="absolute left-[52px] top-[19px]" />
       )}
 
+      {/* Right-side action rail — like / comment / share */}
+      <div className="absolute bottom-16 right-2.5">
+        <ActionRail post={post} onDark vertical />
+      </div>
+
       {/* Bottom-left author + caption overlay */}
-      <div className="absolute inset-x-3 bottom-6 flex flex-col gap-2">
+      <div className="absolute inset-x-3 bottom-6 right-16 flex flex-col gap-2">
         <Link href={`/@${post.authorUsername}`} className="flex min-w-0 items-center gap-2.5">
           <Avatar src={post.authorAvatarUrl} name={post.authorName} size="sm" />
           <div className="min-w-0">
@@ -206,6 +293,12 @@ function PhotoCard({ post, cardTint }: { post: PostCardData; cardTint: string })
         </p>
       </div>
 
+      {/* Engagement rail + liker faces */}
+      <div className="flex items-center justify-between gap-3 border-t border-black/5 px-4 py-3">
+        <ActionRail post={post} />
+        <LikerStack post={post} />
+      </div>
+
       <ImageLightbox
         urls={urls}
         index={openIdx}
@@ -246,6 +339,12 @@ function QuoteCard({ post, cardTint }: { post: PostCardData; cardTint: string })
           <TestimonialQuote content={post.content} />
         </div>
       )}
+
+      {/* Engagement rail + liker faces */}
+      <div className="mt-3.5 flex items-center justify-between gap-3 border-t border-black/5 pt-3">
+        <ActionRail post={post} />
+        <LikerStack post={post} />
+      </div>
     </article>
   )
 }
