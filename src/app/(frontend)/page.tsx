@@ -8,12 +8,14 @@ import { BrandMark } from '@/components/Branding'
 import { CategoryChip, CATEGORY_ICONS } from '@/components/CategoryChip'
 import { HandleClaim } from '@/components/HandleClaim'
 import {
+  ActivityIcon,
   BookmarkIcon,
   CardIcon,
   CheckIcon,
   ChevronRightIcon,
   CommentIcon,
   CompassIcon,
+  HandIcon,
   HeartIcon,
   HomeIcon,
   ImageIcon,
@@ -22,6 +24,7 @@ import {
   MailIcon,
   MicIcon,
   MoonIcon,
+  MusicIcon,
   PlayIcon,
   QuoteIcon,
   SearchIcon,
@@ -167,6 +170,44 @@ const FEATURES: Feature[] = [
     ),
   },
   {
+    icon: ActivityIcon,
+    title: 'Activities ng circle mo',
+    description:
+      'Likes, comments, follows, at hangouts ng mga fina-follow mo — isang journal ng tropa, hindi notification spam.',
+    preview: (
+      <div className="flex flex-col gap-1.5">
+        <MiniRow>
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-md bg-rose-500/15">
+            <HeartIcon filled className="h-2.5 w-2.5 text-rose-500" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <Bar className="w-16 bg-neutral-300" />
+            <Bar className="mt-1 w-24 bg-neutral-200" />
+          </span>
+        </MiniRow>
+        <MiniRow>
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-md bg-accent-500/15">
+            <CommentIcon className="h-2.5 w-2.5 text-accent-600" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <Bar className="w-14 bg-neutral-300" />
+            <Bar className="mt-1 w-20 bg-neutral-200" />
+          </span>
+        </MiniRow>
+        <MiniRow>
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-md bg-emerald-500/15">
+            <MicIcon className="h-2.5 w-2.5 text-emerald-600" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <Bar className="w-20 bg-neutral-300" />
+            <Bar className="mt-1 w-12 bg-neutral-200" />
+          </span>
+          <span className="h-2.5 w-10 shrink-0 rounded-full bg-emerald-500/15" />
+        </MiniRow>
+      </div>
+    ),
+  },
+  {
     icon: UserIcon,
     title: 'Profile na sa’yo talaga',
     description:
@@ -247,40 +288,6 @@ const FEATURES: Feature[] = [
     ),
   },
   {
-    icon: MicIcon,
-    title: 'Hangouts kasama ang tropa',
-    description: 'Live videoke at card rooms — kanta, laro, at tambay kasama ang community.',
-    preview: (
-      <div className="flex flex-col gap-1.5">
-        {/* Videoke room — mic badge + animated equalizer, like the lobby */}
-        <MiniRow>
-          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-md bg-rose-500/15">
-            <MicIcon className="h-2.5 w-2.5 text-rose-500" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <Bar className="w-14 bg-neutral-300" />
-            <Bar className="mt-1 w-20 bg-neutral-200" />
-          </span>
-          <EqBars className="h-3.5 text-accent-500" />
-        </MiniRow>
-        {/* Card table — CardIcon badge + a "live" presence pill */}
-        <MiniRow>
-          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-md bg-accent-500/15">
-            <CardIcon className="h-2.5 w-2.5 text-accent-600" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <Bar className="w-16 bg-neutral-300" />
-            <Bar className="mt-1 w-12 bg-neutral-200" />
-          </span>
-          <span className="flex items-center gap-1">
-            <Disc className="h-1.5 w-1.5 bg-emerald-500" />
-            <span className="h-2.5 w-7 rounded-full bg-emerald-500/15" />
-          </span>
-        </MiniRow>
-      </div>
-    ),
-  },
-  {
     icon: QuoteIcon,
     featured: true,
     title: 'Bumalik na ang testimonials',
@@ -309,6 +316,122 @@ const FEATURES: Feature[] = [
       </div>
     ),
   },
+]
+
+// The Hangouts spotlight — one card per mini-app, echoing the in-app
+// HangoutsApps covers (same palettes and motifs, scaled down) but rebuilt
+// as presentational tiles: no links, and the "inside" presence chips are
+// decorative mocks like every other preview on this page.
+const HANGOUT_APPS: {
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
+  title: string
+  tag: string
+  tagClass: string
+  blurb: string
+  cover: string
+  decor: React.ReactNode
+}[] = [
+  {
+    icon: MicIcon,
+    title: 'Videoke',
+    tag: 'Sing together',
+    tagClass: 'bg-rose-500/10 text-rose-600',
+    blurb:
+      'Mag-queue ng kanta mula sa YouTube at kantahan nang live — parang karaoke night na hindi nauubos.',
+    cover: 'from-fuchsia-500 via-rose-600 to-purple-950',
+    decor: (
+      <>
+        <MusicIcon aria-hidden className="absolute left-5 top-4 h-4 w-4 -rotate-12 text-white/35" />
+        <MusicIcon
+          aria-hidden
+          className="absolute right-8 top-5 h-3.5 w-3.5 rotate-12 text-white/25"
+        />
+        <MusicIcon
+          aria-hidden
+          className="absolute bottom-4 left-11 h-3 w-3 -rotate-6 text-white/20"
+        />
+        <EqBars className="absolute bottom-3 right-4 h-4 text-white/70" />
+      </>
+    ),
+  },
+  {
+    icon: CardIcon,
+    title: 'Unggoy-Unggoy',
+    tag: 'Card game',
+    tagClass: 'bg-emerald-500/10 text-emerald-600',
+    blurb: 'Deal a round of Unggoy-Ungguyan — pasa-pasa ng baraha hanggang may maunggoy.',
+    cover: 'from-emerald-500 via-teal-700 to-emerald-950',
+    decor: (
+      <>
+        <span aria-hidden className="absolute left-4 top-3 text-lg font-black text-white/20">
+          ♠
+        </span>
+        <span
+          aria-hidden
+          className="absolute right-7 top-4 rotate-12 text-xl font-black text-white/15"
+        >
+          ♥
+        </span>
+        <span
+          aria-hidden
+          className="absolute bottom-4 left-9 -rotate-6 text-base font-black text-white/15"
+        >
+          ♦
+        </span>
+        <span
+          aria-hidden
+          className="absolute bottom-3 right-14 rotate-6 text-sm font-black text-white/20"
+        >
+          ♣
+        </span>
+        {/* A fanned pair of cards lying on the felt, bottom-right corner */}
+        <span
+          aria-hidden
+          className="absolute -bottom-4 right-4 h-12 w-8 rotate-12 rounded-md bg-white/10 ring-1 ring-white/25"
+        />
+        <span
+          aria-hidden
+          className="absolute -bottom-3.5 right-9 h-12 w-8 -rotate-6 rounded-md bg-white/5 ring-1 ring-white/15"
+        />
+      </>
+    ),
+  },
+  {
+    icon: HandIcon,
+    title: 'Never Have I Ever',
+    tag: 'Party game',
+    tagClass: 'bg-amber-500/10 text-amber-600',
+    blurb: 'Confess or keep your fingers up — last one standing wins the round.',
+    cover: 'from-amber-400 via-orange-600 to-rose-950',
+    decor: (
+      <>
+        <span aria-hidden className="absolute left-5 top-3 text-lg font-black text-white/25">
+          ?
+        </span>
+        <span
+          aria-hidden
+          className="absolute right-8 top-4 rotate-12 text-base font-black text-white/20"
+        >
+          ?
+        </span>
+        {/* Five fingers up — the row fades out left to right */}
+        <span aria-hidden className="absolute bottom-3 right-5 flex gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
+          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+          <span className="h-1.5 w-1.5 rounded-full bg-white/30" />
+          <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+          <span className="h-1.5 w-1.5 rounded-full bg-white/10" />
+        </span>
+      </>
+    ),
+  },
+]
+
+// How hangout rooms work — the footnote row under the app cards.
+const HANGOUT_NOTES = [
+  'Mutuals lang ang nakakapasok — walang random na tao',
+  'Knock ka lang — host ang pumipili kung sino sasali',
+  'Naka-mic habang naglalaro — parang magkakatabi lang kayo',
 ]
 
 // The manifesto, split into the "before" and "after" columns.
@@ -963,8 +1086,8 @@ export default async function LandingPage() {
             Sarili mong corner ng internet
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-neutral-500">
-            Kinuha ng {settings.appName} ang mga magagandang parts ng social media — posting,
-            following, messaging — at tinapon na ang iba.
+            Lahat ng gusto mo sa social media — posting, mail, search, profile, testimonials — minus
+            ang algorithm, ads, at trackers.
           </p>
         </div>
         {/* Two columns — the featured tiles span both; the narrower
@@ -984,6 +1107,94 @@ export default async function LandingPage() {
             <ChevronRightIcon className="h-3.5 w-3.5" />
           </Link>
         </p>
+      </section>
+
+      {/* Hangouts spotlight — the live rooms get a full section, with one
+          presentational tile per mini-app. The "inside" chips are decorative
+          mocks; real presence only exists in-app for signed-in users. */}
+      <section id="hangouts" className="mx-auto max-w-3xl scroll-mt-24 px-4 pb-16 sm:pb-20">
+        <div className="mx-auto max-w-xl text-center">
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-accent-600">
+            <span className="relative flex h-2 w-2" aria-hidden="true">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            Tambayan
+          </p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
+            Hangouts na para lang sa tropa
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-neutral-500">
+            Mag-host ng live room para sa mutuals mo — videoke, card games, at party games na
+            naka-mic ang lahat. Walang random na papasok; knock ka lang at si host na ang bahala.
+          </p>
+        </div>
+
+        <InView className="mt-8 grid gap-3 sm:grid-cols-3">
+          {HANGOUT_APPS.map(({ icon: Icon, title, tag, tagClass, blurb, cover, decor }, i) => (
+            <div
+              key={title}
+              className="glass overflow-hidden rounded-3xl transition-all duration-200 motion-safe:animate-post-rise hover:-translate-y-1 hover:shadow-xl hover:shadow-accent-600/10"
+              style={{ animationDelay: `${i * 0.08}s` }}
+            >
+              {/* Cover — the app's in-app gradient + motif, shrunk to a
+                    card banner. Decorative mock presence chip on top. */}
+              <div className={`relative h-24 overflow-hidden bg-gradient-to-br ${cover}`}>
+                <span
+                  aria-hidden
+                  className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.07)_1px,transparent_1px)] bg-[size:20px_20px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_75%)]"
+                />
+                <span
+                  aria-hidden
+                  className="absolute -top-8 left-1/2 h-16 w-32 -translate-x-1/2 rounded-full bg-white/20 blur-2xl"
+                />
+                {decor}
+                <span className="absolute left-1/2 top-1/2 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/40 backdrop-blur-sm">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span
+                  aria-hidden
+                  className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/25 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white backdrop-blur-sm"
+                >
+                  <span className="h-1 w-1 animate-pulse rounded-full bg-emerald-300" />
+                  {3 + i * 2} inside
+                </span>
+              </div>
+              <div className="p-4">
+                <span className="flex items-center gap-2">
+                  <span className="truncate text-sm font-bold tracking-tight text-neutral-800">
+                    {title}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${tagClass}`}
+                  >
+                    {tag}
+                  </span>
+                </span>
+                <p className="mt-1.5 text-[13px] leading-snug text-neutral-500">{blurb}</p>
+              </div>
+            </div>
+          ))}
+        </InView>
+
+        <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-neutral-500">
+          {HANGOUT_NOTES.map((note) => (
+            <li key={note} className="inline-flex items-center gap-1.5">
+              <CheckIcon className="h-3 w-3 text-accent-600" />
+              {note}
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-6 text-center">
+          <Link
+            href={user ? '/explore?tab=hangouts' : primaryHref}
+            className="btn-primary group inline-flex items-center gap-1.5 rounded-full px-7 py-3.5 text-sm"
+          >
+            {user ? 'Tambay na sa Hangouts' : 'Gumawa ka na ng account para makasali'}
+            <ChevronRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
       </section>
 
       {/* Handle claim — the @handle is the visitor's stake in the community */}

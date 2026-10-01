@@ -4,17 +4,17 @@ import type { User, VideokeQueueItem, VideokeRoom } from '@/payload-types'
 
 import { relId } from './serialize'
 
-// LiveKit voice for videoke rooms. The SFU is self-hosted (deploy/livekit) and
+// LiveKit voice for hangout rooms. The SFU is self-hosted (deploy/livekit) and
 // clients connect straight to it — the app only mints access tokens, which are
 // plain HS256 JWTs (LiveKit's documented format) signed with the API secret,
 // so no server SDK is needed. A token scopes the member to one
-// `videoke-{roomId}` room; `canPublish` is the real mic gate — only the host
-// and the current singer may hold the mic.
+// `{kind}-{roomId}` room; `canPublish` is the real mic gate — videoke limits
+// it to the host and current singer, while cards and nhie let everyone talk.
 const TOKEN_TTL_SECONDS = 4 * 60 * 60
 
-// Voice rooms are namespaced per hangout app — `videoke-3` and `cards-3` are
-// distinct SFU rooms even though both flow through mintVoiceToken.
-export type VoiceRoomKind = 'videoke' | 'cards'
+// Voice rooms are namespaced per hangout app — `videoke-3`, `cards-3`, and
+// `nhie-3` are distinct SFU rooms even though all flow through mintVoiceToken.
+export type VoiceRoomKind = 'videoke' | 'cards' | 'nhie'
 
 export const livekitRoomName = (roomId: number, kind: VoiceRoomKind = 'videoke') =>
   `${kind}-${roomId}`

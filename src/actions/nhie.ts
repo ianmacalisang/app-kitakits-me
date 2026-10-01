@@ -7,6 +7,7 @@ import { getMutualFollowIds } from '@/lib/chat'
 import { awardPoints } from '@/lib/gamification'
 import { hangoutGateError, type OpenHangout } from '@/lib/hangouts'
 import { pushLive } from '@/lib/live'
+import { livekitConfigured, mintVoiceToken } from '@/lib/livekit'
 import type { MutualHead } from '@/lib/mutuals'
 import { revalidateNavCounts } from '@/lib/nav-cache'
 import {
@@ -692,6 +693,24 @@ export async function requestNhieJoin(roomId: number): Promise<ActionResult> {
   // room state, so poke the host's open room view as well.
   pushLive(hostId, { type: 'nhie:update', roomId: room.id })
   return { ok: true }
+}
+
+// ── Voice (LiveKit) ────────────────────────────────────────────────────────
+
+// Mint a scoped access token so a member can join the room's LiveKit voice
+// channel (`nhie-{id}`). Every member may talk — seated or watching, it's
+// still a hangout — so canPublish is true for all. `null` means voice is
+// either off for this deployment or the caller isn't allowed in.
+export async function getNhieVoiceTicket(
+  roomId: number,
+): Promise<{ token: string; url: string; expiresAt: number } | null> {
+  const user = await requireUser()
+  if (!livekitConfigured()) return null
+  const payload = await getPayloadClient()
+  const room = await loadVisibleRoom(payload, roomId, user)
+  if (!room || room.status !== 'open' || !memberIdsOf(room).includes(user.id)) return null
+
+  return mintVoiceToken(user, room.id, true, 'nhie')
 }
 
 // ── Never Have I Ever game actions ─────────────────────────────────────────

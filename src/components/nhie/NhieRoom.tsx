@@ -31,11 +31,13 @@ import {
   ChevronDownIcon,
   ChevronLeftIcon,
   HandIcon,
+  MicIcon,
   QuestionIcon,
   StarIcon,
   UsersIcon,
   XIcon,
 } from '../icons'
+import { NhieMic } from './NhieMic'
 
 // The live NHIE circle — seated players ring the prompt card up top, your own
 // answer buttons sit inside it. Turn order rotates the prompt call; answers
@@ -54,6 +56,8 @@ export function NhieRoom({
   const router = useRouter()
   const chat = useChat()
   const [room, setRoomState] = useState(initial)
+  // User ids currently holding the mic — reported by NhieMic (LiveKit).
+  const [micIds, setMicIds] = useState<number[]>([])
   const [pending, startTransition] = useTransition()
   const [answerBusy, setAnswerBusy] = useState(false)
   const [customText, setCustomText] = useState('')
@@ -194,6 +198,8 @@ export function NhieRoom({
   }
 
   const onlineIds = useMemo(() => new Set(chat?.online.map((u) => u.id) ?? []), [chat?.online])
+
+  const onSpeakers = useCallback((ids: number[]) => setMicIds(ids), [])
 
   const ticker = finished
     ? game.winner
@@ -376,6 +382,14 @@ export function NhieRoom({
                     }`}
                   />
                 ) : null}
+                {micIds.includes(m.id) && (
+                  <span
+                    title="On the mic"
+                    className="absolute -bottom-0.5 -left-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-white dark:ring-neutral-900"
+                  >
+                    <MicIcon className="h-2.5 w-2.5" />
+                  </span>
+                )}
               </span>
               <span className="max-w-16 truncate text-[11px] text-neutral-600 dark:text-neutral-300">
                 {m.name.split(' ')[0]}
@@ -690,7 +704,7 @@ export function NhieRoom({
           )}
         </div>
 
-        {/* Circle bar — the room state line */}
+        {/* Circle bar — voice mic plus the room state line */}
         <div className="relative flex items-center justify-between gap-2 border-t border-white/10 bg-white/[0.04] px-4 py-3">
           <p className="min-w-0 flex-1 truncate text-xs text-white/50">
             {ended
@@ -701,6 +715,7 @@ export function NhieRoom({
                   ? `Game ${game.round} finished`
                   : 'Never Have I Ever · last one with fingers up wins'}
           </p>
+          {isMember && !ended && <NhieMic roomId={room.id} onSpeakers={onSpeakers} />}
         </div>
       </section>
 
