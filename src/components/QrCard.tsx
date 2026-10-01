@@ -17,6 +17,17 @@ const loadImage = (src: string, crossOrigin?: string): Promise<HTMLImageElement>
     img.src = src
   })
 
+// Canvas reads need CORS-clean pixels. Try the CDN directly as an
+// anonymous CORS request; when the host doesn't allow it, retry through
+// the same-origin media proxy so the canvas stays untainted.
+const loadCanvasImage = (src?: string): Promise<HTMLImageElement> => {
+  if (!src) return Promise.reject(new Error('no image'))
+  if (!/^https?:\/\//.test(src)) return loadImage(src)
+  return loadImage(src, 'anonymous').catch(() =>
+    loadImage(`/api/media-proxy?url=${encodeURIComponent(src)}`),
+  )
+}
+
 const traceRoundRect = (
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -108,8 +119,7 @@ const renderCard = async (
   ctx.fillRect(card.x, card.y, card.w, card.h)
 
   try {
-    if (!coverUrl) throw new Error('no cover')
-    const cover = await loadImage(coverUrl, 'anonymous')
+    const cover = await loadCanvasImage(coverUrl)
     const s = Math.max(card.w / cover.width, card.h / cover.height)
     ctx.drawImage(
       cover,
@@ -145,8 +155,7 @@ const renderCard = async (
   ctx.fillStyle = '#ffffff'
   ctx.fill()
   try {
-    if (!avatarUrl) throw new Error('no avatar')
-    const img = await loadImage(avatarUrl, 'anonymous')
+    const img = await loadCanvasImage(avatarUrl)
     ctx.save()
     ctx.beginPath()
     ctx.arc(cx, card.y, 80, 0, Math.PI * 2)
@@ -204,8 +213,7 @@ const renderCard = async (
   ctx.lineWidth = 2
   ctx.stroke()
   try {
-    if (!logoUrl) throw new Error('no logo')
-    const logo = await loadImage(logoUrl, 'anonymous')
+    const logo = await loadCanvasImage(logoUrl)
     const s = Math.min(92 / logo.width, 92 / logo.height)
     ctx.drawImage(
       logo,
