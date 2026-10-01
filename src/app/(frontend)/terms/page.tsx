@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 import { BrandMark } from '@/components/Branding'
+import { PrePaintTheme } from '@/components/PrePaintTheme'
 import { PublicPageTheme } from '@/components/PublicPageTheme'
 import { getCurrentUser } from '@/lib/auth'
 import { getSiteSettings } from '@/lib/settings'
@@ -10,13 +11,7 @@ export const metadata: Metadata = { title: 'Terms of Service' }
 
 const LAST_UPDATED = 'December 2025'
 
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
       <h2 className="text-sm font-semibold text-neutral-800">{title}</h2>
@@ -33,11 +28,7 @@ export default async function TermsPage() {
     <main className="animate-page-in">
       {/* Public pages are always light — same treatment as the landing
           and Discover pages. */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: "try{document.documentElement.classList.remove('dark')}catch(e){}",
-        }}
-      />
+      <PrePaintTheme dark={false} />
       <PublicPageTheme theme="light" visitorTheme={user?.theme ?? 'light'} />
 
       <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-6">
@@ -99,8 +90,12 @@ export default async function TermsPage() {
           <Section title="Your account">
             <ul className="list-disc space-y-1.5 pl-5">
               <li>You must be at least 13 years old to use {app}.</li>
-              <li>Your @handle is yours while your account is active — first come, first served.</li>
-              <li>Keep your password private; you&apos;re responsible for activity on your account.</li>
+              <li>
+                Your @handle is yours while your account is active — first come, first served.
+              </li>
+              <li>
+                Keep your password private; you&apos;re responsible for activity on your account.
+              </li>
               <li>
                 Don&apos;t impersonate other people or claim handles that infringe someone&apos;s
                 name or brand.
@@ -135,7 +130,9 @@ export default async function TermsPage() {
                 Adult content outside the designated NSFW category, or NSFW posts marked as public
                 where the rules require otherwise.
               </li>
-              <li>Automated scraping, bulk account creation, or abusing the service&apos;s APIs.</li>
+              <li>
+                Automated scraping, bulk account creation, or abusing the service&apos;s APIs.
+              </li>
             </ul>
             <p>
               We can remove content and suspend or terminate accounts that break these rules.
@@ -152,8 +149,8 @@ export default async function TermsPage() {
 
           <Section title="Mail">
             <p>
-              Mail is private between sender and recipient. Don&apos;t use it for spam or
-              harassment — recipients can block you, and abuse reports are taken seriously.
+              Mail is private between sender and recipient. Don&apos;t use it for spam or harassment
+              — recipients can block you, and abuse reports are taken seriously.
             </p>
           </Section>
 

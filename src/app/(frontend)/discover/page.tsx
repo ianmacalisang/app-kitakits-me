@@ -7,6 +7,7 @@ import { CATEGORY_ICONS } from '@/components/CategoryChip'
 import { DiscoverFeed } from '@/components/DiscoverFeed'
 import { ChevronRightIcon, CompassIcon } from '@/components/icons'
 import { LandingUserSearch } from '@/components/LandingUserSearch'
+import { PrePaintTheme } from '@/components/PrePaintTheme'
 import { PublicPageTheme } from '@/components/PublicPageTheme'
 import { getCurrentUser } from '@/lib/auth'
 import {
@@ -103,11 +104,7 @@ export default async function DiscoverPage({
       {/* Discover is always light — the script removes the visitor's dark
           class pre-paint on first load; the component covers client-side
           navigation and restores their theme on exit. */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: "try{document.documentElement.classList.remove('dark')}catch(e){}",
-        }}
-      />
+      <PrePaintTheme dark={false} />
       <PublicPageTheme theme="light" visitorTheme={viewer?.theme ?? 'light'} />
 
       <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-6">

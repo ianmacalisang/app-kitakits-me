@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 import { BrandMark } from '@/components/Branding'
+import { PrePaintTheme } from '@/components/PrePaintTheme'
 import { PublicPageTheme } from '@/components/PublicPageTheme'
 import { getCurrentUser } from '@/lib/auth'
 import { getSiteSettings } from '@/lib/settings'
@@ -10,13 +11,7 @@ export const metadata: Metadata = { title: 'Privacy Policy' }
 
 const LAST_UPDATED = 'December 2025'
 
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
       <h2 className="text-sm font-semibold text-neutral-800">{title}</h2>
@@ -33,11 +28,7 @@ export default async function PrivacyPage() {
     <main className="animate-page-in">
       {/* Public pages are always light — same treatment as the landing
           and Discover pages. */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: "try{document.documentElement.classList.remove('dark')}catch(e){}",
-        }}
-      />
+      <PrePaintTheme dark={false} />
       <PublicPageTheme theme="light" visitorTheme={user?.theme ?? 'light'} />
 
       <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-6">
@@ -111,9 +102,7 @@ export default async function PrivacyPage() {
               <li>To run the service — your feed, profile, mail, and hangouts.</li>
               <li>To keep you signed in and secure your account.</li>
               <li>To send notifications about activity on your posts, mail, and testimonials.</li>
-              <li>
-                To power community features like Discover, search, badges, and streaks.
-              </li>
+              <li>To power community features like Discover, search, badges, and streaks.</li>
             </ul>
             <p>
               We don&apos;t sell your data, we don&apos;t run ads, and we don&apos;t use third-party
@@ -125,15 +114,12 @@ export default async function PrivacyPage() {
             <p>
               Posts you set to <strong className="font-medium text-neutral-800">public</strong> and
               your public @handle page are visible to anyone — including logged-out visitors and
-              search engines. Posts set to <strong className="font-medium text-neutral-800">
-                followers only
-              </strong>{' '}
-              or <strong className="font-medium text-neutral-800">private</strong> are only shown to
+              search engines. Posts set to{' '}
+              <strong className="font-medium text-neutral-800">followers only</strong> or{' '}
+              <strong className="font-medium text-neutral-800">private</strong> are only shown to
               the audience you picked.
             </p>
-            <p>
-              Testimonials written for you only appear on your profile after you approve them.
-            </p>
+            <p>Testimonials written for you only appear on your profile after you approve them.</p>
           </Section>
 
           <Section title="Hangouts and live rooms">

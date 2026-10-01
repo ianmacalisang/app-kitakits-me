@@ -34,6 +34,7 @@ import {
 } from '@/components/icons'
 import { InView } from '@/components/InView'
 import { LandingUserSearch } from '@/components/LandingUserSearch'
+import { PrePaintTheme } from '@/components/PrePaintTheme'
 import { PublicPageTheme } from '@/components/PublicPageTheme'
 import { RelativeTime } from '@/components/RelativeTime'
 import { EqBars } from '@/components/videoke/EqBars'
@@ -533,11 +534,7 @@ export default async function LandingPage() {
       {/* Landing is always light — the script removes the visitor's dark
           class pre-paint on first load; the component covers client-side
           navigation and restores their theme on exit. */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: "try{document.documentElement.classList.remove('dark')}catch(e){}",
-        }}
-      />
+      <PrePaintTheme dark={false} />
       <PublicPageTheme theme="light" visitorTheme={user?.theme ?? 'light'} />
       <script
         type="application/ld+json"

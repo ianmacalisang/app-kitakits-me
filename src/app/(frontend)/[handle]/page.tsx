@@ -10,6 +10,7 @@ import { LockIcon } from '@/components/icons'
 import { ProfileTabs } from '@/components/ProfileTabs'
 import { ProfileViewBeacon } from '@/components/ProfileViewBeacon'
 import { PublicMailButton } from '@/components/PublicMailButton'
+import { PrePaintTheme } from '@/components/PrePaintTheme'
 import { PublicPageTheme } from '@/components/PublicPageTheme'
 import { PublicProfileHero } from '@/components/PublicProfileHero'
 import { ShareProfileButton } from '@/components/ShareProfileButton'
@@ -236,11 +237,7 @@ export default async function PublicProfilePage({
       {/* Owner-chosen page theme — the script applies it pre-paint on first
           load; the component covers client-side navigation and restores the
           visitor's own theme on exit. */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `try{document.documentElement.classList.toggle('dark',${theme === 'dark'})}catch(e){}`,
-        }}
-      />
+      <PrePaintTheme dark={theme === 'dark'} />
       <PublicPageTheme theme={theme} visitorTheme={viewer?.theme ?? 'light'} />
 
       {/* Custom page backdrop — a fixed layer under the content. Positioned
