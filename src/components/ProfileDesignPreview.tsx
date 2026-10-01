@@ -1,9 +1,11 @@
 import type {
   ProfileAccent,
   ProfileCardStyle,
+  ProfileFont,
   ProfileLayout,
   ProfileTheme,
 } from '@/lib/profileDesign'
+import { PROFILE_FONT_FAMILIES } from '@/lib/profileFonts'
 
 import { BlurImage } from './BlurImage'
 import { MailIcon } from './icons'
@@ -18,6 +20,7 @@ export function ProfileDesignPreview({
   accent,
   cardStyle,
   theme,
+  font,
   backgroundUrl,
   name,
   username,
@@ -33,6 +36,7 @@ export function ProfileDesignPreview({
   accent: ProfileAccent
   cardStyle: ProfileCardStyle
   theme: ProfileTheme
+  font: ProfileFont
   backgroundUrl?: string | null
   name: string
   username: string
@@ -44,6 +48,8 @@ export function ProfileDesignPreview({
   followers: number
   following: number
 }) {
+  const fontFamily = PROFILE_FONT_FAMILIES[font]
+
   return (
     <div>
       <p className="mb-1.5 flex items-center justify-between text-sm font-medium text-neutral-600 dark:text-neutral-300">
@@ -61,6 +67,7 @@ export function ProfileDesignPreview({
             ? 'dark bg-[#0a0a0a] text-neutral-100'
             : 'light bg-[#f4f4f4] text-neutral-900'
         }`}
+        style={fontFamily ? { fontFamily } : undefined}
       >
         {/* Page backdrop — mirrors the fixed layer on the public page */}
         {backgroundUrl && (

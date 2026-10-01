@@ -28,6 +28,7 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
+  MicIcon,
   QuestionIcon,
   StarIcon,
   UsersIcon,
@@ -52,6 +53,8 @@ export function CardsRoom({
   const router = useRouter()
   const chat = useChat()
   const [room, setRoomState] = useState(initial)
+  // User ids currently holding the mic — reported by CardsMic (LiveKit).
+  const [micIds, setMicIds] = useState<number[]>([])
   const [pending, startTransition] = useTransition()
   const [drawBusy, setDrawBusy] = useState<number | null>(null)
   const [guideOpen, setGuideOpen] = useState(false)
@@ -175,6 +178,8 @@ export function CardsRoom({
   }
 
   const onlineIds = useMemo(() => new Set(chat?.online.map((u) => u.id) ?? []), [chat?.online])
+
+  const onSpeakers = useCallback((ids: number[]) => setMicIds(ids), [])
 
   // Everyone seated except me, in seat order — they form the top arc.
   const opponents = game.players.filter((p) => p.user.id !== viewerId)
@@ -358,6 +363,14 @@ export function CardsRoom({
                     }`}
                   />
                 ) : null}
+                {micIds.includes(m.id) && (
+                  <span
+                    title="On the mic"
+                    className="absolute -bottom-0.5 -left-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-white dark:ring-neutral-900"
+                  >
+                    <MicIcon className="h-2.5 w-2.5" />
+                  </span>
+                )}
               </span>
               <span className="max-w-16 truncate text-[11px] text-neutral-600 dark:text-neutral-300">
                 {m.name.split(' ')[0]}
@@ -586,7 +599,7 @@ export function CardsRoom({
                   ? `Round ${game.round} finished`
                   : 'Unggoy-Ungguyan · last one holding the monkey loses'}
           </p>
-          {isMember && !ended && <CardsMic roomId={room.id} />}
+          {isMember && !ended && <CardsMic roomId={room.id} onSpeakers={onSpeakers} />}
         </div>
       </section>
 

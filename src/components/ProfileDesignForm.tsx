@@ -8,6 +8,7 @@ import { updateProfileDesign } from '@/actions/users'
 import type {
   ProfileAccent,
   ProfileCardStyle,
+  ProfileFont,
   ProfileLayout,
   ProfileTheme,
 } from '@/lib/profileDesign'
@@ -45,6 +46,7 @@ export function ProfileDesignForm({
     accent: ProfileAccent
     cardStyle: ProfileCardStyle
     theme: ProfileTheme
+    font: ProfileFont
     backgroundUrl?: string
   }
   preview: DesignPreviewData
@@ -55,6 +57,7 @@ export function ProfileDesignForm({
   const [accent, setAccent] = useState<ProfileAccent>(initial.accent)
   const [cardStyle, setCardStyle] = useState<ProfileCardStyle>(initial.cardStyle)
   const [theme, setTheme] = useState<ProfileTheme>(initial.theme)
+  const [font, setFont] = useState<ProfileFont>(initial.font)
   // undefined = untouched (use initial.backgroundUrl); null = removed;
   // string = pending upload preview.
   const [background, setBackground] = useState<string | null | undefined>(undefined)
@@ -74,6 +77,7 @@ export function ProfileDesignForm({
         accent={accent}
         cardStyle={cardStyle}
         theme={theme}
+        font={font}
         backgroundUrl={background === undefined ? initial.backgroundUrl : background}
         {...preview}
       />
@@ -83,11 +87,13 @@ export function ProfileDesignForm({
         accent={accent}
         cardStyle={cardStyle}
         theme={theme}
+        font={font}
         backgroundUrl={initial.backgroundUrl}
         onLayoutChange={setLayout}
         onAccentChange={setAccent}
         onCardStyleChange={setCardStyle}
         onThemeChange={setTheme}
+        onFontChange={setFont}
         onBackgroundChange={setBackground}
       />
 

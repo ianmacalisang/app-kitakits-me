@@ -6,13 +6,16 @@ import { compressImage } from '@/lib/image'
 import {
   PROFILE_ACCENTS,
   PROFILE_CARD_STYLES,
+  PROFILE_FONTS,
   PROFILE_LAYOUTS,
   PROFILE_THEMES,
   type ProfileAccent,
   type ProfileCardStyle,
+  type ProfileFont,
   type ProfileLayout,
   type ProfileTheme,
 } from '@/lib/profileDesign'
+import { PROFILE_FONT_FAMILIES } from '@/lib/profileFonts'
 
 import { BlurImage } from './BlurImage'
 import { CheckIcon, ImageIcon, MoonIcon, SunIcon, XIcon } from './icons'
@@ -72,22 +75,26 @@ export function ProfileDesignControls({
   accent,
   cardStyle,
   theme,
+  font,
   backgroundUrl,
   onLayoutChange,
   onAccentChange,
   onCardStyleChange,
   onThemeChange,
+  onFontChange,
   onBackgroundChange,
 }: {
   layout: ProfileLayout
   accent: ProfileAccent
   cardStyle: ProfileCardStyle
   theme: ProfileTheme
+  font: ProfileFont
   backgroundUrl?: string
   onLayoutChange: (layout: ProfileLayout) => void
   onAccentChange: (accent: ProfileAccent) => void
   onCardStyleChange: (style: ProfileCardStyle) => void
   onThemeChange: (theme: ProfileTheme) => void
+  onFontChange: (font: ProfileFont) => void
   // Reports the object-URL preview (or null) so the parent preview can show
   // the pending image before it's uploaded.
   onBackgroundChange?: (previewUrl: string | null) => void
@@ -134,6 +141,7 @@ export function ProfileDesignControls({
       <input type="hidden" name="profileAccent" value={accent} />
       <input type="hidden" name="profileCardStyle" value={cardStyle} />
       <input type="hidden" name="profileTheme" value={theme} />
+      <input type="hidden" name="profileFont" value={font} />
       {removed && !preview && <input type="hidden" name="removeBackground" value="on" />}
 
       <div>
@@ -205,6 +213,46 @@ export function ProfileDesignControls({
               </span>
             </button>
           ))}
+        </div>
+      </div>
+
+      <div>
+        <SectionLabel>Font</SectionLabel>
+        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Profile font">
+          {PROFILE_FONTS.map((option) => {
+            const family = PROFILE_FONT_FAMILIES[option.value]
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={font === option.value}
+                onClick={() => onFontChange(option.value)}
+                className={`flex items-center gap-3 rounded-2xl p-2.5 text-left ring-2 transition ${
+                  font === option.value
+                    ? 'bg-accent-500/10 ring-accent-500/60'
+                    : 'ring-transparent hover:bg-black/[0.03] hover:ring-black/10 dark:hover:bg-white/5 dark:hover:ring-white/10'
+                }`}
+              >
+                {/* "Aa" sample rendered in the option's own typeface */}
+                <span className="flex h-12 w-14 shrink-0 items-center justify-center rounded-lg border border-neutral-200/70 bg-white dark:border-neutral-700 dark:bg-neutral-800">
+                  <span
+                    aria-hidden
+                    className="text-lg font-semibold leading-none"
+                    style={family ? { fontFamily: family } : undefined}
+                  >
+                    Aa
+                  </span>
+                </span>
+                <span>
+                  <span className="block text-xs font-semibold">{option.label}</span>
+                  <span className="block text-[11px] leading-snug text-neutral-500">
+                    {option.description}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 

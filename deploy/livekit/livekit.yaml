@@ -10,8 +10,17 @@ rtc:
   tcp_port: 7881
   # Single multiplexed UDP port for WebRTC media — publish this on the host
   # (7882/udp) and open it in the VPS firewall. Coolify's proxy is HTTP-only,
-  # so this port bypasses it by design.
+  # so this port bypasses it by design. If UDP is unreachable the media path
+  # silently degrades to TCP 7881, which makes voice stutter under loss.
   udp_port: 7882
   # Discover the host's public IP via STUN so ICE candidates are routable —
   # required inside Docker/NAT even on a public-IP VPS like Contabo.
   use_external_ip: true
+
+# Built-in TURN — gives clients behind restrictive NATs a UDP relay instead
+# of dropping to the TCP fallback above. LiveKit hands these ICE servers to
+# clients in the join response, so no client change is needed; publish
+# 3478/udp+tcp on the host and open it in the firewall.
+turn:
+  enabled: true
+  udp_port: 3478

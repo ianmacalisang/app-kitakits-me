@@ -1,12 +1,13 @@
 import type { User } from '@/payload-types'
 
-// Public-profile appearance options — kept in sync with the `profileLayout`
-// and `profileAccent` select fields in collections/Users.ts. `swatch` is the
-// 500-shade hex shown in the design sheet picker.
+// Public-profile appearance options — kept in sync with the `profile*` select
+// fields in collections/Users.ts. `swatch` is the 500-shade hex shown in the
+// design sheet picker.
 export type ProfileLayout = 'classic' | 'hero' | 'minimal'
 export type ProfileAccent = 'default' | 'ocean' | 'emerald' | 'sunset' | 'berry' | 'gold'
 export type ProfileCardStyle = 'glass' | 'solid'
 export type ProfileTheme = 'light' | 'dark'
+export type ProfileFont = 'default' | 'serif' | 'rounded' | 'modern' | 'mono' | 'handwritten'
 
 export const PROFILE_THEMES: {
   value: ProfileTheme
@@ -52,6 +53,46 @@ export const PROFILE_ACCENTS: { value: ProfileAccent; label: string; swatch: str
   { value: 'gold', label: 'Gold', swatch: 'oklch(76.9% 0.188 70.08)' },
 ]
 
+// Font choices for the public page. The actual font-family stacks live in
+// lib/profileFonts.ts (next/font instances); 'default' inherits the app's
+// Poppins so it needs no override.
+export const PROFILE_FONTS: {
+  value: ProfileFont
+  label: string
+  description: string
+}[] = [
+  {
+    value: 'default',
+    label: 'Poppins',
+    description: 'The default Kitakits look.',
+  },
+  {
+    value: 'serif',
+    label: 'Playfair',
+    description: 'Elegant serif with an editorial feel.',
+  },
+  {
+    value: 'rounded',
+    label: 'Nunito',
+    description: 'Soft, rounded and friendly.',
+  },
+  {
+    value: 'modern',
+    label: 'Space Grotesk',
+    description: 'Geometric with a techy edge.',
+  },
+  {
+    value: 'mono',
+    label: 'JetBrains Mono',
+    description: 'Monospace, typewriter energy.',
+  },
+  {
+    value: 'handwritten',
+    label: 'Caveat',
+    description: 'Casual handwritten notes.',
+  },
+]
+
 export const PROFILE_CARD_STYLES: {
   value: ProfileCardStyle
   label: string
@@ -73,6 +114,7 @@ const LAYOUTS: ProfileLayout[] = ['classic', 'hero', 'minimal']
 const ACCENTS: ProfileAccent[] = ['default', 'ocean', 'emerald', 'sunset', 'berry', 'gold']
 const CARD_STYLES: ProfileCardStyle[] = ['glass', 'solid']
 const THEMES: ProfileTheme[] = ['light', 'dark']
+const FONTS: ProfileFont[] = ['default', 'serif', 'rounded', 'modern', 'mono', 'handwritten']
 
 export const isProfileLayout = (value: unknown): value is ProfileLayout =>
   LAYOUTS.includes(value as ProfileLayout)
@@ -85,6 +127,9 @@ export const isProfileCardStyle = (value: unknown): value is ProfileCardStyle =>
 
 export const isProfileTheme = (value: unknown): value is ProfileTheme =>
   THEMES.includes(value as ProfileTheme)
+
+export const isProfileFont = (value: unknown): value is ProfileFont =>
+  FONTS.includes(value as ProfileFont)
 
 export function profileLayoutValue(user: User): ProfileLayout {
   return isProfileLayout(user.profileLayout) ? user.profileLayout : 'classic'
@@ -100,4 +145,8 @@ export function profileCardStyleValue(user: User): ProfileCardStyle {
 
 export function profileThemeValue(user: User): ProfileTheme {
   return isProfileTheme(user.profileTheme) ? user.profileTheme : 'light'
+}
+
+export function profileFontValue(user: User): ProfileFont {
+  return isProfileFont(user.profileFont) ? user.profileFont : 'default'
 }

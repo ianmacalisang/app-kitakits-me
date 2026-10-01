@@ -59,6 +59,8 @@ export function VideokeRoom({
   const chat = useChat()
   const [room, setRoomState] = useState(initial)
   const [audioOn, setAudioOn] = useState(false)
+  // User ids currently holding the mic — reported by MicMeter (LiveKit).
+  const [micIds, setMicIds] = useState<number[]>([])
   const [pending, startTransition] = useTransition()
   const playerRef = useRef<VideokePlayerHandle>(null)
   // Dedupe the ENDED→advance handoff across tabs and replayed events — the
@@ -198,6 +200,8 @@ export function VideokeRoom({
   }
 
   const onlineIds = useMemo(() => new Set(chat?.online.map((u) => u.id) ?? []), [chat?.online])
+
+  const onSpeakers = useCallback((ids: number[]) => setMicIds(ids), [])
 
   // Invited but not yet a member — gate the room behind the invite.
   if (!isMember && isInvitee) {
@@ -361,6 +365,14 @@ export function VideokeRoom({
                     }`}
                   />
                 ) : null}
+                {micIds.includes(m.id) && (
+                  <span
+                    title="On the mic"
+                    className="absolute -bottom-0.5 -left-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-white dark:ring-neutral-900"
+                  >
+                    <MicIcon className="h-2.5 w-2.5" />
+                  </span>
+                )}
               </span>
               <span className="max-w-16 truncate text-[11px] text-neutral-600 dark:text-neutral-300">
                 {m.name.split(' ')[0]}
@@ -483,7 +495,7 @@ export function VideokeRoom({
           </div>
           {canMutate && (
             <div className="flex items-center justify-between gap-2 sm:justify-normal">
-              <MicMeter roomId={room.id} canSpeak={canSpeak} />
+              <MicMeter roomId={room.id} canSpeak={canSpeak} onSpeakers={onSpeakers} />
               {isHost && !ended && (
                 <div className="flex shrink-0 items-center gap-2">
                   {room.playback.state === 'playing' ? (

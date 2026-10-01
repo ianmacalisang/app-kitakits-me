@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import type {
   ProfileAccent,
   ProfileCardStyle,
+  ProfileFont,
   ProfileLayout,
   ProfileTheme,
 } from '@/lib/profileDesign'
@@ -32,6 +33,7 @@ export function ProfileDesignSheet({
     accent: ProfileAccent
     cardStyle: ProfileCardStyle
     theme: ProfileTheme
+    font: ProfileFont
     backgroundUrl?: string
   }
   preview: DesignPreviewData
@@ -77,7 +79,7 @@ export function ProfileDesignSheet({
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold">Design your public profile</span>
           <span className="block truncate text-xs text-neutral-500">
-            Layout, theme &amp; colors for /@{username}
+            Layout, theme, fonts &amp; colors for /@{username}
           </span>
         </span>
         <ChevronRightIcon className="h-4 w-4 shrink-0 text-neutral-400 transition group-hover:translate-x-0.5" />

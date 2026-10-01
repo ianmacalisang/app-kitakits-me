@@ -21,9 +21,11 @@ import { FEED_PAGE_SIZE, hydratePosts } from '@/lib/posts'
 import {
   profileAccentValue,
   profileCardStyleValue,
+  profileFontValue,
   profileLayoutValue,
   profileThemeValue,
 } from '@/lib/profileDesign'
+import { PROFILE_FONT_FAMILIES } from '@/lib/profileFonts'
 import {
   avatarUrl,
   coverUrl,
@@ -224,6 +226,7 @@ export default async function PublicProfilePage({
   const accent = profileAccentValue(profileUser)
   const cardStyle = profileCardStyleValue(profileUser)
   const theme = profileThemeValue(profileUser)
+  const fontFamily = PROFILE_FONT_FAMILIES[profileFontValue(profileUser)]
   const joinedLabel = new Date(profileUser.createdAt).toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric',
@@ -233,6 +236,9 @@ export default async function PublicProfilePage({
     <main
       data-profile-accent={accent === 'default' ? undefined : accent}
       data-profile-cards={cardStyle === 'glass' ? undefined : cardStyle}
+      // Owner-chosen font — inherits down to everything except elements with
+      // their own font-family (e.g. richtext code blocks).
+      style={fontFamily ? { fontFamily } : undefined}
     >
       {/* Owner-chosen page theme — the script applies it pre-paint on first
           load; the component covers client-side navigation and restores the

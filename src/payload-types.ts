@@ -193,6 +193,10 @@ export interface User {
    * Light or dark theme for the public /@username page.
    */
   profileTheme?: ('light' | 'dark') | null;
+  /**
+   * Font for the public /@username page.
+   */
+  profileFont?: ('default' | 'serif' | 'rounded' | 'modern' | 'mono' | 'handwritten') | null;
   bio?: string | null;
   website?: string | null;
   about?:
@@ -1043,6 +1047,7 @@ export interface UsersSelect<T extends boolean = true> {
   profileBackground?: T;
   profileCardStyle?: T;
   profileTheme?: T;
+  profileFont?: T;
   bio?: T;
   website?: T;
   about?:

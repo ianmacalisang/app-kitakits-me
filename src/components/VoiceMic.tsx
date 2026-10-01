@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  type AudioCaptureOptions,
   type LocalAudioTrack,
   type LocalTrackPublication,
   type Participant,
@@ -32,6 +33,28 @@ export interface VoiceTicket {
   expiresAt: number
 }
 
+// Mic capture constraints per use case. LiveKit's defaults enable
+// `voiceIsolation` (an experimental ML constraint — adds processing latency
+// and gates non-speech audio) and `noiseSuppression`, which chops sustained
+// vocals. `music` drops both so singing isn't mangled; `speech` keeps NS for
+// table chat. AEC stays on everywhere so speaker output isn't fed back.
+export type VoiceAudioProfile = 'speech' | 'music'
+
+const CAPTURE_OPTIONS: Record<VoiceAudioProfile, AudioCaptureOptions> = {
+  speech: {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    voiceIsolation: false,
+  },
+  music: {
+    echoCancellation: true,
+    noiseSuppression: false,
+    autoGainControl: true,
+    voiceIsolation: false,
+  },
+}
+
 // Shared "use mic" control for hangout apps (videoke, cards). When the
 // deployment has a LiveKit SFU configured this joins the room's voice
 // channel via `getTicket`: remote talkers attach as hidden <audio> elements
@@ -45,6 +68,8 @@ export const VoiceMic = memo(function VoiceMic({
   getTicket,
   deniedMessage,
   idleLabel,
+  audioProfile = 'speech',
+  onSpeakers,
 }: {
   roomId: number
   canSpeak: boolean
@@ -53,6 +78,11 @@ export const VoiceMic = memo(function VoiceMic({
   deniedMessage: string
   /** Passive chip copy for non-speakers when nobody is talking. */
   idleLabel: string
+  /** Mic processing profile — `music` for singing, `speech` for chat. */
+  audioProfile?: VoiceAudioProfile
+  /** Fires when the set of mic-holding participants changes (user ids) —
+      parents use it to badge members who are currently on the mic. */
+  onSpeakers?: (ids: number[]) => void
 }) {
   const [live, setLive] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -66,6 +96,14 @@ export const VoiceMic = memo(function VoiceMic({
   const ctxRef = useRef<AudioContext | null>(null)
   const rafRef = useRef(0)
   const barRef = useRef<HTMLSpanElement>(null)
+  const retriesRef = useRef(0)
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onSpeakersRef = useRef(onSpeakers)
+  const prevMicIdsRef = useRef('')
+
+  useEffect(() => {
+    onSpeakersRef.current = onSpeakers
+  }, [onSpeakers])
 
   const stopMeter = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
@@ -117,23 +155,38 @@ export const VoiceMic = memo(function VoiceMic({
   }, [stopMeter])
 
   // Names of whoever currently holds the mic — shown to members without
-  // publish rights so the transport bar still says who's talking.
+  // publish rights so the transport bar still says who's talking. Also
+  // reports the ids upward so the room can badge who's live; LiveKit
+  // participant identities are the user ids minted into the token's `sub`.
   const refreshSpeakers = useCallback(() => {
     const room = lkRef.current
-    if (!room) {
-      setSpeakers([])
-      return
-    }
-    const hasMic = (p: Participant) => {
+    const micOf = (p: Participant) => {
       const pub = p.getTrackPublication(Track.Source.Microphone)
-      return Boolean(pub?.track && !pub.track.isMuted)
+      const id = Number(p.identity)
+      return pub?.track && !pub.track.isMuted && Number.isFinite(id) ? id : null
     }
     const names: string[] = []
-    if (hasMic(room.localParticipant)) names.push(room.localParticipant.name || 'You')
-    for (const p of room.remoteParticipants.values()) {
-      if (hasMic(p)) names.push(p.name || 'Someone')
+    const ids: number[] = []
+    if (room) {
+      const selfId = micOf(room.localParticipant)
+      if (selfId !== null) {
+        ids.push(selfId)
+        names.push(room.localParticipant.name || 'You')
+      }
+      for (const p of room.remoteParticipants.values()) {
+        const id = micOf(p)
+        if (id !== null) {
+          ids.push(id)
+          names.push(p.name || 'Someone')
+        }
+      }
     }
     setSpeakers(names)
+    const key = ids.sort((a, b) => a - b).join(',')
+    if (key !== prevMicIdsRef.current) {
+      prevMicIdsRef.current = key
+      onSpeakersRef.current?.(ids)
+    }
   }, [])
 
   // Join the room's voice channel when LiveKit is configured. Members reach
@@ -141,7 +194,14 @@ export const VoiceMic = memo(function VoiceMic({
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_LIVEKIT_URL) return
     let cancelled = false
-    const room = new Room({ publishDefaults: { stopMicTrackOnMute: true } })
+    const room = new Room({
+      publishDefaults: {
+        stopMicTrackOnMute: true,
+        // Keep capturing while the publish negotiates so the first
+        // syllables after tapping the mic aren't dropped.
+        preConnectBuffer: true,
+      },
+    })
     const onSub = (track: RemoteTrack) => {
       if (track.kind === Track.Kind.Audio) audioRef.current?.append(track.attach())
     }
@@ -153,38 +213,59 @@ export const VoiceMic = memo(function VoiceMic({
         setLive(false)
       }
     }
+    const join = () =>
+      getTicket(roomId)
+        .then(async (ticket) => {
+          if (!ticket || cancelled) return
+          try {
+            await room.connect(ticket.url, ticket.token)
+            if (cancelled) {
+              room.disconnect()
+              return
+            }
+            lkRef.current = room
+            setVoice(true)
+            refreshSpeakers()
+          } catch {
+            // Voice service unreachable — the mic stays in local-meter mode.
+          }
+        })
+        .catch(() => {})
     const onDisc = () => {
       stopMeter()
       setVoice(false)
       setLive(false)
       setSpeakers([])
+      if (prevMicIdsRef.current) {
+        prevMicIdsRef.current = ''
+        onSpeakersRef.current?.([])
+      }
+      // Voice died without us asking (4h token expiry, exhausted reconnect
+      // policy) — rejoin once with a fresh ticket rather than leaving the
+      // mic dead until the page reloads.
+      if (cancelled || retriesRef.current >= 1) return
+      retriesRef.current += 1
+      reconnectTimer.current = setTimeout(() => void join(), 1500)
     }
     room.on(RoomEvent.TrackSubscribed, onSub)
     room.on(RoomEvent.TrackUnsubscribed, onUnsub)
     room.on(RoomEvent.LocalTrackUnpublished, onLocalUnpub)
     room.on(RoomEvent.Disconnected, onDisc)
+    // Diagnostic for delayed/choppy voice reports — visible in devtools and
+    // prod console without affecting UI.
+    room.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
+      console.debug('[voice] connection quality', participant.identity, quality)
+    })
     for (const ev of SPEAKER_EVENTS) room.on(ev, refreshSpeakers)
-    getTicket(roomId)
-      .then(async (ticket) => {
-        if (!ticket || cancelled) return
-        try {
-          await room.connect(ticket.url, ticket.token)
-          if (cancelled) {
-            room.disconnect()
-            return
-          }
-          lkRef.current = room
-          setVoice(true)
-          refreshSpeakers()
-        } catch {
-          // Voice service unreachable — the mic stays in local-meter mode.
-        }
-      })
-      .catch(() => {})
+    void join()
     return () => {
       cancelled = true
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current)
       lkRef.current = null
       room.disconnect()
+      // This control unmounts without the room (e.g. the room ended) —
+      // clear the parent's mic badges rather than leaving them stale.
+      onSpeakersRef.current?.([])
     }
   }, [roomId, getTicket, stopMeter, refreshSpeakers])
 
@@ -210,19 +291,19 @@ export const VoiceMic = memo(function VoiceMic({
     setBusy(true)
     try {
       let stream: MediaStream | null = null
+      const capture = CAPTURE_OPTIONS[audioProfile]
       if (lkRef.current) {
-        // Publish the mic to the room — LiveKit applies echo cancellation /
-        // noise suppression by default and hands back the captured track.
-        await lkRef.current.localParticipant.setMicrophoneEnabled(true)
+        // Publish the mic to the room — AEC is always on so speaker output
+        // isn't fed back; `music` drops noise suppression/voice isolation
+        // which gate sustained vocals.
+        await lkRef.current.localParticipant.setMicrophoneEnabled(true, capture)
         const track = lkRef.current.localParticipant.getTrackPublication(Track.Source.Microphone)
           ?.track as LocalAudioTrack | undefined
         if (track?.mediaStreamTrack) stream = new MediaStream([track.mediaStreamTrack])
       }
       if (!stream) {
         // Local fallback (voice off or not configured) — meter only.
-        const local = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        })
+        const local = await navigator.mediaDevices.getUserMedia({ audio: capture })
         ownStreamRef.current = local
         stream = local
       }

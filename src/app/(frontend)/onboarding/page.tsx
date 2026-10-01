@@ -8,6 +8,7 @@ import { getPayloadClient } from '@/lib/payload'
 import {
   profileAccentValue,
   profileCardStyleValue,
+  profileFontValue,
   profileLayoutValue,
   profileThemeValue,
 } from '@/lib/profileDesign'
@@ -75,6 +76,7 @@ export default async function OnboardingPage({
           profileAccent: profileAccentValue(fullUser),
           profileCardStyle: profileCardStyleValue(fullUser),
           profileTheme: profileThemeValue(fullUser),
+          profileFont: profileFontValue(fullUser),
           profileBackgroundUrl: mediaUrl(fullUser.profileBackground),
           followers: followers.totalDocs,
           following: following.totalDocs,

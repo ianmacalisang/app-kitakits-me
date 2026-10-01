@@ -13,6 +13,7 @@ import {
 import type {
   ProfileAccent,
   ProfileCardStyle,
+  ProfileFont,
   ProfileLayout,
   ProfileTheme,
 } from '@/lib/profileDesign'
@@ -62,6 +63,7 @@ export interface OnboardingInitial {
   profileAccent: ProfileAccent
   profileCardStyle: ProfileCardStyle
   profileTheme: ProfileTheme
+  profileFont: ProfileFont
   profileBackgroundUrl?: string
   followers: number
   following: number
@@ -166,6 +168,7 @@ export function OnboardingWizard({
   const [designAccent, setDesignAccent] = useState<ProfileAccent>(initial.profileAccent)
   const [designCardStyle, setDesignCardStyle] = useState<ProfileCardStyle>(initial.profileCardStyle)
   const [designTheme, setDesignTheme] = useState<ProfileTheme>(initial.profileTheme)
+  const [designFont, setDesignFont] = useState<ProfileFont>(initial.profileFont)
   // undefined = untouched; null = removed; string = pending-upload preview.
   const [designBg, setDesignBg] = useState<string | null | undefined>(undefined)
   // Photos uploaded in step 0 and the bio saved in step 1 feed the live
@@ -456,6 +459,7 @@ export function OnboardingWizard({
                 accent={designAccent}
                 cardStyle={designCardStyle}
                 theme={designTheme}
+                font={designFont}
                 backgroundUrl={designBg === undefined ? initial.profileBackgroundUrl : designBg}
                 name={initial.name}
                 username={initial.username}
@@ -476,11 +480,13 @@ export function OnboardingWizard({
                 accent={designAccent}
                 cardStyle={designCardStyle}
                 theme={designTheme}
+                font={designFont}
                 backgroundUrl={initial.profileBackgroundUrl}
                 onLayoutChange={setDesignLayout}
                 onAccentChange={setDesignAccent}
                 onCardStyleChange={setDesignCardStyle}
                 onThemeChange={setDesignTheme}
+                onFontChange={setDesignFont}
                 onBackgroundChange={setDesignBg}
               />
 

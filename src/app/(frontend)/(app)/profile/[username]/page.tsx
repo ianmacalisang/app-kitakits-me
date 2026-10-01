@@ -13,6 +13,7 @@ import { FEED_PAGE_SIZE, hydratePosts } from '@/lib/posts'
 import {
   profileAccentValue,
   profileCardStyleValue,
+  profileFontValue,
   profileLayoutValue,
   profileThemeValue,
 } from '@/lib/profileDesign'
@@ -165,6 +166,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
             accent: profileAccentValue(profileUser),
             cardStyle: profileCardStyleValue(profileUser),
             theme: profileThemeValue(profileUser),
+            font: profileFontValue(profileUser),
             backgroundUrl: mediaUrl(profileUser.profileBackground),
           }}
           preview={{

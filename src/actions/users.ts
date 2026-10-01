@@ -9,6 +9,7 @@ import { getPayloadClient } from '@/lib/payload'
 import {
   isProfileAccent,
   isProfileCardStyle,
+  isProfileFont,
   isProfileLayout,
   isProfileTheme,
 } from '@/lib/profileDesign'
@@ -156,6 +157,7 @@ export async function updateProfileDesign(
   const accent = formData.get('profileAccent')
   const cardStyle = formData.get('profileCardStyle')
   const theme = formData.get('profileTheme')
+  const font = formData.get('profileFont')
   const file = formData.get('profileBackground')
   const removeBackground = formData.get('removeBackground') === 'on'
 
@@ -164,6 +166,7 @@ export async function updateProfileDesign(
     profileAccent?: User['profileAccent']
     profileCardStyle?: User['profileCardStyle']
     profileTheme?: User['profileTheme']
+    profileFont?: User['profileFont']
     profileBackground?: number | null
   } = {}
 
@@ -171,6 +174,7 @@ export async function updateProfileDesign(
   if (isProfileAccent(accent)) data.profileAccent = accent
   if (isProfileCardStyle(cardStyle)) data.profileCardStyle = cardStyle
   if (isProfileTheme(theme)) data.profileTheme = theme
+  if (isProfileFont(font)) data.profileFont = font
 
   if (file instanceof File && file.size > 0) {
     if (!file.type.startsWith('image/')) return { error: 'Background must be an image.' }

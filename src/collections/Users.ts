@@ -205,6 +205,22 @@ export const Users: CollectionConfig = {
       },
     },
     {
+      name: 'profileFont',
+      type: 'select',
+      options: [
+        { label: 'Poppins (default)', value: 'default' },
+        { label: 'Playfair (serif)', value: 'serif' },
+        { label: 'Nunito (rounded)', value: 'rounded' },
+        { label: 'Space Grotesk (modern)', value: 'modern' },
+        { label: 'JetBrains Mono (mono)', value: 'mono' },
+        { label: 'Caveat (handwritten)', value: 'handwritten' },
+      ],
+      defaultValue: 'default',
+      admin: {
+        description: 'Font for the public /@username page.',
+      },
+    },
+    {
       name: 'bio',
       type: 'textarea',
       maxLength: 300,
