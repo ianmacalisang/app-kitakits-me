@@ -63,7 +63,14 @@ export function VideokeLobby({ initial }: { initial: Lobby }) {
 
   const create = () => {
     startTransition(async () => {
-      const res = await createVideokeRoom(name)
+      let res = await createVideokeRoom(name)
+      // Busy in another hangout — offer to leave it and open this room.
+      if (!res.ok && res.busyHangout) {
+        const where = res.busyHangout.name ? `“${res.busyHangout.name}”` : 'another hangout'
+        if (window.confirm(`You're already in ${where}. Leave it and open a room?`)) {
+          res = await createVideokeRoom(name, true)
+        }
+      }
       if (!res.ok) {
         toast(res.error)
         return
@@ -75,7 +82,13 @@ export function VideokeLobby({ initial }: { initial: Lobby }) {
   const respond = (roomId: number, accept: boolean) => {
     setBusyInvite(roomId)
     startTransition(async () => {
-      const res = await respondVideokeInvite(roomId, accept)
+      let res = await respondVideokeInvite(roomId, accept)
+      if (!res.ok && accept && res.busyHangout) {
+        const where = res.busyHangout.name ? `“${res.busyHangout.name}”` : 'another hangout'
+        if (window.confirm(`You're already in ${where}. Leave it and join this room?`)) {
+          res = await respondVideokeInvite(roomId, accept, true)
+        }
+      }
       setBusyInvite(null)
       if (!res.ok) {
         toast(res.error)

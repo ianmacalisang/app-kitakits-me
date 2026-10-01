@@ -88,6 +88,7 @@ export interface Config {
     'videoke-rooms': VideokeRoom;
     'videoke-queue-items': VideokeQueueItem;
     'card-rooms': CardRoom;
+    'nhie-rooms': NhieRoom;
     'hangout-joins': HangoutJoin;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -117,6 +118,7 @@ export interface Config {
     'videoke-rooms': VideokeRoomsSelect<false> | VideokeRoomsSelect<true>;
     'videoke-queue-items': VideokeQueueItemsSelect<false> | VideokeQueueItemsSelect<true>;
     'card-rooms': CardRoomsSelect<false> | CardRoomsSelect<true>;
+    'nhie-rooms': NhieRoomsSelect<false> | NhieRoomsSelect<true>;
     'hangout-joins': HangoutJoinsSelect<false> | HangoutJoinsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -456,6 +458,7 @@ export interface Notification {
   badge?: (number | null) | Badge;
   videokeRoom?: (number | null) | VideokeRoom;
   cardRoom?: (number | null) | CardRoom;
+  nhieRoom?: (number | null) | NhieRoom;
   read?: boolean | null;
   updatedAt: string;
   createdAt: string;
@@ -630,6 +633,94 @@ export interface CardRoom {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "nhie-rooms".
+ */
+export interface NhieRoom {
+  id: number;
+  host: number | User;
+  name?: string | null;
+  members: (number | User)[];
+  /**
+   * Pending invitations — invitee, who invited them, and when.
+   */
+  invites?:
+    | {
+        user: number | User;
+        invitedBy?: (number | null) | User;
+        invitedAt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  status?: ('open' | 'ended') | null;
+  game?: {
+    state?: ('lobby' | 'playing' | 'finished') | null;
+    round?: number | null;
+    /**
+     * Seat order (turn rotation) — fixed at deal time for the game.
+     */
+    seats?:
+      | {
+          user: number | User;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Fingers remaining per seated player — zero means out.
+     */
+    fingers?:
+      | {
+          user: number | User;
+          count: number;
+          id?: string | null;
+        }[]
+      | null;
+    turnSeat?: number | null;
+    prompt?: {
+      text?: string | null;
+      by?: (number | null) | User;
+      source?: ('deck' | 'custom') | null;
+    };
+    /**
+     * Answers to the current prompt, keyed by user.
+     */
+    responses?:
+      | {
+          user: number | User;
+          answer: 'have' | 'never';
+          id?: string | null;
+        }[]
+      | null;
+    usedPrompts?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    lastResult?: {
+      text?: string | null;
+      drops?:
+        | {
+            [k: string]: unknown;
+          }
+        | unknown[]
+        | string
+        | number
+        | boolean
+        | null;
+    };
+    /**
+     * Set on finish — the last player with fingers up.
+     */
+    winner?: (number | null) | User;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "threads".
  */
 export interface Thread {
@@ -742,6 +833,7 @@ export interface PointEvent {
     | 'testimonial-received'
     | 'testimonial-given'
     | 'unggoy-win'
+    | 'nhie-win'
     | 'manual';
   points: number;
   post?: (number | null) | Post;
@@ -773,6 +865,7 @@ export interface HangoutJoin {
   user: number | User;
   room?: (number | null) | VideokeRoom;
   cardRoom?: (number | null) | CardRoom;
+  nhieRoom?: (number | null) | NhieRoom;
   invitedBy?: (number | null) | User;
   kind: 'joined' | 'hosted';
   updatedAt: string;
@@ -885,6 +978,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'card-rooms';
         value: number | CardRoom;
+      } | null)
+    | ({
+        relationTo: 'nhie-rooms';
+        value: number | NhieRoom;
       } | null)
     | ({
         relationTo: 'hangout-joins';
@@ -1179,6 +1276,7 @@ export interface NotificationsSelect<T extends boolean = true> {
   badge?: T;
   videokeRoom?: T;
   cardRoom?: T;
+  nhieRoom?: T;
   read?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1425,12 +1523,75 @@ export interface CardRoomsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "nhie-rooms_select".
+ */
+export interface NhieRoomsSelect<T extends boolean = true> {
+  host?: T;
+  name?: T;
+  members?: T;
+  invites?:
+    | T
+    | {
+        user?: T;
+        invitedBy?: T;
+        invitedAt?: T;
+        id?: T;
+      };
+  status?: T;
+  game?:
+    | T
+    | {
+        state?: T;
+        round?: T;
+        seats?:
+          | T
+          | {
+              user?: T;
+              id?: T;
+            };
+        fingers?:
+          | T
+          | {
+              user?: T;
+              count?: T;
+              id?: T;
+            };
+        turnSeat?: T;
+        prompt?:
+          | T
+          | {
+              text?: T;
+              by?: T;
+              source?: T;
+            };
+        responses?:
+          | T
+          | {
+              user?: T;
+              answer?: T;
+              id?: T;
+            };
+        usedPrompts?: T;
+        lastResult?:
+          | T
+          | {
+              text?: T;
+              drops?: T;
+            };
+        winner?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "hangout-joins_select".
  */
 export interface HangoutJoinsSelect<T extends boolean = true> {
   user?: T;
   room?: T;
   cardRoom?: T;
+  nhieRoom?: T;
   invitedBy?: T;
   kind?: T;
   updatedAt?: T;

@@ -181,7 +181,13 @@ export function VideokeRoom({
 
   const respond = (accept: boolean) => {
     startTransition(async () => {
-      const res = await respondVideokeInvite(room.id, accept)
+      let res = await respondVideokeInvite(room.id, accept)
+      if (!res.ok && accept && res.busyHangout) {
+        const where = res.busyHangout.name ? `“${res.busyHangout.name}”` : 'another hangout'
+        if (window.confirm(`You're already in ${where}. Leave it and join this room?`)) {
+          res = await respondVideokeInvite(room.id, accept, true)
+        }
+      }
       if (!res.ok) {
         toast(res.error)
         return

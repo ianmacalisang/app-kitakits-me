@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { type ReactNode, useEffect, useRef, useState, useTransition } from 'react'
 
+import type { HangoutPresence } from '@/actions/hangouts'
 import { type CategorySpotlight, searchPosts } from '@/actions/posts'
 import { getSuggestedReplacement, searchUsers } from '@/actions/users'
 import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
@@ -55,12 +56,14 @@ export function ExploreSearch({
   initialUsersHasMore,
   initialPosts,
   initialPostsHasMore,
+  hangoutPresence,
 }: {
   initialQuery?: string
   trendingTags?: string[]
   hotDiscussions?: PostCardData[]
   unansweredPosts?: PostCardData[]
   spotlights?: CategorySpotlight[]
+  hangoutPresence?: HangoutPresence
   initialUsers: UserCardData[]
   initialUsersHasMore: boolean
   initialPosts: PostCardData[]
@@ -332,7 +335,21 @@ export function ExploreSearch({
       </div>
 
       <div role="tabpanel" hidden={tab !== 'hangouts'}>
-        <HangoutsApps />
+        {/* Same pattern as the For You section labels — accent bar + bold
+            title + inline accent icon, with the subtitle tucked under it. */}
+        <div className="mb-4 mt-1 flex gap-2.5">
+          <span
+            aria-hidden
+            className="w-1 shrink-0 rounded-full bg-gradient-to-b from-accent-400 to-accent-600"
+          />
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-base font-bold tracking-tight text-neutral-800 dark:text-neutral-100">
+              Tambayan
+            </h2>
+            <p className="mt-0.5 text-sm text-neutral-500">Is a Tagalog word for “hangout.”</p>
+          </div>
+        </div>
+        <HangoutsApps presence={hangoutPresence} />
       </div>
     </div>
   )

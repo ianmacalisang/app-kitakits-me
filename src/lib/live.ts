@@ -30,6 +30,9 @@ export type LiveEvent =
   | { type: 'cards:update'; roomId: number }
   | { type: 'cards:invite'; roomId: number; roomName: string; from: string }
   | { type: 'cards:request'; roomId: number; roomName: string; from: string }
+  | { type: 'nhie:update'; roomId: number }
+  | { type: 'nhie:invite'; roomId: number; roomName: string; from: string }
+  | { type: 'nhie:request'; roomId: number; roomName: string; from: string }
   | { type: 'mutuals:refresh' }
 
 const emit = async (ids: number[], event: LiveEvent): Promise<void> => {

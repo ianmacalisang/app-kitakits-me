@@ -5,6 +5,7 @@ import { after } from 'next/server'
 
 import { getCurrentUser } from '@/lib/auth'
 import { getMutualFollowIds } from '@/lib/chat'
+import { hangoutGateError, type OpenHangout } from '@/lib/hangouts'
 import { pushLive } from '@/lib/live'
 import {
   livekitConfigured,
@@ -34,7 +35,8 @@ const QUEUE_CAP = 100
 const INVITE_CAP = 20 // per call
 
 type PayloadClient = Awaited<ReturnType<typeof getPayloadClient>>
-type ActionResult = { ok: true; room?: VideokeRoomData } | { ok: false; error: string }
+type ActionResult =
+  { ok: true; room?: VideokeRoomData } | { ok: false; error: string; busyHangout?: OpenHangout }
 
 const fail = (error: string): ActionResult => ({ ok: false, error })
 
@@ -254,12 +256,17 @@ export async function getVideokeLobby(): Promise<{
   }
 }
 
-export async function createVideokeRoom(name: string): Promise<ActionResult & { roomId?: number }> {
+export async function createVideokeRoom(
+  name: string,
+  switchRoom = false,
+): Promise<ActionResult & { roomId?: number }> {
   const user = await requireUser()
   if (!checkRate(`vroom-create:${user.id}`, 5, 60 * 60_000)) {
     return fail('Too many rooms — try again later.')
   }
   const payload = await getPayloadClient()
+  const gate = await hangoutGateError(payload, user.id, switchRoom)
+  if (gate) return { ok: false, ...gate }
   const room = await payload.create({
     collection: 'videoke-rooms',
     data: {
@@ -376,7 +383,11 @@ export async function inviteToVideoke(roomId: number, targetIds: number[]): Prom
   return { ok: true, room: await serializeFor(payload, next, user) }
 }
 
-export async function respondVideokeInvite(roomId: number, accept: boolean): Promise<ActionResult> {
+export async function respondVideokeInvite(
+  roomId: number,
+  accept: boolean,
+  switchRoom = false,
+): Promise<ActionResult> {
   const user = await requireUser()
   const payload = await getPayloadClient()
   const room = await loadVisibleRoom(payload, roomId, user)
@@ -399,6 +410,8 @@ export async function respondVideokeInvite(roomId: number, accept: boolean): Pro
   }
 
   if (memberIdsOf(room).length >= ROOM_MEMBER_CAP) return fail('This room is full.')
+  const gate = await hangoutGateError(payload, user.id, switchRoom)
+  if (gate) return { ok: false, ...gate }
 
   const next = await payload.update({
     collection: 'videoke-rooms',

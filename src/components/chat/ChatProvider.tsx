@@ -341,6 +341,26 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           toast(`${from} asked to join ${roomName} hangout`)
           break
         }
+        case 'nhie:update': {
+          window.dispatchEvent(new CustomEvent(LIVE_EVENT, { detail: msg }))
+          break
+        }
+        case 'nhie:invite': {
+          window.dispatchEvent(new CustomEvent(LIVE_EVENT, { detail: msg }))
+          const from = typeof msg.from === 'string' && msg.from ? msg.from : 'Someone'
+          const roomName =
+            typeof msg.roomName === 'string' && msg.roomName ? msg.roomName : 'a Never Have I Ever'
+          toast(`${from} invited you to ${roomName} hangout`)
+          break
+        }
+        case 'nhie:request': {
+          window.dispatchEvent(new CustomEvent(LIVE_EVENT, { detail: msg }))
+          const from = typeof msg.from === 'string' && msg.from ? msg.from : 'Someone'
+          const roomName =
+            typeof msg.roomName === 'string' && msg.roomName ? msg.roomName : 'your NHIE circle'
+          toast(`${from} asked to join ${roomName} hangout`)
+          break
+        }
         case 'mutuals:refresh': {
           // A follow edge involving us changed — our ticket's mutuals claim is
           // stale. Closing the socket drops into the normal reconnect path,

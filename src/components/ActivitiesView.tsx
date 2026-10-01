@@ -104,8 +104,13 @@ const ActivityText = ({ activity }: { activity: ActivityData }) => {
     case 'hangout_join': {
       const roomName =
         activity.cardRoomName ??
+        activity.nhieRoomName ??
         activity.videokeRoomName ??
-        (activity.hangoutKind === 'cards' ? 'card game' : 'videoke')
+        (activity.hangoutKind === 'cards'
+          ? 'card game'
+          : activity.hangoutKind === 'nhie'
+            ? 'Never Have I Ever'
+            : 'videoke')
       return activity.hangoutJoinKind === 'hosted' ? (
         <>
           {actor} started a <span className="font-semibold">{roomName}</span> hangout
@@ -291,9 +296,11 @@ export function ActivitiesView({
         router.push(
           activity.cardRoomId
             ? `/hangouts/cards/${activity.cardRoomId}`
-            : activity.videokeRoomId
-              ? `/hangouts/videoke/${activity.videokeRoomId}`
-              : '/hangouts',
+            : activity.nhieRoomId
+              ? `/hangouts/nhie/${activity.nhieRoomId}`
+              : activity.videokeRoomId
+                ? `/hangouts/videoke/${activity.videokeRoomId}`
+                : '/hangouts',
         )
       } else if (activity.postId) {
         if (activity.type === 'like') setViewPostId(activity.postId)

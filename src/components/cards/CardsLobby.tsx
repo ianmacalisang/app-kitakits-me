@@ -63,7 +63,14 @@ export function CardsLobby({ initial }: { initial: Lobby }) {
 
   const create = () => {
     startTransition(async () => {
-      const res = await createCardRoom(name)
+      let res = await createCardRoom(name)
+      // Busy in another hangout — offer to leave it and open this table.
+      if (!res.ok && res.busyHangout) {
+        const where = res.busyHangout.name ? `“${res.busyHangout.name}”` : 'another hangout'
+        if (window.confirm(`You're already in ${where}. Leave it and open a table?`)) {
+          res = await createCardRoom(name, true)
+        }
+      }
       if (!res.ok) {
         toast(res.error)
         return
@@ -75,7 +82,13 @@ export function CardsLobby({ initial }: { initial: Lobby }) {
   const respond = (roomId: number, accept: boolean) => {
     setBusyInvite(roomId)
     startTransition(async () => {
-      const res = await respondCardsInvite(roomId, accept)
+      let res = await respondCardsInvite(roomId, accept)
+      if (!res.ok && accept && res.busyHangout) {
+        const where = res.busyHangout.name ? `“${res.busyHangout.name}”` : 'another hangout'
+        if (window.confirm(`You're already in ${where}. Leave it and join this table?`)) {
+          res = await respondCardsInvite(roomId, accept, true)
+        }
+      }
       setBusyInvite(null)
       if (!res.ok) {
         toast(res.error)

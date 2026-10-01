@@ -111,6 +111,14 @@ export const Notifications: CollectionConfig = {
       },
     },
     {
+      name: 'nhieRoom',
+      type: 'relationship',
+      relationTo: 'nhie-rooms',
+      access: {
+        update: isAdminField,
+      },
+    },
+    {
       name: 'read',
       type: 'checkbox',
       defaultValue: false,

@@ -22,6 +22,7 @@ export const POINT_VALUES = {
   'testimonial-received': 10,
   'testimonial-given': 5,
   'unggoy-win': 10,
+  'nhie-win': 10,
   manual: 0,
 } as const
 

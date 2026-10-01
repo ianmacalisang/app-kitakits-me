@@ -158,7 +158,13 @@ export function CardsRoom({
 
   const respond = (accept: boolean) => {
     startTransition(async () => {
-      const res = await respondCardsInvite(room.id, accept)
+      let res = await respondCardsInvite(room.id, accept)
+      if (!res.ok && accept && res.busyHangout) {
+        const where = res.busyHangout.name ? `“${res.busyHangout.name}”` : 'another hangout'
+        if (window.confirm(`You're already in ${where}. Leave it and join this table?`)) {
+          res = await respondCardsInvite(room.id, accept, true)
+        }
+      }
       if (!res.ok) {
         toast(res.error)
         return

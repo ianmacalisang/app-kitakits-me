@@ -6,6 +6,7 @@ import type {
   MailDraft,
   Media,
   Message,
+  NhieRoom,
   Notification,
   Post,
   Testimonial,
@@ -552,12 +553,14 @@ export interface NotificationData {
   badgeIcon?: string
   badgeTier?: 'bronze' | 'silver' | 'gold'
   // Set on 'hangout_invite' (room you were invited to) and 'hangout_request'
-  // (room the actor asked to join) — exactly one of the two is populated,
+  // (room the actor asked to join) — exactly one of the three is populated,
   // matching which hangout app the room belongs to.
   videokeRoomId?: number
   videokeRoomName?: string
   cardRoomId?: number
   cardRoomName?: string
+  nhieRoomId?: number
+  nhieRoomName?: string
 }
 
 export const snippet = (value: unknown): string | undefined => {
@@ -600,6 +603,12 @@ export function toNotificationData(
       `${isObj(cardRoom.host) ? (cardRoom.host as User).name : 'Someone'}'s card game`
     : undefined
 
+  const nhieRoom = isObj(notification.nhieRoom) ? (notification.nhieRoom as NhieRoom) : null
+  const nhieRoomName = nhieRoom
+    ? (typeof nhieRoom.name === 'string' && nhieRoom.name.trim()) ||
+      `${isObj(nhieRoom.host) ? (nhieRoom.host as User).name : 'Someone'}'s Never Have I Ever`
+    : undefined
+
   return {
     id: notification.id,
     type: notification.type,
@@ -626,6 +635,8 @@ export function toNotificationData(
     videokeRoomName,
     cardRoomId: relId(notification.cardRoom) ?? undefined,
     cardRoomName,
+    nhieRoomId: relId(notification.nhieRoom) ?? undefined,
+    nhieRoomName,
   }
 }
 
@@ -658,14 +669,17 @@ export interface ActivityData {
   targetAvatarUrl?: string
   targetBadge?: BadgeData
   // Set on 'hangout_join' — the room the actor joined. target* fields carry
-  // the member who invited them. Exactly one of videokeRoomId/cardRoomId is
-  // populated; hangoutKind names the app for feed wording/links.
+  // the member who invited them. Exactly one of
+  // videokeRoomId/cardRoomId/nhieRoomId is populated; hangoutKind names the
+  // app for feed wording/links.
   videokeRoomId?: number
   videokeRoomName?: string
   cardRoomId?: number
   cardRoomName?: string
+  nhieRoomId?: number
+  nhieRoomName?: string
   hangoutJoinKind?: 'joined' | 'hosted'
-  hangoutKind?: 'videoke' | 'cards'
+  hangoutKind?: 'videoke' | 'cards' | 'nhie'
 }
 
 export interface ThreadData {

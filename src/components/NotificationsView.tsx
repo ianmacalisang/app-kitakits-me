@@ -57,10 +57,11 @@ const notificationText = (n: NotificationData) => {
   if (n.type === 'follow') return 'started following you'
   if (n.type === 'badge') return `earned the “${n.badgeName ?? 'new'}” badge`
   if (n.type === 'hangout_invite') {
-    return `invited you to ${n.cardRoomName ?? n.videokeRoomName ?? 'a'} hangout`
+    return `invited you to ${n.cardRoomName ?? n.nhieRoomName ?? n.videokeRoomName ?? 'a'} hangout`
   }
   if (n.type === 'hangout_request') {
-    return `asked to join your ${n.cardRoomName ?? n.videokeRoomName ?? 'videoke'} hangout`
+    const name = n.cardRoomName ?? n.nhieRoomName ?? n.videokeRoomName
+    return name ? `asked to join your ${name} hangout` : 'asked to join your hangout'
   }
   return n.testimonialEvent === 'approved' ? 'approved your testimonial' : 'wrote you a testimonial'
 }
@@ -281,9 +282,11 @@ export function NotificationsView({
         router.push(
           notification.cardRoomId
             ? `/hangouts/cards/${notification.cardRoomId}`
-            : notification.videokeRoomId
-              ? `/hangouts/videoke/${notification.videokeRoomId}`
-              : '/hangouts',
+            : notification.nhieRoomId
+              ? `/hangouts/nhie/${notification.nhieRoomId}`
+              : notification.videokeRoomId
+                ? `/hangouts/videoke/${notification.videokeRoomId}`
+                : '/hangouts',
         )
       } else if (notification.postId) {
         if (notification.type === 'like') setViewPostId(notification.postId)

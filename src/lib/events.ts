@@ -53,6 +53,9 @@ export type LiveEventDetail =
   | { type: 'cards:update'; roomId: number }
   | { type: 'cards:invite'; roomId: number; roomName: string; from: string }
   | { type: 'cards:request'; roomId: number; roomName: string; from: string }
+  | { type: 'nhie:update'; roomId: number }
+  | { type: 'nhie:invite'; roomId: number; roomName: string; from: string }
+  | { type: 'nhie:request'; roomId: number; roomName: string; from: string }
 
 // Lightweight toast hints — any client component can fire one and the
 // ToastHost mounted in the app layout renders it.

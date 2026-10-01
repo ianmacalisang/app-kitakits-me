@@ -14,6 +14,7 @@ import {
 } from '@/lib/cards'
 import { getMutualFollowIds } from '@/lib/chat'
 import { awardPoints } from '@/lib/gamification'
+import { hangoutGateError, type OpenHangout } from '@/lib/hangouts'
 import { pushLive } from '@/lib/live'
 import { livekitConfigured, mintVoiceToken } from '@/lib/livekit'
 import type { MutualHead } from '@/lib/mutuals'
@@ -35,7 +36,8 @@ const ROOM_MEMBER_CAP = 8 // a 49-card table tops out fast
 const INVITE_CAP = 20 // per call
 
 type PayloadClient = Awaited<ReturnType<typeof getPayloadClient>>
-type ActionResult = { ok: true; room?: CardRoomData } | { ok: false; error: string }
+type ActionResult =
+  { ok: true; room?: CardRoomData } | { ok: false; error: string; busyHangout?: OpenHangout }
 
 const fail = (error: string): ActionResult => ({ ok: false, error })
 
@@ -219,12 +221,17 @@ export async function getCardsLobby(): Promise<{
   }
 }
 
-export async function createCardRoom(name: string): Promise<ActionResult & { roomId?: number }> {
+export async function createCardRoom(
+  name: string,
+  switchRoom = false,
+): Promise<ActionResult & { roomId?: number }> {
   const user = await requireUser()
   if (!checkRate(`croom-create:${user.id}`, 5, 60 * 60_000)) {
     return fail('Too many rooms — try again later.')
   }
   const payload = await getPayloadClient()
+  const gate = await hangoutGateError(payload, user.id, switchRoom)
+  if (gate) return { ok: false, ...gate }
   const room = await payload.create({
     collection: 'card-rooms',
     data: {
@@ -342,7 +349,11 @@ export async function inviteToCards(roomId: number, targetIds: number[]): Promis
   return { ok: true, room: await serializeFor(payload, next, user) }
 }
 
-export async function respondCardsInvite(roomId: number, accept: boolean): Promise<ActionResult> {
+export async function respondCardsInvite(
+  roomId: number,
+  accept: boolean,
+  switchRoom = false,
+): Promise<ActionResult> {
   const user = await requireUser()
   const payload = await getPayloadClient()
   const room = await loadVisibleRoom(payload, roomId, user)
@@ -365,6 +376,8 @@ export async function respondCardsInvite(roomId: number, accept: boolean): Promi
   }
 
   if (memberIdsOf(room).length >= ROOM_MEMBER_CAP) return fail('This table is full.')
+  const gate = await hangoutGateError(payload, user.id, switchRoom)
+  if (gate) return { ok: false, ...gate }
 
   const next = await payload.update({
     collection: 'card-rooms',
