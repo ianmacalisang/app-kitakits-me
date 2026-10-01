@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation'
 
+import { getThreads } from '@/actions/mail'
 import { MailboxView } from '@/components/MailboxView'
 import { getCurrentUser } from '@/lib/auth'
 import { getTopBadgesForUsers } from '@/lib/gamification'
 import { getPayloadClient } from '@/lib/payload'
 import { toDraftData, toThreadData, type ThreadData } from '@/lib/serialize'
+import { MAILBOX_TABS, type MailboxTab } from '@/lib/tabs'
 import type { User } from '@/payload-types'
 
 export const metadata = { title: 'Mailbox' }
@@ -12,15 +14,21 @@ export const metadata = { title: 'Mailbox' }
 export default async function MailboxPage({
   searchParams,
 }: {
-  searchParams: Promise<{ to?: string }>
+  searchParams: Promise<{ to?: string; tab?: string }>
 }) {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  const { to } = await searchParams
+  const { to, tab: rawTab } = await searchParams
+  // ?tab= persists the Inbox / Sent / Drafts selection across refreshes.
+  const initialTab: MailboxTab | undefined = (MAILBOX_TABS as readonly string[]).includes(
+    rawTab ?? '',
+  )
+    ? (rawTab as MailboxTab)
+    : undefined
 
   const payload = await getPayloadClient()
-  const [result, draftResult] = await Promise.all([
+  const [result, draftResult, sent] = await Promise.all([
     payload.find({
       collection: 'threads',
       where: { visibleTo: { contains: user.id } },
@@ -39,6 +47,8 @@ export default async function MailboxPage({
       user,
       overrideAccess: false,
     }),
+    // Landing on ?tab=sent — load that box's first page alongside the rest.
+    initialTab === 'sent' ? getThreads('sent', 1) : Promise.resolve(null),
   ])
 
   const otherIds = [
@@ -71,6 +81,9 @@ export default async function MailboxPage({
         initialHasMore={result.hasNextPage}
         drafts={draftResult.docs.map((doc) => toDraftData(doc, topBadges))}
         composeTo={to?.trim() || null}
+        initialTab={initialTab}
+        sentItems={sent?.items}
+        sentHasMore={sent?.hasMore}
       />
     </div>
   )

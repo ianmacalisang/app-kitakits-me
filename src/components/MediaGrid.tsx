@@ -13,6 +13,7 @@ import {
   type PostUpdatedDetail,
 } from '@/lib/events'
 import type { PostCardData } from '@/lib/serialize'
+import { MEDIA_GRID_TABS } from '@/lib/tabs'
 
 import { BlurImage } from './BlurImage'
 import { EmptyState } from './EmptyState'
@@ -21,6 +22,7 @@ import { ImageLightbox } from './ImageLightbox'
 import { LoadSentinel } from './LoadSentinel'
 import { PostSheet } from './PostSheet'
 import { Spinner } from './Spinner'
+import { useUrlTab } from './useUrlTab'
 
 const MEDIA_TABS: { value: MediaType; label: string; icon: typeof ImageIcon }[] = [
   { value: 'images', label: 'Photos', icon: ImageIcon },
@@ -35,18 +37,21 @@ export function MediaGrid({
   publicOnly = false,
   isSelf = false,
   username,
+  initialType,
 }: {
   authorId: number
   publicOnly?: boolean
   isSelf?: boolean
   username: string
+  initialType?: MediaType
 }) {
-  const [type, setType] = useState<MediaType>('images')
-  const [visited, setVisited] = useState<ReadonlySet<MediaType>>(() => new Set(['images']))
-
-  const select = (next: MediaType) => {
-    setType(next)
-    setVisited((prev) => (prev.has(next) ? prev : new Set(prev).add(next)))
+  // ?media= persists Photos / Videos across refreshes (nested under ?tab=media).
+  const [type, select] = useUrlTab<MediaType>(MEDIA_GRID_TABS, 'images', initialType, 'media')
+  const [visited, setVisited] = useState<ReadonlySet<MediaType>>(() => new Set([type]))
+  const [prevType, setPrevType] = useState(type)
+  if (type !== prevType) {
+    setPrevType(type)
+    if (!visited.has(type)) setVisited((prev) => new Set(prev).add(type))
   }
 
   return (

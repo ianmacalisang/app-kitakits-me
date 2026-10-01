@@ -1,7 +1,16 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react'
 
 import { loadMoreActivities } from '@/actions/activities'
 import type { ActivityData } from '@/lib/serialize'
@@ -11,14 +20,15 @@ import { BadgeMark } from './BadgeMark'
 import { BadgeSheet } from './BadgeSheet'
 import { CommentsSheet } from './CommentsSheet'
 import { EmptyState } from './EmptyState'
+import { HomeTabContext } from './HomeTabContext'
 import {
   ActivityIcon,
   ChevronRightIcon,
   CommentIcon,
   EyeIcon,
+  GripIcon,
   HeartIcon,
   MedalIcon,
-  MicIcon,
   QuoteIcon,
   UserIcon,
 } from './icons'
@@ -34,7 +44,7 @@ const typeIcon = {
   testimonial: <QuoteIcon className="h-3.5 w-3.5" />,
   badge: <MedalIcon className="h-3.5 w-3.5" />,
   profile_view: <EyeIcon className="h-3.5 w-3.5" />,
-  hangout_join: <MicIcon className="h-3.5 w-3.5" />,
+  hangout_join: <GripIcon className="h-3.5 w-3.5" />,
 }
 
 const typeColor = {
@@ -146,12 +156,14 @@ type StackEntry = { kind: 'stack'; postId: number; items: ActivityData[] }
 type BadgeStackEntry = { kind: 'badge-stack'; items: ActivityData[] }
 type FollowStackEntry = { kind: 'follow-stack'; actorUsername: string; items: ActivityData[] }
 type ViewStackEntry = { kind: 'view-stack'; items: ActivityData[] }
+type HangoutStackEntry = { kind: 'hangout-stack'; actorUsername: string; items: ActivityData[] }
 type ActivityEntry =
   | { kind: 'row'; activity: ActivityData }
   | StackEntry
   | BadgeStackEntry
   | FollowStackEntry
   | ViewStackEntry
+  | HangoutStackEntry
 
 // Refetch the first page when the tab opens and the data is older than this —
 // activities have no push/poll path, so tab activation is the refresh point.
@@ -163,14 +175,14 @@ const STALE_MS = 30_000
 export function ActivitiesView({
   activities,
   initialHasMore,
-  active = false,
 }: {
   activities: ActivityData[]
   initialHasMore: boolean
-  // Set by the parent tab control — refetches stale data on activation.
-  active?: boolean
 }) {
   const router = useRouter()
+  // Rendered inside a HomeTabs panel slot — context carries the active tab
+  // across the server-slot boundary. Refetches stale data on activation.
+  const active = useContext(HomeTabContext) === 'activities'
   const [items, setItems] = useState(activities)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(initialHasMore)
@@ -248,6 +260,20 @@ export function ActivitiesView({
         else
           day.entries.push({
             kind: 'follow-stack',
+            actorUsername: activity.actorUsername,
+            items: [activity],
+          })
+      } else if (activity.type === 'hangout_join') {
+        // A member's hangout activity in a day collapses into one "joined N
+        // hangouts" stack per actor — individual joins expand inside it.
+        const stack = day.entries.find(
+          (e): e is HangoutStackEntry =>
+            e.kind === 'hangout-stack' && e.actorUsername === activity.actorUsername,
+        )
+        if (stack) stack.items.push(activity)
+        else
+          day.entries.push({
+            kind: 'hangout-stack',
             actorUsername: activity.actorUsername,
             items: [activity],
           })
@@ -377,6 +403,26 @@ export function ActivitiesView({
                   ) : (
                     <FollowActivityStack
                       key={`follow-${entry.actorUsername}`}
+                      items={entry.items}
+                      pending={pending}
+                      isFirst={i === 0}
+                      isLast={i === group.entries.length - 1}
+                      onOpenAction={open}
+                    />
+                  )
+                ) : entry.kind === 'hangout-stack' ? (
+                  entry.items.length === 1 ? (
+                    <ActivityItem
+                      key={entry.items[0].id}
+                      activity={entry.items[0]}
+                      pending={pending}
+                      isFirst={i === 0}
+                      isLast={i === group.entries.length - 1}
+                      onOpenAction={open}
+                    />
+                  ) : (
+                    <HangoutActivityStack
+                      key={`hangout-${entry.actorUsername}`}
                       items={entry.items}
                       pending={pending}
                       isFirst={i === 0}
@@ -725,6 +771,122 @@ const FollowActivityStack = memo(function FollowActivityStack({
                     <Avatar
                       src={activity.targetAvatarUrl}
                       name={activity.targetName ?? '?'}
+                      size="sm"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm text-neutral-700">
+                        <ActivityText activity={activity} />
+                      </span>
+                      <span className="block text-[11px] text-neutral-400">
+                        {activity.targetUsername ? `@${activity.targetUsername} · ` : ''}
+                        <RelativeTime iso={activity.createdAt} />
+                      </span>
+                    </span>
+                    <ChevronRightIcon className="h-4 w-4 shrink-0 text-neutral-300 transition-colors group-hover:text-accent-500" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </li>
+  )
+})
+
+// One member's hangout activity in a day collapses into one entry — "Maria
+// joined N hangouts" (or "hosted N hangouts") with the hosts' overlapping
+// avatars; expanding lists each join. Rows open the room itself.
+const HangoutActivityStack = memo(function HangoutActivityStack({
+  items,
+  pending,
+  isFirst,
+  isLast,
+  onOpenAction,
+}: {
+  items: ActivityData[]
+  pending: boolean
+  isFirst: boolean
+  isLast: boolean
+  onOpenAction: (activity: ActivityData) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const single = isFirst && isLast
+  const actor = items[0]
+  // One avatar per host — two rooms hosted by the same person shouldn't
+  // occupy two ring slots. Self-hosted rooms have no inviter, so no avatar.
+  const uniqueHosts = useMemo(() => {
+    const seen = new Set<string>()
+    return items.filter(
+      (a) => a.targetUsername && !seen.has(a.targetUsername) && seen.add(a.targetUsername),
+    )
+  }, [items])
+  const preview = uniqueHosts.slice(0, 4)
+  // One count per room — a rejoin bumps the same row, but dedupe anyway.
+  const roomCount = new Set(
+    items.map((a) => a.videokeRoomId ?? a.cardRoomId ?? a.nhieRoomId ?? a.id),
+  ).size
+  const verb = items.every((a) => a.hangoutJoinKind === 'hosted') ? 'hosted' : 'joined'
+
+  return (
+    <li className="flex">
+      <Rail type="hangout_join" single={single} isFirst={isFirst} isLast={isLast} />
+      <div className="min-w-0 flex-1 pb-2.5 pl-2">
+        <div className="glass flex flex-col rounded-2xl">
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            disabled={pending}
+            className="group flex w-full items-center gap-3 rounded-2xl p-3.5 text-left transition-all hover:bg-accent-50/40 disabled:opacity-60"
+            aria-expanded={expanded}
+          >
+            <Avatar src={actor.actorAvatarUrl} name={actor.actorName} />
+
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm text-neutral-700">
+                <span className="font-semibold">{actor.actorName}</span>{' '}
+                <BadgeMark badge={actor.actorBadge} className="h-3.5 w-3.5" /> {verb}{' '}
+                <span className="font-semibold">
+                  {roomCount} {roomCount === 1 ? 'hangout' : 'hangouts'}
+                </span>
+              </span>
+              <span className="mt-0.5 block text-[11px] text-neutral-400">
+                @{actor.actorUsername} · <RelativeTime iso={items[0].createdAt} />
+              </span>
+            </span>
+
+            {preview.length > 0 && (
+              <span className="flex shrink-0 items-center -space-x-2">
+                {preview.map((activity) => (
+                  <span key={activity.id} className="rounded-full ring-2 ring-white">
+                    <Avatar
+                      src={activity.targetAvatarUrl}
+                      name={activity.targetName ?? '?'}
+                      size="xs"
+                    />
+                  </span>
+                ))}
+              </span>
+            )}
+
+            <ChevronRightIcon
+              className={`h-4 w-4 shrink-0 text-neutral-300 transition-all group-hover:text-accent-500 ${
+                expanded ? 'rotate-90' : ''
+              }`}
+            />
+          </button>
+
+          {expanded && (
+            <ul className="border-t border-black/5 px-2 py-1.5">
+              {items.map((activity) => (
+                <li key={activity.id}>
+                  <button
+                    onClick={() => onOpenAction(activity)}
+                    disabled={pending}
+                    className="group flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-accent-50/40 disabled:opacity-60"
+                  >
+                    <Avatar
+                      src={activity.targetAvatarUrl ?? activity.actorAvatarUrl}
+                      name={activity.targetName ?? activity.actorName}
                       size="sm"
                     />
                     <span className="min-w-0 flex-1">

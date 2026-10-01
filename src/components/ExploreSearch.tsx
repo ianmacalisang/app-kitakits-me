@@ -8,6 +8,7 @@ import { type CategorySpotlight, searchPosts } from '@/actions/posts'
 import { getSuggestedReplacement, searchUsers } from '@/actions/users'
 import { CATEGORY_TINTS, postCategory } from '@/lib/categories'
 import type { PostCardData, UserCardData } from '@/lib/serialize'
+import { EXPLORE_TABS, type ExploreTab } from '@/lib/tabs'
 
 import { CATEGORY_ICONS } from './CategoryChip'
 import { EmptyState } from './EmptyState'
@@ -32,9 +33,10 @@ import {
 import { LoadSentinel } from './LoadSentinel'
 import { Spinner } from './Spinner'
 import { UserCoverCard } from './UserCoverCard'
+import { useUrlTab } from './useUrlTab'
 
 type Section = 'people' | 'posts'
-type Tab = 'foryou' | 'hangouts'
+type Tab = ExploreTab
 
 const TABS: { value: Tab; label: string; icon: typeof SparklesIcon }[] = [
   { value: 'foryou', label: 'For You', icon: ListIcon },
@@ -57,6 +59,7 @@ export function ExploreSearch({
   initialPosts,
   initialPostsHasMore,
   hangoutPresence,
+  initialTab,
 }: {
   initialQuery?: string
   trendingTags?: string[]
@@ -68,11 +71,13 @@ export function ExploreSearch({
   initialUsersHasMore: boolean
   initialPosts: PostCardData[]
   initialPostsHasMore: boolean
+  initialTab?: Tab
 }) {
   // The query only ever comes from the URL (header search, tag chips) — the
   // page has no input, so it can't change while mounted.
   const query = initialQuery.trim()
-  const [tab, setTab] = useState<Tab>('foryou')
+  // ?tab= persists the For You / Hangouts selection across refreshes.
+  const [tab, setTab] = useUrlTab(EXPLORE_TABS, 'foryou', initialTab)
   const [users, setUsers] = useState(initialUsers)
   const [usersPage, setUsersPage] = useState(1)
   const [usersMore, setUsersMore] = useState(initialUsersHasMore)

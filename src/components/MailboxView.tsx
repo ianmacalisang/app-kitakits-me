@@ -13,6 +13,7 @@ import {
 } from '@/actions/mail'
 import { getNavBadgeCounts } from '@/actions/nav'
 import type { DraftData, ThreadData } from '@/lib/serialize'
+import { MAILBOX_TABS, type MailboxTab } from '@/lib/tabs'
 
 import { Avatar } from './Avatar'
 import { BadgeMark } from './BadgeMark'
@@ -23,8 +24,9 @@ import { CheckIcon, ComposeIcon, MailboxIcon, SearchIcon, TrashIcon, XIcon } fro
 import { LoadSentinel } from './LoadSentinel'
 import { RelativeTime } from './RelativeTime'
 import { Spinner } from './Spinner'
+import { useUrlTab } from './useUrlTab'
 
-type Box = 'inbox' | 'sent' | 'drafts'
+type Box = MailboxTab
 
 const BOX_THUMB: Record<Box, string> = {
   inbox: 'translate-x-0',
@@ -56,17 +58,29 @@ export function MailboxView({
   initialHasMore,
   drafts,
   composeTo,
+  initialTab,
+  sentItems,
+  sentHasMore,
 }: {
   threads: ThreadData[]
   initialHasMore: boolean
   drafts: DraftData[]
   composeTo: string | null
+  initialTab?: Box
+  // ?tab=sent lands with the sent first page already loaded server-side.
+  sentItems?: ThreadData[]
+  sentHasMore?: boolean
 }) {
   const router = useRouter()
-  const [box, setBox] = useState<Box>('inbox')
-  const [items, setItems] = useState(() => applyReadMarkers(threads))
+  // ?tab= persists Inbox / Sent / Drafts across refreshes and shares.
+  const [box, selectBox] = useUrlTab<Box>(MAILBOX_TABS, 'inbox', initialTab)
+  const [items, setItems] = useState(() =>
+    applyReadMarkers(box === 'sent' && sentItems ? sentItems : threads),
+  )
   const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(initialHasMore)
+  const [hasMore, setHasMore] = useState(
+    box === 'sent' && sentItems ? (sentHasMore ?? false) : initialHasMore,
+  )
   const [draftItems, setDraftItems] = useState(drafts)
   const [pending, startTransition] = useTransition()
   const [morePending, startMoreTransition] = useTransition()
@@ -74,7 +88,7 @@ export function MailboxView({
   // box's first page loads. requestedBox tracks the latest tab asked for so a
   // slow response from a superseded tab can't clobber the current one.
   const [switching, setSwitching] = useState(false)
-  const requestedBox = useRef<Box>('inbox')
+  const requestedBox = useRef<Box>(box)
   const [prevInitial, setPrevInitial] = useState(threads)
   const [prevDrafts, setPrevDrafts] = useState(drafts)
   const [composeOpen, setComposeOpen] = useState(Boolean(composeTo))
@@ -184,10 +198,10 @@ export function MailboxView({
     }
   }, [threads, box])
 
-  const switchBox = (next: Box) => {
-    if (next === box) return
+  // Loads a box's first page. Kept separate from the tab select so
+  // URL-driven changes (below) can reuse it.
+  const fetchBox = (next: Box) => {
     requestedBox.current = next
-    setBox(next)
     setSwitching(true)
     if (next === 'drafts') {
       startTransition(async () => {
@@ -211,6 +225,18 @@ export function MailboxView({
       }
     })
   }
+
+  const switchBox = (next: Box) => {
+    if (next === box) return
+    selectBox(next)
+    fetchBox(next)
+  }
+
+  // Back/forward or a same-page ?tab= link changes box without switchBox —
+  // fetch whichever box the URL now shows.
+  useEffect(() => {
+    if (requestedBox.current !== box) fetchBox(box)
+  }, [box])
 
   const openCompose = (draft: DraftData | null) => {
     setPrefillTo(null)

@@ -35,6 +35,12 @@ import {
   type TestimonialData,
 } from '@/lib/serialize'
 import { getSiteSettings } from '@/lib/settings'
+import {
+  MEDIA_GRID_TABS,
+  PUBLIC_PROFILE_TABS,
+  type MediaGridTab,
+  type ProfileTab,
+} from '@/lib/tabs'
 
 // Public profiles live at /@username. The leading '@' in `handle` is what
 // distinguishes a share link from any other single-segment URL.
@@ -73,10 +79,25 @@ export async function generateMetadata({
 
 export default async function PublicProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ handle: string }>
+  searchParams: Promise<{ tab?: string; media?: string }>
 }) {
   const { handle } = await params
+  const { tab: rawTab, media: rawMedia } = await searchParams
+  // ?tab= deep-links a profile section (e.g. /@user?tab=media); the hidden
+  // Connections tab resolves to About.
+  const initialTab: ProfileTab | undefined = (PUBLIC_PROFILE_TABS as readonly string[]).includes(
+    rawTab ?? '',
+  )
+    ? (rawTab as ProfileTab)
+    : undefined
+  const initialMediaType: MediaGridTab | undefined = (
+    MEDIA_GRID_TABS as readonly string[]
+  ).includes(rawMedia ?? '')
+    ? (rawMedia as MediaGridTab)
+    : undefined
   const profileUser = await findProfileByHandle(decodeURIComponent(handle))
   if (!profileUser) notFound()
 
@@ -329,6 +350,8 @@ export default async function PublicProfilePage({
                   pendingCount: pendingTestimonials.totalDocs,
                 }}
                 isPublicPage
+                initialTab={initialTab}
+                initialMediaType={initialMediaType}
               />
             </>
           ) : (

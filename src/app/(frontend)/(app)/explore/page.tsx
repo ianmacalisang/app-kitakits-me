@@ -10,6 +10,7 @@ import {
 import { searchUsers } from '@/actions/users'
 import { ExploreSearch } from '@/components/ExploreSearch'
 import type { PostCardData } from '@/lib/serialize'
+import { EXPLORE_TABS, type ExploreTab } from '@/lib/tabs'
 
 export const metadata = { title: 'Explore' }
 
@@ -19,9 +20,16 @@ const EMPTY_SPOTLIGHTS: Promise<CategorySpotlight[]> = Promise.resolve([])
 export default async function ExplorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>
+  searchParams: Promise<{ q?: string; tab?: string }>
 }) {
-  const q = (await searchParams).q?.trim() ?? ''
+  const { q: rawQ, tab: rawTab } = await searchParams
+  const q = rawQ?.trim() ?? ''
+  // ?tab= persists the For You / Hangouts selection across refreshes.
+  const initialTab: ExploreTab | undefined = (EXPLORE_TABS as readonly string[]).includes(
+    rawTab ?? '',
+  )
+    ? (rawTab as ExploreTab)
+    : undefined
   // Discovery sections only exist for the unqueried state — skip the fetches
   // entirely while searching.
   const [users, posts, trendingTags, hotDiscussions, unanswered, spotlights, hangoutPresence] =
@@ -48,6 +56,7 @@ export default async function ExplorePage({
       initialPosts={posts.items}
       initialPostsHasMore={posts.hasMore}
       hangoutPresence={hangoutPresence}
+      initialTab={initialTab}
     />
   )
 }

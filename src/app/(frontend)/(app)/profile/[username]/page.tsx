@@ -25,9 +25,29 @@ import {
   toTestimonialData,
   type TestimonialData,
 } from '@/lib/serialize'
+import { MEDIA_GRID_TABS, PROFILE_TABS, type MediaGridTab, type ProfileTab } from '@/lib/tabs'
 
-export default async function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
+export default async function ProfilePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ username: string }>
+  searchParams: Promise<{ tab?: string; media?: string }>
+}) {
   const { username } = await params
+  const { tab: rawTab, media: rawMedia } = await searchParams
+  // ?tab= persists the selected profile tab across refreshes and shares;
+  // ?media=images|videos does the same for the Media sub-tab.
+  const initialTab: ProfileTab | undefined = (PROFILE_TABS as readonly string[]).includes(
+    rawTab ?? '',
+  )
+    ? (rawTab as ProfileTab)
+    : undefined
+  const initialMediaType: MediaGridTab | undefined = (
+    MEDIA_GRID_TABS as readonly string[]
+  ).includes(rawMedia ?? '')
+    ? (rawMedia as MediaGridTab)
+    : undefined
   const viewer = await getCurrentUser()
   if (!viewer) redirect('/login')
 
@@ -222,6 +242,8 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
               viewerAuthenticated: true,
               pendingCount: pendingTestimonials.totalDocs,
             }}
+            initialTab={initialTab}
+            initialMediaType={initialMediaType}
           />
         </>
       ) : (

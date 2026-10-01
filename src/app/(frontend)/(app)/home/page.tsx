@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Suspense } from 'react'
+import { cache, Suspense } from 'react'
 
+import { ActivitiesView } from '@/components/ActivitiesView'
+import { Feed } from '@/components/Feed'
 import { HomeTabs } from '@/components/HomeTabs'
 import {
   ActivityIcon,
@@ -9,7 +11,9 @@ import {
   ChevronRightIcon,
   HomeIcon,
   QrCodeIcon,
+  UsersIcon,
 } from '@/components/icons'
+import { OnlineMutuals } from '@/components/OnlineMutuals'
 import { PostListSkeleton } from '@/components/PostListSkeleton'
 import { getFollowingActivities } from '@/lib/activities'
 import { getCurrentUser } from '@/lib/auth'
@@ -24,18 +28,36 @@ import {
   mediaFilterClauses,
 } from '@/lib/posts'
 import { type MediaFilter, relId } from '@/lib/serialize'
-import type { Post } from '@/payload-types'
+import { HOME_TABS, type HomeTab } from '@/lib/tabs'
+import type { Post, User } from '@/payload-types'
 
 export const metadata = { title: 'Home' }
 
 const MEDIA_FILTERS = new Set<MediaFilter>(['all', 'media', 'images', 'videos'])
 
-// Static shell — renders instantly; only the post list area suspends so the
-// QR card and tab chrome are visible while feed data loads.
+// Followee ids power both the feed and activities panels — cache() dedupes the
+// query so the two Suspense boundaries don't each fetch the follow list.
+// Cap at 2000 followees — more than enough for any realistic social graph.
+// Users following beyond this will still see the most recent 2000 authors.
+const getFolloweeIds = cache(async (user: User) => {
+  const payload = await getPayloadClient()
+  const following = await payload.find({
+    collection: 'follows',
+    where: { follower: { equals: user.id } },
+    limit: 2000,
+    depth: 0,
+    user,
+    overrideAccess: false,
+  })
+  return following.docs.map((f) => relId(f.following)).filter((id): id is number => id !== null)
+})
+
+// Static shell — renders instantly; the invite card and outer chrome are
+// visible while the tab pill and panels stream in.
 export default function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ media?: string; category?: string }>
+  searchParams: Promise<{ media?: string; category?: string; tab?: string }>
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -62,8 +84,131 @@ export default function HomePage({
   )
 }
 
-// Suspense fallback: a non-interactive replica of the HomeTabs pill (Feed
-// active) over the post skeletons, so only the list area shows a loader.
+// Placeholder for the mutuals rail while its query streams in — mirrors the
+// glass card's shape so the pill doesn't jump when the real rail lands.
+function MutualsRailSkeleton() {
+  return (
+    <div aria-hidden className="glass mb-3 rounded-3xl p-4">
+      <div className="mb-3 h-3 w-24 animate-pulse rounded-full bg-neutral-200/70" />
+      <div className="flex gap-4 overflow-hidden pb-1">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex w-20 shrink-0 flex-col items-center gap-1.5">
+            <span className="h-20 w-20 animate-pulse rounded-full bg-neutral-200/70" />
+            <span className="h-2.5 w-12 animate-pulse rounded-full bg-neutral-200/70" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Skeleton for the Activities tab — day-label headers over timeline rows: a
+// node dot on the rail, avatar, and text bars, matching ActivityItem's shape.
+function ActivityListSkeleton() {
+  const groups = [
+    { label: 'w-16', rows: 4 },
+    { label: 'w-24', rows: 3 },
+  ]
+  return (
+    <div aria-hidden className="flex flex-col gap-5">
+      {groups.map((group, gi) => (
+        <section key={gi}>
+          <div className="mb-2 flex items-center gap-2.5">
+            <span className={`h-2.5 animate-pulse rounded-full bg-neutral-200/70 ${group.label}`} />
+            <span className="h-px flex-1 bg-black/5" />
+          </div>
+          <ul>
+            {Array.from({ length: group.rows }).map((_, i) => (
+              <li key={i} className="flex">
+                {/* Timeline rail — the node dot sits at the avatar's center. */}
+                <span className="relative w-8 shrink-0">
+                  <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-neutral-300/60" />
+                  <span className="absolute left-1/2 top-[22px] h-6 w-6 -translate-x-1/2 animate-pulse rounded-full bg-neutral-200/80 ring-[3px] ring-white/80" />
+                </span>
+                <span className="flex min-w-0 flex-1 items-center gap-3 px-3.5 py-2">
+                  <span className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-neutral-200/70" />
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className="block h-3 animate-pulse rounded-full bg-neutral-200/70"
+                      style={{ width: `${68 - ((i + gi) % 3) * 14}%` }}
+                    />
+                    <span className="mt-1.5 block h-2.5 w-24 animate-pulse rounded-full bg-neutral-200/50" />
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+// Tab shell — resolves after just auth + searchParams, so the pill paints
+// while each tab's data loads behind its own Suspense boundary. A slow query
+// can no longer hold up the rest of the page.
+async function HomeFeed({
+  searchParams,
+}: {
+  searchParams: Promise<{ media?: string; category?: string; tab?: string }>
+}) {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  // ?media=images|videos, ?category=x, and ?tab=x persist the feed filters and
+  // selected tab across refreshes — validated here so the first paint is right.
+  const { media: rawMedia, category: rawCategory, tab: rawTab } = await searchParams
+  const mediaFilter: MediaFilter =
+    rawMedia && MEDIA_FILTERS.has(rawMedia as MediaFilter) ? (rawMedia as MediaFilter) : 'all'
+  const categoryFilter: PostCategory | 'all' = isPostCategory(rawCategory) ? rawCategory : 'all'
+  const initialTab: HomeTab | undefined = (HOME_TABS as readonly string[]).includes(rawTab ?? '')
+    ? (rawTab as HomeTab)
+    : undefined
+
+  // Left un-awaited — HomeTabs reads it via use() inside its own Suspense, so
+  // the badge streams in without holding up the pill. A failed count just
+  // hides the badge.
+  const savedCount = (async () => {
+    const payload = await getPayloadClient()
+    const result = await payload.count({
+      collection: 'saves',
+      where: { user: { equals: user.id } },
+      user,
+      overrideAccess: false,
+    })
+    return result.totalDocs
+  })().catch(() => 0)
+
+  return (
+    <HomeTabs
+      initialTab={initialTab}
+      savedCount={savedCount}
+      mutualsRail={
+        <Suspense fallback={<MutualsRailSkeleton />}>
+          <MutualsRail />
+        </Suspense>
+      }
+      feedPanel={
+        <Suspense fallback={<PostListSkeleton />}>
+          <FeedPanel mediaFilter={mediaFilter} categoryFilter={categoryFilter} />
+        </Suspense>
+      }
+      activitiesPanel={
+        <Suspense fallback={<ActivityListSkeleton />}>
+          <ActivitiesPanel />
+        </Suspense>
+      }
+      savedPanel={
+        <Suspense fallback={<PostListSkeleton />}>
+          <SavedPanel />
+        </Suspense>
+      }
+    />
+  )
+}
+
+// Suspense fallback: a non-interactive replica of the rail + HomeTabs pill
+// (Feed active) over post skeletons — only shown until auth + params resolve.
 function HomeFeedFallback() {
   const tabs = [
     { label: 'Feed', icon: HomeIcon },
@@ -72,17 +217,7 @@ function HomeFeedFallback() {
   ]
   return (
     <section aria-busy="true" aria-label="Loading home feed">
-      <div className="glass mb-3 rounded-3xl p-4">
-        <div className="mb-3 h-3 w-24 animate-pulse rounded-full bg-neutral-200/70" />
-        <div className="flex gap-4 overflow-hidden pb-1">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex w-20 shrink-0 flex-col items-center gap-1.5">
-              <span className="h-20 w-20 animate-pulse rounded-full bg-neutral-200/70" />
-              <span className="h-2.5 w-12 animate-pulse rounded-full bg-neutral-200/70" />
-            </div>
-          ))}
-        </div>
-      </div>
+      <MutualsRailSkeleton />
       <div className="mb-3">
         <div className="glass relative flex rounded-full p-1">
           <span
@@ -107,41 +242,29 @@ function HomeFeedFallback() {
   )
 }
 
-async function HomeFeed({
-  searchParams,
+async function MutualsRail() {
+  const user = await getCurrentUser()
+  if (!user) return null
+  const mutuals = await getMutuals(user)
+  return <OnlineMutuals mutuals={mutuals} />
+}
+
+async function FeedPanel({
+  mediaFilter,
+  categoryFilter,
 }: {
-  searchParams: Promise<{ media?: string; category?: string }>
+  mediaFilter: MediaFilter
+  categoryFilter: PostCategory | 'all'
 }) {
   const user = await getCurrentUser()
-  if (!user) redirect('/login')
-
-  // ?media=images|videos and ?category=x persist the feed filters across
-  // refreshes — apply them server-side so the first paint is already filtered.
-  const { media: rawMedia, category: rawCategory } = await searchParams
-  const mediaFilter: MediaFilter =
-    rawMedia && MEDIA_FILTERS.has(rawMedia as MediaFilter) ? (rawMedia as MediaFilter) : 'all'
-  const categoryFilter: PostCategory | 'all' = isPostCategory(rawCategory) ? rawCategory : 'all'
-
+  if (!user) return null
   const payload = await getPayloadClient()
+  const authorIds = await getFolloweeIds(user)
 
-  // Cap at 2000 followees — more than enough for any realistic social graph.
-  // Users following beyond this will still see the most recent 2000 authors.
-  const following = await payload.find({
-    collection: 'follows',
-    where: { follower: { equals: user.id } },
-    limit: 2000,
-    depth: 0,
-    user,
-    overrideAccess: false,
-  })
-  const authorIds = following.docs
-    .map((f) => relId(f.following))
-    .filter((id): id is number => id !== null)
-
-  const [posts, activities, saved, mutuals] = await Promise.all([
+  const posts =
     authorIds.length === 0
-      ? Promise.resolve({ docs: [] as Post[], hasNextPage: false })
-      : payload.find({
+      ? { docs: [] as Post[], hasNextPage: false }
+      : await payload.find({
           collection: 'posts',
           where: {
             and: [
@@ -156,26 +279,51 @@ async function HomeFeed({
           depth: 2,
           user,
           overrideAccess: false,
-        }),
-    getFollowingActivities(user, authorIds, 1),
-    getSavedPosts(user, 1),
-    getMutuals(user),
-  ])
+        })
 
   const cards = await hydratePosts(posts.docs, user)
 
   return (
-    <HomeTabs
-      mutuals={mutuals}
-      feedPosts={cards}
-      feedHasMore={posts.hasNextPage}
+    <Feed
+      initialPosts={cards}
+      initialHasMore={posts.hasNextPage}
+      feed="following"
+      live
+      filterable
       initialMediaFilter={mediaFilter}
       initialCategory={categoryFilter}
-      activityItems={activities.items}
-      activityHasMore={activities.hasMore}
-      savedPosts={saved.posts}
-      savedHasMore={saved.hasMore}
-      savedCount={saved.total}
+      emptyIcon={<UsersIcon />}
+      emptyTitle="Your feed is empty"
+      emptyMessage="Follow people on the Explore page to see their posts."
+      emptyAction={
+        <Link href="/explore" className="btn-primary mt-1 rounded-full px-5 py-2 text-sm">
+          Explore people
+        </Link>
+      }
+    />
+  )
+}
+
+async function ActivitiesPanel() {
+  const user = await getCurrentUser()
+  if (!user) return null
+  const authorIds = await getFolloweeIds(user)
+  const activities = await getFollowingActivities(user, authorIds, 1)
+  return <ActivitiesView activities={activities.items} initialHasMore={activities.hasMore} />
+}
+
+async function SavedPanel() {
+  const user = await getCurrentUser()
+  if (!user) return null
+  const saved = await getSavedPosts(user, 1)
+  return (
+    <Feed
+      initialPosts={saved.posts}
+      initialHasMore={saved.hasMore}
+      feed="saved"
+      emptyIcon={<BookmarkIcon />}
+      emptyTitle="No saved posts yet"
+      emptyMessage="Tap the bookmark on a post to save it here."
     />
   )
 }

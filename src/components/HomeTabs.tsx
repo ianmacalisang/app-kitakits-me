@@ -1,19 +1,15 @@
 'use client'
 
-import Link from 'next/link'
-import { useState } from 'react'
+import { Suspense, use, type ReactNode } from 'react'
 
-import type { PostCategory } from '@/lib/categories'
-import type { MutualsPage } from '@/lib/mutuals'
-import type { ActivityData, MediaFilter, PostCardData } from '@/lib/serialize'
+import { HOME_TABS, type HomeTab } from '@/lib/tabs'
 
-import { ActivitiesView } from './ActivitiesView'
 import { CountBadge } from './CountBadge'
-import { Feed } from './Feed'
-import { OnlineMutuals } from './OnlineMutuals'
-import { ActivityIcon, BookmarkIcon, HomeIcon, UsersIcon } from './icons'
+import { HomeTabContext } from './HomeTabContext'
+import { ActivityIcon, BookmarkIcon, HomeIcon } from './icons'
+import { useUrlTab } from './useUrlTab'
 
-type Tab = 'feed' | 'activities' | 'saved'
+type Tab = HomeTab
 
 const TABS: { value: Tab; label: string; icon: typeof HomeIcon }[] = [
   { value: 'feed', label: 'Feed', icon: HomeIcon },
@@ -27,37 +23,37 @@ const THUMB_POSITION: Record<Tab, string> = {
   saved: 'translate-x-[200%]',
 }
 
+// Reads the saves count via use() inside its own Suspense — the pill renders
+// immediately and the badge pops in when the count query settles.
+function SavedCountBadge({ count, onAccent }: { count: Promise<number>; onAccent: boolean }) {
+  return <CountBadge count={use(count)} onAccent={onAccent} />
+}
+
 // Feed / Activities / Saved segmented control for the home page — a glass
-// pill with a sliding gradient thumb. All feeds stay mounted (hidden when
-// inactive) so tab switches preserve scroll position and pagination state.
+// pill with a sliding gradient thumb. Panels arrive as server-rendered slots
+// (each behind its own Suspense on the page) and stay mounted — hidden when
+// inactive — so tab switches preserve scroll position and pagination state.
 export function HomeTabs({
-  mutuals,
-  feedPosts,
-  feedHasMore,
-  initialMediaFilter = 'all',
-  initialCategory = 'all',
-  activityItems,
-  activityHasMore,
-  savedPosts,
-  savedHasMore,
+  mutualsRail,
+  feedPanel,
+  activitiesPanel,
+  savedPanel,
   savedCount,
+  initialTab,
 }: {
-  mutuals: MutualsPage
-  feedPosts: PostCardData[]
-  feedHasMore: boolean
-  initialMediaFilter?: MediaFilter
-  initialCategory?: PostCategory | 'all'
-  activityItems: ActivityData[]
-  activityHasMore: boolean
-  savedPosts: PostCardData[]
-  savedHasMore: boolean
-  savedCount: number
+  mutualsRail: ReactNode
+  feedPanel: ReactNode
+  activitiesPanel: ReactNode
+  savedPanel: ReactNode
+  savedCount: Promise<number>
+  initialTab?: Tab
 }) {
-  const [tab, setTab] = useState<Tab>('feed')
+  // ?tab= persists the selection across refreshes and shares.
+  const [tab, setTab] = useUrlTab(HOME_TABS, 'feed', initialTab)
 
   return (
     <section>
-      <OnlineMutuals mutuals={mutuals} />
+      {mutualsRail}
       <div role="tablist" aria-label="Home feed" className="mb-3">
         <div className="glass relative flex rounded-full p-1">
           {/* Sliding thumb — covers the active tab; with three equal tabs each
@@ -81,49 +77,28 @@ export function HomeTabs({
               >
                 <Icon className="h-4 w-4" />
                 {label}
-                {value === 'saved' && <CountBadge count={savedCount} onAccent={active} />}
+                {value === 'saved' && (
+                  <Suspense fallback={null}>
+                    <SavedCountBadge count={savedCount} onAccent={active} />
+                  </Suspense>
+                )}
               </button>
             )
           })}
         </div>
       </div>
 
-      <div role="tabpanel" hidden={tab !== 'feed'}>
-        <Feed
-          initialPosts={feedPosts}
-          initialHasMore={feedHasMore}
-          feed="following"
-          live
-          filterable
-          initialMediaFilter={initialMediaFilter}
-          initialCategory={initialCategory}
-          emptyIcon={<UsersIcon />}
-          emptyTitle="Your feed is empty"
-          emptyMessage="Follow people on the Explore page to see their posts."
-          emptyAction={
-            <Link href="/explore" className="btn-primary mt-1 rounded-full px-5 py-2 text-sm">
-              Explore people
-            </Link>
-          }
-        />
-      </div>
-      <div role="tabpanel" hidden={tab !== 'activities'}>
-        <ActivitiesView
-          activities={activityItems}
-          initialHasMore={activityHasMore}
-          active={tab === 'activities'}
-        />
-      </div>
-      <div role="tabpanel" hidden={tab !== 'saved'}>
-        <Feed
-          initialPosts={savedPosts}
-          initialHasMore={savedHasMore}
-          feed="saved"
-          emptyIcon={<BookmarkIcon />}
-          emptyTitle="No saved posts yet"
-          emptyMessage="Tap the bookmark on a post to save it here."
-        />
-      </div>
+      <HomeTabContext.Provider value={tab}>
+        <div role="tabpanel" hidden={tab !== 'feed'}>
+          {feedPanel}
+        </div>
+        <div role="tabpanel" hidden={tab !== 'activities'}>
+          {activitiesPanel}
+        </div>
+        <div role="tabpanel" hidden={tab !== 'saved'}>
+          {savedPanel}
+        </div>
+      </HomeTabContext.Provider>
     </section>
   )
 }

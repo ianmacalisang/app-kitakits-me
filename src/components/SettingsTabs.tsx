@@ -1,21 +1,34 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
+
+import { SETTINGS_TABS, type SettingsTab } from '@/lib/tabs'
+
+import { useUrlTab } from './useUrlTab'
 
 const TABS = [
   { id: 'profile', label: 'Profile' },
   { id: 'account', label: 'Account & privacy' },
 ] as const
 
-type Tab = (typeof TABS)[number]['id']
+type Tab = SettingsTab
 
 const THUMB_POSITION: Record<Tab, string> = {
   profile: 'translate-x-0',
   account: 'translate-x-full',
 }
 
-export function SettingsTabs({ profile, account }: { profile: ReactNode; account: ReactNode }) {
-  const [tab, setTab] = useState<Tab>('profile')
+export function SettingsTabs({
+  profile,
+  account,
+  initialTab,
+}: {
+  profile: ReactNode
+  account: ReactNode
+  initialTab?: Tab
+}) {
+  // ?tab= persists the selection across refreshes.
+  const [tab, setTab] = useUrlTab(SETTINGS_TABS, 'profile', initialTab)
   const panels: Record<Tab, ReactNode> = { profile, account }
 
   return (

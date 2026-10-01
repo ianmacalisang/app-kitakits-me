@@ -13,6 +13,7 @@ import {
   updateTestimonial,
 } from '@/actions/testimonials'
 import type { Paged, TestimonialData } from '@/lib/serialize'
+import { TESTIMONIAL_TABS, type TestimonialTab } from '@/lib/tabs'
 
 import { Avatar } from './Avatar'
 import { BadgeMark } from './BadgeMark'
@@ -23,8 +24,9 @@ import { LoadSentinel } from './LoadSentinel'
 import { RelativeTime } from './RelativeTime'
 import { StatusBadge, TestimonialForm } from './TestimonialsPanel'
 import { TestimonialQuote } from './TestimonialQuote'
+import { useUrlTab } from './useUrlTab'
 
-type Tab = 'review' | 'profile' | 'written'
+type Tab = TestimonialTab
 
 // Per-list pagination state with reconcile-on-refresh — server re-renders
 // (router.refresh() after a mutation) swap in fresh first pages without
@@ -79,6 +81,7 @@ export function TestimonialsView({
   receivedHasMore,
   written,
   writtenHasMore,
+  initialTab,
 }: {
   pending: TestimonialData[]
   pendingHasMore: boolean
@@ -86,9 +89,11 @@ export function TestimonialsView({
   receivedHasMore: boolean
   written: TestimonialData[]
   writtenHasMore: boolean
+  initialTab?: Tab
 }) {
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('review')
+  // ?tab= persists the selection across refreshes.
+  const [tab, setTab] = useUrlTab(TESTIMONIAL_TABS, 'review', initialTab)
   const [mutating, startMutation] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)

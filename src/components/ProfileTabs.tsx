@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import type { AboutBlockData, PostCardData, TestimonialData } from '@/lib/serialize'
+import { PROFILE_TABS, PUBLIC_PROFILE_TABS, type MediaGridTab, type ProfileTab } from '@/lib/tabs'
 
 import { AboutSection } from './AboutSection'
 import { ConnectionsPanel } from './ConnectionsPanel'
@@ -20,8 +21,9 @@ import {
 import { MediaGrid } from './MediaGrid'
 import { PostCard } from './PostCard'
 import { TestimonialsPanel } from './TestimonialsPanel'
+import { useUrlTab } from './useUrlTab'
 
-type Tab = 'about' | 'posts' | 'media' | 'connections' | 'testimonials'
+type Tab = ProfileTab
 
 const TABS: { value: Tab; label: string; icon: typeof UserIcon }[] = [
   { value: 'about', label: 'About', icon: UserIcon },
@@ -54,6 +56,8 @@ export function ProfileTabs({
   followingCount,
   testimonials,
   isPublicPage = false,
+  initialTab,
+  initialMediaType,
 }: {
   initialPosts: PostCardData[]
   initialHasMore: boolean
@@ -67,16 +71,29 @@ export function ProfileTabs({
   followingCount: number
   testimonials: ProfileTestimonials
   isPublicPage?: boolean
+  initialTab?: Tab
+  initialMediaType?: MediaGridTab
 }) {
-  const [tab, setTab] = useState<Tab>('about')
-  // Panels mount lazily on first visit, then stay mounted (hidden) so tab
-  // switches don't lose Feed pagination or refetch the media grid.
-  const [visited, setVisited] = useState<ReadonlySet<Tab>>(() => new Set(['about']))
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
-
   // The public page hides Connections — only signed-in users see it.
   const tabs = isPublicPage ? TABS.filter((t) => t.value !== 'connections') : TABS
+  // ?tab= persists the selection across refreshes and shares.
+  const [tab, select] = useUrlTab<ProfileTab>(
+    isPublicPage ? PUBLIC_PROFILE_TABS : PROFILE_TABS,
+    'about',
+    initialTab,
+  )
   const activeIndex = tabs.findIndex((t) => t.value === tab)
+
+  // Panels mount lazily on first visit, then stay mounted (hidden) so tab
+  // switches don't lose Feed pagination or refetch the media grid. Adjusting
+  // during render covers URL-driven changes (back/forward) too, not just clicks.
+  const [visited, setVisited] = useState<ReadonlySet<Tab>>(() => new Set([tab]))
+  const [prevTab, setPrevTab] = useState(tab)
+  if (tab !== prevTab) {
+    setPrevTab(tab)
+    if (!visited.has(tab)) setVisited((prev) => new Set(prev).add(tab))
+  }
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   // Pinned-posts carousel — chevron buttons scroll the rail and hide at the
   // edges so there's no visible scrollbar.
@@ -98,11 +115,6 @@ export function ProfileTabs({
       left: dir * pinnedRailRef.current.clientWidth * 0.85,
       behavior: 'smooth',
     })
-  }
-
-  const select = (next: Tab) => {
-    setTab(next)
-    setVisited((prev) => (prev.has(next) ? prev : new Set(prev).add(next)))
   }
 
   // WAI-ARIA tabs keyboard pattern — selection follows focus, so arrows move
@@ -274,6 +286,7 @@ export function ProfileTabs({
             publicOnly={isPublicPage}
             isSelf={isSelf}
             username={username}
+            initialType={initialMediaType}
           />
         </div>
       )}

@@ -8,12 +8,25 @@ import { SettingsTabs } from '@/components/SettingsTabs'
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
 import { avatarUrl, coverUrl } from '@/lib/serialize'
+import { SETTINGS_TABS, type SettingsTab } from '@/lib/tabs'
 
 export const metadata = { title: 'Settings' }
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>
+}) {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
+
+  // ?tab= persists the selected settings tab across refreshes.
+  const { tab: rawTab } = await searchParams
+  const initialTab: SettingsTab | undefined = (SETTINGS_TABS as readonly string[]).includes(
+    rawTab ?? '',
+  )
+    ? (rawTab as SettingsTab)
+    : undefined
 
   const payload = await getPayloadClient()
   const fullUser = await payload.findByID({
@@ -35,6 +48,7 @@ export default async function SettingsPage() {
       <h1 className="text-xl font-bold">Settings</h1>
 
       <SettingsTabs
+        initialTab={initialTab}
         profile={
           <>
             {/* Account summary — iOS profile cell */}
