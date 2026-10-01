@@ -303,6 +303,78 @@ export function VideokeRoom({
         </div>
       </header>
 
+      {/* Members */}
+      <section className="glass mb-4 rounded-3xl p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+            In the room
+          </p>
+          {isHost && !ended && <InvitePicker room={room} mutuals={mutuals} onRoom={setRoom} />}
+        </div>
+        {/* Join requests — members who knocked while the door was shut.
+            Letting them in goes through the normal invite path. */}
+        {isHost && !ended && (room.requests ?? []).length > 0 && (
+          <div className="mb-3 rounded-2xl bg-black/[0.04] p-3 dark:bg-white/5">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+              Asking to join
+            </p>
+            <ul className="flex flex-col gap-2">
+              {(room.requests ?? []).map((r) => (
+                <li key={r.id} className="flex items-center gap-2.5">
+                  <Avatar src={r.avatarUrl} name={r.name} size="sm" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{r.name}</span>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => act(inviteToVideoke(room.id, [r.id]))}
+                    className="btn-primary shrink-0 rounded-full px-3.5 py-1.5 text-xs"
+                  >
+                    Let in
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-4">
+          {room.members.map((m) => (
+            <div key={m.id} className="flex flex-col items-center gap-1">
+              <span className="relative">
+                <Avatar src={m.avatarUrl} name={m.name} size="md" />
+                {m.id === room.hostId ? (
+                  <span
+                    title="Host"
+                    className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-amber-950 ring-2 ring-white dark:ring-neutral-900"
+                  >
+                    <StarIcon className="h-2.5 w-2.5" />
+                  </span>
+                ) : m.id !== viewerId ? (
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-neutral-900 ${
+                      onlineIds.has(m.id) ? 'bg-emerald-500' : 'bg-neutral-300'
+                    }`}
+                  />
+                ) : null}
+              </span>
+              <span className="max-w-16 truncate text-[11px] text-neutral-600 dark:text-neutral-300">
+                {m.name.split(' ')[0]}
+                {m.id === room.hostId ? ' · host' : ''}
+              </span>
+            </div>
+          ))}
+          {room.invites.map((i) => (
+            <div key={i.user.id} className="flex flex-col items-center gap-1 opacity-60">
+              <span className="rounded-full border-2 border-dashed border-neutral-300 p-0.5 dark:border-neutral-600">
+                <Avatar src={i.user.avatarUrl} name={i.user.name} size="md" />
+              </span>
+              <span className="max-w-16 truncate text-[11px] text-neutral-500">
+                {i.user.name.split(' ')[0]} · invited
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {ended && (
         <div className="glass mb-4 rounded-2xl px-4 py-3 text-center text-sm font-medium text-neutral-500">
           This videoke room has ended.
@@ -444,78 +516,6 @@ export function VideokeRoom({
               )}
             </div>
           )}
-        </div>
-      </section>
-
-      {/* Members */}
-      <section className="glass mb-4 rounded-3xl p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
-            In the room
-          </p>
-          {isHost && !ended && <InvitePicker room={room} mutuals={mutuals} onRoom={setRoom} />}
-        </div>
-        {/* Join requests — members who knocked while the door was shut.
-            Letting them in goes through the normal invite path. */}
-        {isHost && !ended && (room.requests ?? []).length > 0 && (
-          <div className="mb-3 rounded-2xl bg-black/[0.04] p-3 dark:bg-white/5">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
-              Asking to join
-            </p>
-            <ul className="flex flex-col gap-2">
-              {(room.requests ?? []).map((r) => (
-                <li key={r.id} className="flex items-center gap-2.5">
-                  <Avatar src={r.avatarUrl} name={r.name} size="sm" />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{r.name}</span>
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => act(inviteToVideoke(room.id, [r.id]))}
-                    className="btn-primary shrink-0 rounded-full px-3.5 py-1.5 text-xs"
-                  >
-                    Let in
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <div className="flex flex-wrap items-center gap-4">
-          {room.members.map((m) => (
-            <div key={m.id} className="flex flex-col items-center gap-1">
-              <span className="relative">
-                <Avatar src={m.avatarUrl} name={m.name} size="md" />
-                {m.id === room.hostId ? (
-                  <span
-                    title="Host"
-                    className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-amber-950 ring-2 ring-white dark:ring-neutral-900"
-                  >
-                    <StarIcon className="h-2.5 w-2.5" />
-                  </span>
-                ) : m.id !== viewerId ? (
-                  <span
-                    className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-neutral-900 ${
-                      onlineIds.has(m.id) ? 'bg-emerald-500' : 'bg-neutral-300'
-                    }`}
-                  />
-                ) : null}
-              </span>
-              <span className="max-w-16 truncate text-[11px] text-neutral-600 dark:text-neutral-300">
-                {m.name.split(' ')[0]}
-                {m.id === room.hostId ? ' · host' : ''}
-              </span>
-            </div>
-          ))}
-          {room.invites.map((i) => (
-            <div key={i.user.id} className="flex flex-col items-center gap-1 opacity-60">
-              <span className="rounded-full border-2 border-dashed border-neutral-300 p-0.5 dark:border-neutral-600">
-                <Avatar src={i.user.avatarUrl} name={i.user.name} size="md" />
-              </span>
-              <span className="max-w-16 truncate text-[11px] text-neutral-500">
-                {i.user.name.split(' ')[0]} · invited
-              </span>
-            </div>
-          ))}
         </div>
       </section>
 

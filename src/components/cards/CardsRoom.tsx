@@ -18,7 +18,7 @@ import { MutualInvitePicker } from '@/components/MutualInvitePicker'
 import { LIVE_EVENT, type LiveEventDetail, toast } from '@/lib/events'
 import type { CardRoomData } from '@/lib/cards'
 import type { MutualHead } from '@/lib/mutuals'
-import { UNGGOY_CARD } from '@/lib/unggoy'
+import { UNGGOY_CARD, type CardCode } from '@/lib/unggoy'
 
 import { Avatar } from '../Avatar'
 import { Spinner } from '../Spinner'
@@ -289,258 +289,6 @@ export function CardsRoom({
         </div>
       </header>
 
-      {ended && (
-        <div className="glass mb-4 rounded-2xl px-4 py-3 text-center text-sm font-medium text-neutral-500">
-          This card room has ended.
-        </div>
-      )}
-
-      {/* The table — dark felt panel holding the fans, ticker, and mic bar */}
-      <section className="relative mb-4 overflow-hidden rounded-3xl bg-neutral-950 text-white shadow-xl shadow-black/25 ring-1 ring-white/10">
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -top-24 left-1/4 h-48 w-48 rounded-full bg-accent-500/30 blur-3xl"
-        />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -bottom-24 right-1/4 h-48 w-48 rounded-full bg-accent-400/20 blur-3xl"
-        />
-
-        <div className="relative px-4 pb-5 pt-5 sm:px-6">
-          {game.state === 'lobby' ? (
-            <div className="flex flex-col items-center gap-3 py-8 text-center">
-              {/* Idle deck — a fanned stack of backs as the table's anchor */}
-              <span className="relative mb-1 flex h-24 w-24 items-center justify-center">
-                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <PlayingCard faceDown size="md" style={{ transform: 'rotate(-12deg)' }} />
-                </span>
-                <span className="absolute left-[56%] top-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <PlayingCard faceDown size="md" style={{ transform: 'rotate(4deg)' }} />
-                </span>
-                <span className="absolute left-[64%] top-[54%] -translate-x-1/2 -translate-y-1/2">
-                  <PlayingCard faceDown size="md" style={{ transform: 'rotate(18deg)' }} />
-                </span>
-              </span>
-              <p className="text-sm font-medium text-white/60">
-                {isHost
-                  ? room.members.length >= 2
-                    ? 'The table is set — deal when everyone’s in.'
-                    : 'Invite a mutual to fill the table — Unggoy needs at least 2 players.'
-                  : 'Waiting for the host to deal.'}
-              </p>
-              {isHost && !ended && (
-                <button
-                  type="button"
-                  disabled={pending || room.members.length < 2}
-                  onClick={() => act(startUnggoy(room.id))}
-                  className="btn-primary mt-1 flex items-center gap-2 rounded-full px-5 py-2 text-sm disabled:opacity-50"
-                >
-                  {pending ? <Spinner className="h-4 w-4" /> : null}
-                  Deal Unggoy-Ungguyan
-                </button>
-              )}
-            </div>
-          ) : (
-            <>
-              {/* The felt — vignetted green table surface with an inner rim */}
-              <div className="relative rounded-[2rem] bg-[radial-gradient(130%_110%_at_50%_0%,rgba(22,128,90,0.32),rgba(7,58,43,0.42)_52%,rgba(4,28,21,0.7))] px-3 pb-6 pt-5 ring-1 ring-inset ring-emerald-300/15 sm:px-5">
-                {/* Opponents arc — seat order, me excluded. The turn holder's
-                    pod pulses; on my turn the source's fan is tappable. */}
-                <ul className="flex flex-wrap items-start justify-center gap-x-5 gap-y-5 sm:gap-x-8">
-                  {opponents.map((p) => {
-                    const tappable = myTurn && p.isDrawSource
-                    return (
-                      <li key={p.user.id} className="flex w-[4.5rem] flex-col items-center">
-                        <span className="relative">
-                          <Avatar src={p.user.avatarUrl} name={p.user.name} size="md" />
-                          {p.isTurn && (
-                            <span className="absolute -inset-0.5 animate-pulse rounded-full ring-2 ring-accent-400" />
-                          )}
-                          {p.isOut ? (
-                            <span
-                              title="Safe — out of this round"
-                              className="absolute -bottom-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-emerald-950/60"
-                            >
-                              <CheckIcon className="h-2.5 w-2.5" />
-                            </span>
-                          ) : (
-                            p.user.id === room.hostId && (
-                              <span
-                                title="Host"
-                                className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-amber-950 ring-2 ring-emerald-950/60"
-                              >
-                                <StarIcon className="h-2.5 w-2.5" />
-                              </span>
-                            )
-                          )}
-                        </span>
-                        <span
-                          className={`mt-1.5 max-w-full truncate text-[11px] ${
-                            p.isTurn ? 'font-semibold text-accent-300' : 'text-white/65'
-                          }`}
-                        >
-                          {p.user.name.split(' ')[0]}
-                          {p.isTurn ? '’s turn' : ''}
-                        </span>
-                        {p.isOut ? (
-                          <span className="mt-1.5 flex min-h-10 items-start">
-                            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300 ring-1 ring-emerald-400/25">
-                              Safe
-                            </span>
-                          </span>
-                        ) : (
-                          <span className="mt-1.5 flex min-h-10 flex-wrap items-start justify-center -space-x-4">
-                            {Array.from({ length: p.cardCount }, (_, i) => (
-                              <PlayingCard
-                                key={i}
-                                faceDown
-                                size="xs"
-                                highlight={tappable && drawBusy !== i}
-                                onClick={tappable ? () => draw(i) : undefined}
-                              />
-                            ))}
-                          </span>
-                        )}
-                        {tappable && (
-                          <span className="mt-1 text-[9px] font-bold uppercase tracking-wider text-accent-300">
-                            Pick one
-                          </span>
-                        )}
-                      </li>
-                    )
-                  })}
-                </ul>
-
-                {/* Center of the felt — the revealed unggoy on finish, else a
-                    decorative deck stack and the turn ticker. */}
-                <div className="mt-5 flex flex-col items-center gap-3">
-                  {finished ? (
-                    <>
-                      <PlayingCard code={UNGGOY_CARD} size="lg" dealStagger={0} />
-                      <p className="text-center text-sm font-semibold text-white">
-                        {game.loser
-                          ? `${game.loser.name} got stuck with the unggoy!`
-                          : 'Round over.'}
-                      </p>
-                      {isHost && !ended && (
-                        <button
-                          type="button"
-                          disabled={pending}
-                          onClick={() => act(rematchUnggoy(room.id))}
-                          className="btn-primary flex items-center gap-2 rounded-full px-5 py-2 text-sm disabled:opacity-50"
-                        >
-                          {pending ? <Spinner className="h-4 w-4" /> : null}
-                          Deal again
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <span className="relative flex h-10 w-16 items-center justify-center">
-                        <PlayingCard
-                          faceDown
-                          size="xs"
-                          style={{ transform: 'rotate(-10deg) translateX(-7px)' }}
-                        />
-                        <PlayingCard faceDown size="xs" style={{ transform: 'rotate(3deg)' }} />
-                        <span className="absolute left-[55%]">
-                          <PlayingCard
-                            faceDown
-                            size="xs"
-                            style={{ transform: 'rotate(14deg) translateY(-2px)' }}
-                          />
-                        </span>
-                      </span>
-                      <p
-                        className={`rounded-full px-3.5 py-1.5 text-center text-xs font-medium ring-1 backdrop-blur-sm ${
-                          myTurn
-                            ? 'bg-accent-500/20 text-accent-200 ring-accent-400/40'
-                            : 'bg-black/40 text-white/60 ring-white/10'
-                        }`}
-                      >
-                        {ticker}
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* My hand — fanned face-up along the table's bottom edge,
-                  pivoting at the base like cards held in a real hand. */}
-              {game.myCards !== null ? (
-                game.myCards.length > 0 ? (
-                  <MyHand cards={game.myCards} />
-                ) : (
-                  <div className="mt-4 flex justify-center">
-                    <p className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
-                      <CheckIcon className="h-3.5 w-3.5" />
-                      You’re out — safe this round!
-                    </p>
-                  </div>
-                )
-              ) : playing ? (
-                <p className="mt-4 text-center text-xs text-white/40">
-                  Watching this round — the next deal seats you.
-                </p>
-              ) : null}
-            </>
-          )}
-        </div>
-
-        {/* Table bar — voice mic plus the room state line */}
-        <div className="relative flex items-center justify-between gap-2 border-t border-white/10 bg-white/[0.04] px-4 py-3">
-          <p className="min-w-0 flex-1 truncate text-xs text-white/50">
-            {ended
-              ? 'Game over.'
-              : playing
-                ? `Round ${game.round} · ${game.players.filter((p) => !p.isOut).length} still in`
-                : finished
-                  ? `Round ${game.round} finished`
-                  : 'Unggoy-Ungguyan · last one holding the monkey loses'}
-          </p>
-          {isMember && !ended && <CardsMic roomId={room.id} />}
-        </div>
-      </section>
-
-      {/* How to play — a little rules card under the table, tucked away by
-          default; first-timers can flip it open. */}
-      <section className="glass mb-4 overflow-hidden rounded-3xl">
-        <button
-          type="button"
-          onClick={() => setGuideOpen((v) => !v)}
-          className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
-          aria-expanded={guideOpen}
-        >
-          <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
-            <QuestionIcon className="h-3.5 w-3.5" />
-            How to play Unggoy-Ungguyan
-          </p>
-          <ChevronDownIcon
-            className={`h-4 w-4 text-neutral-400 transition-transform ${guideOpen ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {guideOpen && (
-          <ol className="flex flex-col gap-2.5 border-t border-black/5 px-4 py-3.5 text-[13px] leading-snug text-neutral-600 dark:border-white/10 dark:text-neutral-300">
-            <Rule n={1}>
-              Matching pairs are <b>tossed out automatically</b> — you’ll only ever hold one card
-              per rank.
-            </Rule>
-            <Rule n={2}>
-              When it&apos;s your turn, <b>tap any face-down card</b> from the player before you —
-              their cards glow when it&apos;s your go.
-            </Rule>
-            <Rule n={3}>
-              Drew a card that makes a pair? That pair gets tossed too. <b>Lose all your cards</b>{' '}
-              and you&apos;re safe for the round.
-            </Rule>
-            <Rule n={4}>
-              The <b>Q♠ never finds a match</b> — whoever&apos;s stuck with it last is the unggoy
-              and loses. Everyone who made it out earns <b>10 points</b>.
-            </Rule>
-          </ol>
-        )}
-      </section>
-
       {/* Members */}
       <section className="glass mb-4 rounded-3xl p-4">
         <div className="mb-3 flex items-center justify-between">
@@ -623,6 +371,257 @@ export function CardsRoom({
           ))}
         </div>
       </section>
+
+      {ended && (
+        <div className="glass mb-4 rounded-2xl px-4 py-3 text-center text-sm font-medium text-neutral-500">
+          This card room has ended.
+        </div>
+      )}
+
+      {/* The table — dark felt panel holding the fans, ticker, and mic bar */}
+      <section className="relative mb-4 overflow-hidden rounded-3xl bg-neutral-950 text-white shadow-xl shadow-black/25 ring-1 ring-white/10">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-24 left-1/4 h-48 w-48 rounded-full bg-accent-500/30 blur-3xl"
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -bottom-24 right-1/4 h-48 w-48 rounded-full bg-accent-400/20 blur-3xl"
+        />
+
+        <div className="relative px-4 pb-5 pt-5 sm:px-6">
+          {game.state === 'lobby' ? (
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              {/* Idle deck — a fanned stack of backs as the table's anchor */}
+              <span className="relative mb-1 flex h-24 w-24 items-center justify-center">
+                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                  <PlayingCard faceDown size="md" style={{ transform: 'rotate(-12deg)' }} />
+                </span>
+                <span className="absolute left-[56%] top-1/2 -translate-x-1/2 -translate-y-1/2">
+                  <PlayingCard faceDown size="md" style={{ transform: 'rotate(4deg)' }} />
+                </span>
+                <span className="absolute left-[64%] top-[54%] -translate-x-1/2 -translate-y-1/2">
+                  <PlayingCard faceDown size="md" style={{ transform: 'rotate(18deg)' }} />
+                </span>
+              </span>
+              <p className="text-sm font-medium text-white/60">
+                {isHost
+                  ? room.members.length >= 2
+                    ? 'The table is set — deal when everyone’s in.'
+                    : 'Invite a mutual to fill the table — Unggoy needs at least 2 players.'
+                  : 'Waiting for the host to deal.'}
+              </p>
+              {isHost && !ended && (
+                <button
+                  type="button"
+                  disabled={pending || room.members.length < 2}
+                  onClick={() => act(startUnggoy(room.id))}
+                  className="btn-primary mt-1 flex items-center gap-2 rounded-full px-5 py-2 text-sm disabled:opacity-50"
+                >
+                  {pending ? <Spinner className="h-4 w-4" /> : null}
+                  Deal Unggoy-Ungguyan
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* The felt — vignetted green table surface with an inner rim */}
+              <div className="relative rounded-[2rem] bg-[radial-gradient(130%_110%_at_50%_0%,rgba(22,128,90,0.32),rgba(7,58,43,0.42)_52%,rgba(4,28,21,0.7))] px-3 pb-6 pt-5 ring-1 ring-inset ring-emerald-300/15 sm:px-5">
+                {/* Opponents arc — seat order, me excluded. The turn holder's
+                    pod pulses; on my turn the source's fan is tappable. */}
+                <ul className="flex flex-wrap items-start justify-center gap-x-5 gap-y-5 sm:gap-x-8">
+                  {opponents.map((p) => {
+                    const tappable = myTurn && p.isDrawSource
+                    return (
+                      <li key={p.user.id} className="flex w-auto flex-col items-center">
+                        <span className="relative">
+                          <Avatar src={p.user.avatarUrl} name={p.user.name} size="md" />
+                          {p.isTurn && (
+                            <span className="absolute -inset-0.5 animate-pulse rounded-full ring-2 ring-accent-400" />
+                          )}
+                          {p.isOut ? (
+                            <span
+                              title="Safe — out of this round"
+                              className="absolute -bottom-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-emerald-950/60"
+                            >
+                              <CheckIcon className="h-2.5 w-2.5" />
+                            </span>
+                          ) : (
+                            p.user.id === room.hostId && (
+                              <span
+                                title="Host"
+                                className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-amber-950 ring-2 ring-emerald-950/60"
+                              >
+                                <StarIcon className="h-2.5 w-2.5" />
+                              </span>
+                            )
+                          )}
+                        </span>
+                        <span
+                          className={`mt-1.5 max-w-36 truncate text-[11px] ${
+                            p.isTurn ? 'font-semibold text-accent-300' : 'text-white/65'
+                          }`}
+                        >
+                          {p.user.name.split(' ')[0]}
+                          {p.isTurn ? '’s turn' : ''}
+                        </span>
+                        {p.isOut ? (
+                          <span className="mt-1.5 flex min-h-[5.5rem] items-start">
+                            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300 ring-1 ring-emerald-400/25">
+                              Safe
+                            </span>
+                          </span>
+                        ) : (
+                          <CardFan
+                            count={p.cardCount}
+                            faceDown
+                            flip
+                            size="md"
+                            width={200}
+                            tappable={tappable}
+                            drawBusy={drawBusy}
+                            onDraw={draw}
+                          />
+                        )}
+                        {tappable && (
+                          <span className="mt-1 text-[9px] font-bold uppercase tracking-wider text-accent-300">
+                            Pick one
+                          </span>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+
+                {/* Center of the felt — the revealed unggoy on finish, else a
+                    decorative deck stack and the turn ticker. */}
+                <div className="mt-5 flex flex-col items-center gap-3">
+                  {finished ? (
+                    <>
+                      <PlayingCard code={UNGGOY_CARD} size="lg" dealStagger={0} />
+                      <p className="text-center text-sm font-semibold text-white">
+                        {game.loser
+                          ? `${game.loser.name} got stuck with the unggoy!`
+                          : 'Round over.'}
+                      </p>
+                      {isHost && !ended && (
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => act(rematchUnggoy(room.id))}
+                          className="btn-primary flex items-center gap-2 rounded-full px-5 py-2 text-sm disabled:opacity-50"
+                        >
+                          {pending ? <Spinner className="h-4 w-4" /> : null}
+                          Deal again
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <span className="relative flex h-10 w-16 items-center justify-center">
+                        <PlayingCard
+                          faceDown
+                          size="xs"
+                          style={{ transform: 'rotate(-10deg) translateX(-7px)' }}
+                        />
+                        <PlayingCard faceDown size="xs" style={{ transform: 'rotate(3deg)' }} />
+                        <span className="absolute left-[55%]">
+                          <PlayingCard
+                            faceDown
+                            size="xs"
+                            style={{ transform: 'rotate(14deg) translateY(-2px)' }}
+                          />
+                        </span>
+                      </span>
+                      <p
+                        className={`rounded-full px-3.5 py-1.5 text-center text-xs font-medium ring-1 backdrop-blur-sm ${
+                          myTurn
+                            ? 'bg-accent-500/20 text-accent-200 ring-accent-400/40'
+                            : 'bg-black/40 text-white/60 ring-white/10'
+                        }`}
+                      >
+                        {ticker}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* My hand — fanned face-up along the table's bottom edge,
+                  pivoting at the base like cards held in a real hand. */}
+              {game.myCards !== null ? (
+                game.myCards.length > 0 ? (
+                  <CardFan codes={game.myCards} width={340} />
+                ) : (
+                  <div className="mt-4 flex justify-center">
+                    <p className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
+                      <CheckIcon className="h-3.5 w-3.5" />
+                      You’re out — safe this round!
+                    </p>
+                  </div>
+                )
+              ) : playing ? (
+                <p className="mt-4 text-center text-xs text-white/40">
+                  Watching this round — the next deal seats you.
+                </p>
+              ) : null}
+            </>
+          )}
+        </div>
+
+        {/* Table bar — voice mic plus the room state line */}
+        <div className="relative flex items-center justify-between gap-2 border-t border-white/10 bg-white/[0.04] px-4 py-3">
+          <p className="min-w-0 flex-1 truncate text-xs text-white/50">
+            {ended
+              ? 'Game over.'
+              : playing
+                ? `Round ${game.round} · ${game.players.filter((p) => !p.isOut).length} still in`
+                : finished
+                  ? `Round ${game.round} finished`
+                  : 'Unggoy-Ungguyan · last one holding the monkey loses'}
+          </p>
+          {isMember && !ended && <CardsMic roomId={room.id} />}
+        </div>
+      </section>
+
+      {/* How to play — a little rules card under the table, tucked away by
+          default; first-timers can flip it open. */}
+      <section className="glass mb-4 overflow-hidden rounded-3xl">
+        <button
+          type="button"
+          onClick={() => setGuideOpen((v) => !v)}
+          className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
+          aria-expanded={guideOpen}
+        >
+          <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+            <QuestionIcon className="h-3.5 w-3.5" />
+            How to play Unggoy-Ungguyan
+          </p>
+          <ChevronDownIcon
+            className={`h-4 w-4 text-neutral-400 transition-transform ${guideOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
+        {guideOpen && (
+          <ol className="flex flex-col gap-2.5 border-t border-black/5 px-4 py-3.5 text-[13px] leading-snug text-neutral-600 dark:border-white/10 dark:text-neutral-300">
+            <Rule n={1}>
+              Matching pairs are <b>tossed out automatically</b> — you’ll only ever hold one card
+              per rank.
+            </Rule>
+            <Rule n={2}>
+              When it&apos;s your turn, <b>tap any face-down card</b> from the player before you —
+              their cards glow when it&apos;s your go.
+            </Rule>
+            <Rule n={3}>
+              Drew a card that makes a pair? That pair gets tossed too. <b>Lose all your cards</b>{' '}
+              and you&apos;re safe for the round.
+            </Rule>
+            <Rule n={4}>
+              The <b>Q♠ never finds a match</b> — whoever&apos;s stuck with it last is the unggoy
+              and loses. Everyone who made it out earns <b>10 points</b>.
+            </Rule>
+          </ol>
+        )}
+      </section>
     </div>
   )
 }
@@ -639,27 +638,56 @@ function Rule({ n, children }: { n: number; children: React.ReactNode }) {
   )
 }
 
-// The viewer's hand — cards fanned across the bottom of the table, rotated
-// around a pivot below the felt so it reads like a held hand. Pitch tightens
+// A fanned hand. The viewer's arcs upward from a pivot below the felt so it
+// reads like a held hand; an opponent's is the same fan mirrored (`flip`) and
+// face-down, like looking at their cards across a real table. Pitch tightens
 // as the hand grows so even 20+ cards stay on one row.
-function MyHand({ cards }: { cards: string[] }) {
-  const n = cards.length
+function CardFan({
+  count,
+  codes,
+  faceDown = false,
+  size = 'md',
+  flip = false,
+  width = 340,
+  tappable = false,
+  drawBusy = null,
+  onDraw,
+}: {
+  count?: number
+  codes?: CardCode[]
+  faceDown?: boolean
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+  flip?: boolean
+  /** Approximate horizontal room the fan should fit inside. */
+  width?: number
+  tappable?: boolean
+  drawBusy?: number | null
+  onDraw?: (i: number) => void
+}) {
+  const n = codes?.length ?? count ?? 0
   const mid = (n - 1) / 2
+  const cardW = size === 'xs' ? 28 : size === 'sm' ? 40 : size === 'lg' ? 68 : 56
   // Rotation per card caps the fan near ±25°; pitch keeps the row inside the
-  // panel (~340px usable) instead of wrapping.
+  // panel instead of wrapping.
   const step = n > 1 ? Math.min(5, 44 / n) : 0
-  const pitch = n > 1 ? Math.min(26, Math.max(9, 340 / n)) : 0
+  const pitch = n > 1 ? Math.min(cardW * 0.5, Math.max(4, width / n)) : 0
   return (
-    <div className="mt-4 flex items-end justify-center pb-2 pt-1">
-      {cards.map((code, i) => (
+    <div
+      className={`flex justify-center ${flip ? 'mt-1 items-start pt-2.5' : 'mt-4 items-end pb-2 pt-1'}`}
+    >
+      {Array.from({ length: n }, (_, i) => (
         <PlayingCard
-          key={code}
-          code={code}
+          key={codes ? codes[i] : i}
+          code={codes?.[i]}
+          faceDown={faceDown}
+          size={size}
           dealStagger={i}
+          highlight={tappable && drawBusy !== i}
+          onClick={tappable && onDraw ? () => onDraw(i) : undefined}
           style={{
-            marginLeft: i === 0 ? 0 : pitch - 56,
-            transform: `rotate(${(i - mid) * step}deg) translateY(${Math.abs(i - mid) * 1.6}px)`,
-            transformOrigin: '50% 130%',
+            marginLeft: i === 0 ? 0 : pitch - cardW,
+            transform: `rotate(${(flip ? mid - i : i - mid) * step}deg) translateY(${(flip ? -1 : 1) * Math.abs(i - mid) * 1.6}px)`,
+            transformOrigin: flip ? '50% -30%' : '50% 130%',
           }}
         />
       ))}

@@ -13,8 +13,10 @@ const SUIT_GLYPH: Record<string, string> = { S: '♠', H: '♥', D: '♦', C: '�
 const RED_SUITS = new Set(['H', 'D'])
 
 const SIZES = {
-  // Mini backs fanned under an opponent's name — tap targets when drawing.
+  // Mini backs — the lobby's idle deck stack.
   xs: 'h-10 w-7 rounded-md',
+  // Opponents' fanned hands — tap targets when drawing.
+  sm: 'h-14 w-10 rounded-md',
   // The viewer's own hand.
   md: 'h-20 w-14 rounded-lg',
   // The revealed unggoy at center table.
