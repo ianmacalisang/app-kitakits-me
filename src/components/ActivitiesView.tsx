@@ -13,8 +13,9 @@ import {
 } from 'react'
 
 import { loadMoreActivities } from '@/actions/activities'
-import type { ActivityData } from '@/lib/serialize'
+import type { ActivityData, Paged } from '@/lib/serialize'
 
+import { ActivityListSkeleton } from './ActivityListSkeleton'
 import { Avatar } from './Avatar'
 import { BadgeMark } from './BadgeMark'
 import { BadgeSheet } from './BadgeSheet'
@@ -482,6 +483,32 @@ export function ActivitiesView({
       <BadgeSheet activity={badgeActivity} onCloseAction={closeBadgeSheet} />
     </div>
   )
+}
+
+// Lazy variant of the Activities panel — fetches the first page via the
+// loadMoreActivities action only when the tab is opened, so /home loads for
+// the feed/saved tabs never run the activities query. Once mounted it stays
+// mounted (panels hide rather than unmount), and ActivitiesView's own
+// stale-on-activation refresh takes over from there. Direct ?tab=activities
+// loads get the SSR panel from the page instead of this.
+export function LazyActivities() {
+  const active = useContext(HomeTabContext) === 'activities'
+  const [data, setData] = useState<Paged<ActivityData> | null>(null)
+  const fetchingRef = useRef(false)
+
+  useEffect(() => {
+    if (!active || data || fetchingRef.current) return
+    fetchingRef.current = true
+    loadMoreActivities(1)
+      .then(setData)
+      // Keep the skeleton up — toggling away and back retries.
+      .catch(() => {
+        fetchingRef.current = false
+      })
+  }, [active, data])
+
+  if (!data) return active ? <ActivityListSkeleton /> : null
+  return <ActivitiesView activities={data.items} initialHasMore={data.hasMore} />
 }
 
 // Timeline rail outside the card — per-row segments join into one continuous
