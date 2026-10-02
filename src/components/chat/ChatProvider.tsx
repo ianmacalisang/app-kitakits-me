@@ -70,6 +70,10 @@ export const useChat = () => useContext(ChatContext)
 
 const WS_URL = process.env.NEXT_PUBLIC_CHAT_WS_URL ?? ''
 
+// Frames queued while the socket is reconnecting are capped — a user typing
+// through an outage shouldn't replay a wall of stale messages on return.
+const OUTBOX_MAX = 50
+
 // Owns the single WebSocket connection for the whole app session. Mounted in
 // the (app) layout above AppNav so invites can ping the user on any page.
 // All state lives in this client boundary — nothing is persisted server-side.
@@ -92,6 +96,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Debounce for mutuals:refresh — a batch follow (onboarding) emits one
   // event per edge, but only one reconnect is needed.
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Set once auth:ok lands; frames sent before that would be dropped
+  // server-side anyway (it ignores everything from unauthed sockets).
+  const authedRef = useRef(false)
+  const outboxRef = useRef<Record<string, unknown>[]>([])
 
   const [status, setStatus] = useState<ChatStatus>(enabled ? 'connecting' : 'disabled')
   const [self, setSelf] = useState<ChatUser | null>(null)
@@ -140,10 +148,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       switch (msg.type) {
         case 'auth:ok': {
           retriesRef.current = 0
+          authedRef.current = true
           setStatus('online')
           setSelf(msg.self as ChatUser)
           selfIdRef.current = (msg.self as ChatUser).id
           setOnlineMap(new Map((msg.online as ChatUser[]).map((u) => [u.id, u])))
+          // Flush the outbox — the server has already re-added this socket to
+          // its rooms by the time auth:ok arrives, so queued msgs land
+          // normally.
+          const queued = outboxRef.current
+          outboxRef.current = []
+          const ws = wsRef.current
+          if (ws?.readyState === WebSocket.OPEN) {
+            for (const frame of queued) ws.send(JSON.stringify(frame))
+          }
           break
         }
         case 'presence:join': {
@@ -414,6 +432,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           ws.onclose = () => {
             if (wsRef.current === ws) wsRef.current = null
             if (cancelled) return
+            authedRef.current = false
             setStatus('connecting')
             setOnlineMap(new Map())
             // Pending invites die server-side the moment we go fully offline
@@ -437,7 +456,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             for (const timer of typingTimersRef.current.values()) clearTimeout(timer)
             typingTimersRef.current.clear()
             const attempt = retriesRef.current++
-            const delay = Math.min(30_000, 1_000 * 2 ** attempt)
+            // 50–100% jitter so a fleet reconnecting after a server restart
+            // doesn't retry in lockstep.
+            const delay = Math.min(30_000, 1_000 * 2 ** attempt) * (0.5 + Math.random() * 0.5)
             retryTimerRef.current = setTimeout(connect, delay)
           }
           ws.onerror = () => ws.close()
@@ -447,7 +468,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           if (cancelled) return
           setStatus('offline')
           const attempt = retriesRef.current++
-          const delay = Math.min(30_000, 1_000 * 2 ** attempt)
+          const delay = Math.min(30_000, 1_000 * 2 ** attempt) * (0.5 + Math.random() * 0.5)
           retryTimerRef.current = setTimeout(connect, delay)
         })
     }
@@ -474,12 +495,23 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       typingTimers.clear()
       wsRef.current?.close()
       wsRef.current = null
+      outboxRef.current = []
+      authedRef.current = false
     }
   }, [enabled, handleMessage])
 
   const send_ = useCallback((payload: Record<string, unknown>) => {
     const ws = wsRef.current
-    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload))
+    if (ws?.readyState === WebSocket.OPEN && authedRef.current) {
+      ws.send(JSON.stringify(payload))
+      return
+    }
+    // Queue frames until the socket re-auths — a message typed mid-reconnect
+    // should deliver, not vanish. Typing pings are dropped: they'd arrive
+    // stale anyway.
+    if (payload.type === 'typing') return
+    const outbox = outboxRef.current
+    if (outbox.length < OUTBOX_MAX) outbox.push(payload)
   }, [])
 
   const invite = useCallback((to: number) => send_({ type: 'invite', to }), [send_])

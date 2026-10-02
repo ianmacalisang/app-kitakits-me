@@ -9,7 +9,7 @@ import { Avatar } from './Avatar'
 import { BadgeMark } from './BadgeMark'
 import { CategoryChip } from './CategoryChip'
 import { CommentsSheet } from './CommentsSheet'
-import { CommentIcon, LockIcon } from './icons'
+import { CommentIcon, LockIcon, UsersIcon } from './icons'
 import { LikeButton } from './LikeButton'
 import { PostVideo } from './PostVideo'
 import { RelativeTime } from './RelativeTime'
@@ -89,6 +89,9 @@ export function ReelPost({ post }: { post: PostCardData }) {
               @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
               {post.visibility === 'followers' && (
                 <LockIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
+              )}
+              {post.visibility === 'mutuals' && (
+                <UsersIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
               )}
             </p>
           </div>

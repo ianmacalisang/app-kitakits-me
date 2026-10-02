@@ -14,7 +14,7 @@ import { Avatar } from './Avatar'
 import { BadgeMark } from './BadgeMark'
 import { CategoryChip, RepostBadge } from './CategoryChip'
 import { CommentsSheet } from './CommentsSheet'
-import { CommentIcon, LockIcon, PinIcon, TrashIcon } from './icons'
+import { CommentIcon, LockIcon, PinIcon, TrashIcon, UsersIcon } from './icons'
 import { ExpandableText } from './ExpandableText'
 import { LikeButton } from './LikeButton'
 import { RelativeTime } from './RelativeTime'
@@ -132,6 +132,9 @@ export const PostCard = memo(function PostCard({
               @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
               {post.visibility === 'followers' && (
                 <LockIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
+              )}
+              {post.visibility === 'mutuals' && (
+                <UsersIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
               )}
             </p>
           </div>

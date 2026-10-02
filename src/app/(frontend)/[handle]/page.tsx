@@ -154,7 +154,7 @@ export default async function PublicProfilePage({
           where: {
             and: [
               { author: { equals: profileUser.id } },
-              { visibility: { not_equals: 'followers' } },
+              { visibility: { not_in: ['followers', 'mutuals'] } },
             ],
           },
           sort: '-createdAt',
@@ -170,7 +170,7 @@ export default async function PublicProfilePage({
             and: [
               { author: { equals: profileUser.id } },
               { pinned: { equals: true } },
-              { visibility: { not_equals: 'followers' } },
+              { visibility: { not_in: ['followers', 'mutuals'] } },
             ],
           },
           sort: '-createdAt',

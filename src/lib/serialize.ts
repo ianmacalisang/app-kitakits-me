@@ -48,6 +48,14 @@ export function mediaUrl(media: Media | number | null | undefined) {
 // image or video attachment, 'images'/'videos' require that specific kind.
 export type MediaFilter = 'all' | 'media' | 'images' | 'videos'
 
+// Post audience — 'public' is visible to everyone, 'followers' to the
+// author's followers, 'mutuals' to users the author follows who also
+// follow back.
+export type PostVisibility = 'public' | 'followers' | 'mutuals'
+
+export const isPostVisibility = (value: unknown): value is PostVisibility =>
+  value === 'public' || value === 'followers' || value === 'mutuals'
+
 export interface Paged<T> {
   items: T[]
   hasMore: boolean
@@ -126,7 +134,7 @@ export interface PostCardData {
   canShare: boolean
   commentsDisabled: boolean
   viewerAuthenticated: boolean
-  visibility: 'public' | 'followers'
+  visibility: PostVisibility
 }
 
 export interface PostCardExtras {
@@ -197,7 +205,7 @@ export function toPostCardData(
       post.visibility === 'public' &&
       author.id !== viewer.id &&
       (sharedPost?.authorId ?? author.id) !== viewer.id,
-    visibility: post.visibility === 'followers' ? 'followers' : 'public',
+    visibility: isPostVisibility(post.visibility) ? post.visibility : 'public',
     // The author can still comment on their own post when comments are off.
     commentsDisabled: author.commentPermission === 'off' && author.id !== viewer?.id,
   }

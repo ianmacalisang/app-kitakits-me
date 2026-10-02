@@ -6,6 +6,7 @@ import type { Where } from 'payload'
 
 import { getCurrentUser } from '@/lib/auth'
 import { isPostCategory, type PostCategory } from '@/lib/categories'
+import { getMutualFollowIds } from '@/lib/chat'
 import { drizzleOf } from '@/lib/db'
 import { followerIds, pushLive } from '@/lib/live'
 import { getPayloadClient } from '@/lib/payload'
@@ -21,6 +22,7 @@ import {
   type MediaFilter,
   type Paged,
   type PostCardData,
+  isPostVisibility,
   mediaUrl,
   relId,
   toVideoData,
@@ -91,7 +93,8 @@ export async function createPost(_prev: FormState, formData: FormData): Promise<
 
   const payload = await getPayloadClient()
   const content = String(formData.get('content') ?? '').trim()
-  const visibility = formData.get('visibility') === 'followers' ? 'followers' : 'public'
+  const rawVisibility = formData.get('visibility')
+  const visibility = isPostVisibility(rawVisibility) ? rawVisibility : 'public'
   const rawCategory = formData.get('category')
   const category = isPostCategory(rawCategory) ? rawCategory : 'kwento'
   const imageIds = await uploadImages(payload, user, formData.getAll('image'))
@@ -117,11 +120,15 @@ export async function createPost(_prev: FormState, formData: FormData): Promise<
 
   // Ping followers over the socket so their live feeds prepend instantly —
   // the hint carries only the author id; each client refetches with its own
-  // cursor/filters via getNewerPosts. The author's own tabs get the same ping
-  // so a post made on one device surfaces everywhere. Deferred (like all
-  // pushes) until after the response — see lib/live.
+  // cursor/filters via getNewerPosts. Mutuals posts ping only mutuals, since
+  // the rest of the author's followers can't read the post anyway. The
+  // author's own tabs get the same ping so a post made on one device surfaces
+  // everywhere. Deferred (like all pushes) until after the response — see
+  // lib/live.
+  const audience =
+    visibility === 'mutuals' ? getMutualFollowIds(payload, user.id) : followerIds(payload, user.id)
   pushLive(
-    followerIds(payload, user.id).then((ids) => [...ids, user.id]),
+    audience.then((ids) => [...ids, user.id]),
     {
       type: 'feed:new',
       authorId: user.id,
@@ -137,7 +144,8 @@ export async function updatePost(postId: number, formData: FormData): Promise<Fo
 
   const payload = await getPayloadClient()
   const content = String(formData.get('content') ?? '').trim()
-  const visibility = formData.get('visibility') === 'followers' ? 'followers' : 'public'
+  const rawVisibility = formData.get('visibility')
+  const visibility = isPostVisibility(rawVisibility) ? rawVisibility : 'public'
   const rawCategory = formData.get('category')
   const category = isPostCategory(rawCategory) ? rawCategory : 'kwento'
   const keepIds = formData
@@ -305,7 +313,7 @@ export async function togglePin(postId: number): Promise<{ pinned?: boolean; err
   }
   if (relId(post.author) !== user.id) return { error: "You can't pin this post." }
   if (post.sharedPost) return { error: "You can't pin a shared post." }
-  if (post.visibility === 'followers' && !post.pinned)
+  if (post.visibility !== 'public' && post.visibility != null && !post.pinned)
     return { error: 'Only public posts can be pinned.' }
 
   const pinned = !post.pinned

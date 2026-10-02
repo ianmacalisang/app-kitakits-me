@@ -214,15 +214,45 @@ export async function getFollowingActivities(
   const limit = page * ACTIVITY_PAGE_SIZE
   const allowed = [viewer.id, ...authorIds]
 
+  // Mutuals-only posts are a stricter tier — the author must be someone the
+  // viewer follows who also follows back. authorIds is the viewer's
+  // followees, so intersect it with the viewer's followers.
+  const followers = await payload.find({
+    collection: 'follows',
+    where: { following: { equals: viewer.id } },
+    limit: 2000,
+    depth: 0,
+    user: viewer,
+    overrideAccess: false,
+  })
+  const followerSet = new Set(followers.docs.map((f) => relId(f.follower)))
+  const mutualAuthorIds = [viewer.id, ...authorIds.filter((id) => followerSet.has(id))]
+
   const visiblePost: Where = {
     or: [
       {
         and: [
-          { 'post.visibility': { not_equals: 'followers' } },
+          { 'post.visibility': { not_in: ['followers', 'mutuals'] } },
           { 'post.author.isPrivate': { not_equals: true } },
         ],
       },
-      { 'post.author': { in: allowed } },
+      {
+        and: [
+          {
+            or: [
+              { 'post.visibility': { not_equals: 'mutuals' } },
+              { 'post.visibility': { exists: false } },
+            ],
+          },
+          { 'post.author': { in: allowed } },
+        ],
+      },
+      {
+        and: [
+          { 'post.visibility': { equals: 'mutuals' } },
+          { 'post.author': { in: mutualAuthorIds } },
+        ],
+      },
     ],
   }
 

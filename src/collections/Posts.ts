@@ -70,6 +70,7 @@ export const Posts: CollectionConfig = {
       options: [
         { label: 'Public', value: 'public' },
         { label: 'Followers only', value: 'followers' },
+        { label: 'Mutuals only', value: 'mutuals' },
       ],
       defaultValue: 'public',
       index: true,

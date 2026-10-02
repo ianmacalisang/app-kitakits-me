@@ -48,16 +48,71 @@ const rooms = new Map()
 /** @type {Map<string, {from: number, to: number, timer: NodeJS.Timeout}>} */
 const pending = new Map()
 
+// Reverse index: userId → online userIds who have userId in their mutuals.
+// Lets presence fan-out hit only interested sockets instead of scanning the
+// whole `online` map per disconnect. Kept in sync on auth (mutuals can
+// change between tickets) and on last-socket close.
+/** @type {Map<number, Set<number>>} */
+const watchers = new Map()
+
+const addWatchers = (userId, mutuals) => {
+  for (const m of mutuals) {
+    let set = watchers.get(m)
+    if (!set) watchers.set(m, (set = new Set()))
+    set.add(userId)
+  }
+}
+
+const removeWatchers = (userId, mutuals) => {
+  for (const m of mutuals) {
+    const set = watchers.get(m)
+    if (!set) continue
+    set.delete(userId)
+    if (set.size === 0) watchers.delete(m)
+  }
+}
+
+// Room index: userId → keys of rooms they belong to, so reconnect rejoin is
+// O(the user's rooms) rather than a scan of every live room. Entries only
+// disappear with the room itself (leaving marks `left`, not removal).
+/** @type {Map<number, Set<string>>} */
+const roomsByUser = new Map()
+
+const indexRoom = (room) => {
+  for (const m of room.members) {
+    let set = roomsByUser.get(m)
+    if (!set) roomsByUser.set(m, (set = new Set()))
+    set.add(room.key)
+  }
+}
+
+const dropRoom = (room) => {
+  for (const m of room.members) {
+    const set = roomsByUser.get(m)
+    if (!set) continue
+    set.delete(room.key)
+    if (set.size === 0) roomsByUser.delete(m)
+  }
+}
+
 const pairKey = (a, b) => (a < b ? `${a}:${b}` : `${b}:${a}`)
 
 const send = (ws, msg) => {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg))
 }
 
+// Pre-serialized send for fan-out paths — broadcasts serialize once instead
+// of once per socket (a 10k-target /emit would otherwise stringify the same
+// payload thousands of times on a single event loop).
+const sendRaw = (ws, raw) => {
+  if (ws.readyState === ws.OPEN) ws.send(raw)
+}
+
 const sendToUser = (userId, msg) => {
   const entry = online.get(userId)
   if (!entry) return
-  for (const ws of entry.sockets) send(ws, msg)
+  const raw = JSON.stringify(msg)
+  for (const ws of entry.sockets) sendRaw(ws, raw)
 }
 
 // Per-socket fixed-window buckets — in-process only, matching the app's
@@ -90,25 +145,39 @@ const onlineMutualsOf = (userId, mutuals) => {
   return list
 }
 
+// Fan-out goes to both sets: the joiner's mutuals AND online users who have
+// the joiner in theirs. The 500-cap on the ticket claim can truncate either
+// side asymmetrically — someone not in the joiner's list may still see the
+// joiner in their online roster (auth:ok populates from *their* mutuals), so
+// they need the join/leave to stay consistent.
 const broadcastPresenceJoin = (user) => {
   const entry = online.get(user.id)
   if (!entry) return
-  for (const mutualId of entry.mutuals) {
-    if (mutualId !== user.id) sendToUser(mutualId, { type: 'presence:join', user: entry.info })
+  const raw = JSON.stringify({ type: 'presence:join', user: entry.info })
+  const targets = new Set([...entry.mutuals, ...(watchers.get(user.id) ?? [])])
+  for (const mutualId of targets) {
+    if (mutualId === user.id) continue
+    const target = online.get(mutualId)
+    if (!target) continue
+    for (const ws of target.sockets) sendRaw(ws, raw)
   }
 }
 
 const broadcastPresenceLeave = (userId) => {
-  for (const entry of online.values()) {
-    if (entry.mutuals.has(userId)) {
-      for (const ws of entry.sockets) send(ws, { type: 'presence:leave', userId })
-    }
+  const set = watchers.get(userId)
+  if (!set || set.size === 0) return
+  const raw = JSON.stringify({ type: 'presence:leave', userId })
+  for (const uid of set) {
+    const entry = online.get(uid)
+    if (!entry) continue
+    for (const ws of entry.sockets) sendRaw(ws, raw)
   }
 }
 
 const broadcastToRoom = (room, msg) => {
+  const raw = JSON.stringify(msg)
   for (const set of room.sockets.values()) {
-    for (const ws of set) send(ws, msg)
+    for (const ws of set) sendRaw(ws, raw)
   }
 }
 
@@ -130,6 +199,7 @@ const schedulePurge = (room) => {
   if (room.purgeTimer) return
   room.purgeTimer = setTimeout(() => {
     broadcastToRoom(room, { type: 'room:ended', room: room.key })
+    dropRoom(room)
     rooms.delete(room.key)
   }, PURGE_GRACE_MS)
 }
@@ -138,6 +208,7 @@ const maybePurgeRoom = (room) => {
   // Explicitly left by everyone — gone immediately.
   if (room.left.size >= room.members.size) {
     if (room.purgeTimer) clearTimeout(room.purgeTimer)
+    dropRoom(room)
     rooms.delete(room.key)
     return
   }
@@ -191,6 +262,7 @@ const activateRoom = (key, memberIds) => {
       purgeTimer: null,
     }
     rooms.set(key, room)
+    indexRoom(room)
   }
   return room
 }
@@ -240,10 +312,20 @@ const handleAuth = async (ws, ticket) => {
     if (!entry) {
       entry = { info: publicInfo(ws.user), mutuals: ws.mutuals, sockets: new Set() }
       online.set(id, entry)
+      addWatchers(id, ws.mutuals)
     } else {
       // Latest ticket wins — a second tab authing with a fresher mutuals list
       // must update the entry the invite check and presence broadcasts read,
       // otherwise the stale first-auth snapshot lingers for the entry's life.
+      // The watcher index diffs the same way: drop stale edges, add new ones.
+      removeWatchers(
+        id,
+        [...entry.mutuals].filter((m) => !ws.mutuals.has(m)),
+      )
+      addWatchers(
+        id,
+        [...ws.mutuals].filter((m) => !entry.mutuals.has(m)),
+      )
       entry.info = publicInfo(ws.user)
       entry.mutuals = ws.mutuals
     }
@@ -257,10 +339,12 @@ const handleAuth = async (ws, ticket) => {
     if (firstSocket) broadcastPresenceJoin(ws.user)
 
     // Seamless reconnect: rejoin rooms this user is still a member of and
-    // replay their buffers (inside the grace window).
-    for (const room of rooms.values()) {
+    // replay their buffers (inside the grace window). roomsByUser scopes this
+    // to their rooms instead of scanning every live room.
+    for (const key of roomsByUser.get(id) ?? []) {
+      const room = rooms.get(key)
       // Rooms the user explicitly left don't auto-rejoin on reconnect.
-      if (!room.members.has(id) || room.left.has(id)) continue
+      if (!room || room.left.has(id)) continue
       addSocketToRoom(room, ws)
       room.info.set(id, entry.info)
       const { peer, peerIn } = roomPeer(room, id)
@@ -464,12 +548,13 @@ const server = http.createServer((req, res) => {
         return
       }
       delete msg.to
+      const frame = JSON.stringify(msg)
       let delivered = 0
       for (const id of to) {
         const entry = online.get(id)
         if (!entry) continue
         delivered += entry.sockets.size
-        sendToUser(id, msg)
+        for (const ws of entry.sockets) sendRaw(ws, frame)
       }
       res.writeHead(200, { 'content-type': 'application/json' })
       res.end(JSON.stringify({ ok: true, delivered }))
@@ -546,6 +631,7 @@ wss.on('connection', (ws) => {
     const fullyOffline = !entry || entry.sockets.size === 0
     if (fullyOffline) {
       online.delete(user.id)
+      if (entry) removeWatchers(user.id, entry.mutuals)
       broadcastPresenceLeave(user.id)
       expirePendingFor(user.id)
     }

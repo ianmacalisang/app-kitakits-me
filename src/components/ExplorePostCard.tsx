@@ -11,7 +11,7 @@ import { Avatar } from './Avatar'
 import { BadgeMark } from './BadgeMark'
 import { BlurImage } from './BlurImage'
 import { CategoryChip, RepostBadge } from './CategoryChip'
-import { CommentIcon, LockIcon, PlayIcon, ShareIcon, VideoIcon } from './icons'
+import { CommentIcon, LockIcon, PlayIcon, ShareIcon, UsersIcon, VideoIcon } from './icons'
 import { LikeButton } from './LikeButton'
 import { PostSheet } from './PostSheet'
 import { RelativeTime } from './RelativeTime'
@@ -62,6 +62,9 @@ export const ExplorePostCard = memo(function ExplorePostCard({ post }: { post: P
               @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
               {post.visibility === 'followers' && (
                 <LockIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
+              )}
+              {post.visibility === 'mutuals' && (
+                <UsersIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
               )}
             </p>
           </div>

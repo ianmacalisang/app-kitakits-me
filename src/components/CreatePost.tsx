@@ -11,6 +11,7 @@ import { createVideoUpload, discardVideo, markVideoUploaded } from '@/actions/vi
 import { CATEGORY_TINTS, type PostCategory, postCategory } from '@/lib/categories'
 import { toast } from '@/lib/events'
 import { compressImage } from '@/lib/image'
+import type { PostVisibility } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
 import { CategoryPicker } from './CategoryPicker'
@@ -22,6 +23,7 @@ import {
   ImageIcon,
   PlusIcon,
   UserIcon,
+  UsersIcon,
   VideoIcon,
   XIcon,
 } from './icons'
@@ -43,8 +45,24 @@ interface PickedVideo {
 }
 
 const AUDIENCE = [
-  { value: 'public', label: 'Everyone', Icon: EyeIcon },
-  { value: 'followers', label: 'Followers', Icon: UserIcon },
+  {
+    value: 'public',
+    label: 'Everyone',
+    Icon: EyeIcon,
+    description: 'Anyone on or off Kitakits can see this post',
+  },
+  {
+    value: 'followers',
+    label: 'Followers',
+    Icon: UserIcon,
+    description: 'Only people who follow you',
+  },
+  {
+    value: 'mutuals',
+    label: 'Mutuals',
+    Icon: UsersIcon,
+    description: 'Only people you follow who follow you back',
+  },
 ] as const
 
 export const CreatePost = memo(function CreatePost({
@@ -54,7 +72,7 @@ export const CreatePost = memo(function CreatePost({
 }: {
   avatarUrl?: string
   name: string
-  defaultVisibility: 'public' | 'followers'
+  defaultVisibility: PostVisibility
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -63,7 +81,7 @@ export const CreatePost = memo(function CreatePost({
   const [content, setContent] = useState('')
   const [images, setImages] = useState<{ file: File; url: string }[]>([])
   const [video, setVideo] = useState<PickedVideo | null>(null)
-  const [visibility, setVisibility] = useState<'public' | 'followers'>(defaultVisibility)
+  const [visibility, setVisibility] = useState<PostVisibility>(defaultVisibility)
   const [category, setCategory] = useState<PostCategory | null>('kwento')
   const [audienceOpen, setAudienceOpen] = useState(false)
   const [pending, startTransition] = useTransition()
@@ -76,7 +94,7 @@ export const CreatePost = memo(function CreatePost({
 
   // Saved on the user record so the choice follows the account across
   // browsers. Fire-and-forget — local state already reflects the pick.
-  const chooseVisibility = (value: 'public' | 'followers') => {
+  const chooseVisibility = (value: PostVisibility) => {
     setVisibility(value)
     void updateDefaultPostVisibility(value)
   }
@@ -185,6 +203,7 @@ export const CreatePost = memo(function CreatePost({
   }
 
   const categoryEntry = postCategory(category)
+  const audienceEntry = AUDIENCE.find((a) => a.value === visibility) ?? AUDIENCE[0]
 
   const remaining = MAX_CHARS - content.length
   const fill = Math.min(1, content.length / MAX_CHARS)
@@ -360,17 +379,13 @@ export const CreatePost = memo(function CreatePost({
                         onClick={() => setAudienceOpen((v) => !v)}
                         className="flex items-center gap-1 rounded-full bg-accent-500/10 py-1 pl-2.5 pr-2 text-xs font-medium text-accent-700 transition-colors hover:bg-accent-500/20 active:scale-95"
                       >
-                        {visibility === 'public' ? (
-                          <EyeIcon className="h-3.5 w-3.5" />
-                        ) : (
-                          <UserIcon className="h-3.5 w-3.5" />
-                        )}
-                        {visibility === 'public' ? 'Everyone' : 'Followers'}
+                        <audienceEntry.Icon className="h-3.5 w-3.5" />
+                        {audienceEntry.label}
                         <ChevronDownIcon className="h-3 w-3 opacity-60" />
                       </button>
                       {audienceOpen && (
-                        <div className="glass-pop absolute left-0 top-full z-20 mt-1.5 w-44 rounded-2xl p-1.5 motion-safe:animate-menu-pop">
-                          {AUDIENCE.map(({ value, label, Icon }) => (
+                        <div className="glass-pop absolute left-0 top-full z-20 mt-1.5 w-60 rounded-2xl p-1.5 motion-safe:animate-menu-pop">
+                          {AUDIENCE.map(({ value, label, Icon, description }) => (
                             <button
                               key={value}
                               type="button"
@@ -378,12 +393,17 @@ export const CreatePost = memo(function CreatePost({
                                 chooseVisibility(value)
                                 setAudienceOpen(false)
                               }}
-                              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-white/70"
+                              className="flex w-full items-start gap-2.5 rounded-xl px-3 py-2 text-left transition-colors hover:bg-white/70"
                             >
-                              <Icon className="h-4 w-4 text-neutral-500" />
-                              {label}
+                              <Icon className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" />
+                              <span className="min-w-0">
+                                <span className="block text-sm font-medium">{label}</span>
+                                <span className="block text-xs leading-snug text-neutral-500">
+                                  {description}
+                                </span>
+                              </span>
                               {visibility === value && (
-                                <CheckIcon className="ml-auto h-3.5 w-3.5 text-accent-600" />
+                                <CheckIcon className="ml-auto mt-0.5 h-3.5 w-3.5 shrink-0 text-accent-600" />
                               )}
                             </button>
                           ))}

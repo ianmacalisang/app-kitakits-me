@@ -33,7 +33,7 @@ export async function getComments(
           and: [
             { post: { equals: postId } },
             { 'post.author.isPrivate': { not_equals: true } },
-            { 'post.visibility': { not_equals: 'followers' } },
+            { 'post.visibility': { not_in: ['followers', 'mutuals'] } },
           ],
         },
     sort: 'createdAt',

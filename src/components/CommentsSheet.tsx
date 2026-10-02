@@ -15,7 +15,7 @@ import { CategoryChip, RepostBadge } from './CategoryChip'
 import { CommentForm } from './CommentForm'
 import { CommentList } from './CommentList'
 import { ExpandableText } from './ExpandableText'
-import { LockIcon } from './icons'
+import { LockIcon, UsersIcon } from './icons'
 import { LoadSentinel } from './LoadSentinel'
 import { PostImages } from './PostImages'
 import { PostVideo } from './PostVideo'
@@ -267,6 +267,9 @@ const SheetPost = memo(function SheetPost({ post }: { post: PostCardData }) {
               @{post.authorUsername} · <RelativeTime iso={post.createdAt} />
               {post.visibility === 'followers' && (
                 <LockIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
+              )}
+              {post.visibility === 'mutuals' && (
+                <UsersIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
               )}
             </span>
           </span>

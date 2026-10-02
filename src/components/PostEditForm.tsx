@@ -8,7 +8,7 @@ import type { PostCategory } from '@/lib/categories'
 import { toCdnUrl } from '@/lib/cdn'
 import { emitPostUpdated } from '@/lib/events'
 import { compressImage } from '@/lib/image'
-import type { PostVideoData } from '@/lib/serialize'
+import type { PostVideoData, PostVisibility } from '@/lib/serialize'
 
 import { BlurImage } from './BlurImage'
 import { CategoryPicker } from './CategoryPicker'
@@ -36,7 +36,7 @@ export function PostEditForm({
 }: {
   postId: number
   initialContent: string
-  initialVisibility?: 'public' | 'followers'
+  initialVisibility?: PostVisibility
   initialCategory?: PostCategory | null
   images: { id: number; url: string }[]
   video?: PostVideoData
@@ -44,7 +44,7 @@ export function PostEditForm({
 }) {
   const router = useRouter()
   const [content, setContent] = useState(initialContent)
-  const [visibility, setVisibility] = useState<'public' | 'followers'>(initialVisibility)
+  const [visibility, setVisibility] = useState<PostVisibility>(initialVisibility)
   const [category, setCategory] = useState<PostCategory | null>(initialCategory)
   const [keptIds, setKeptIds] = useState<number[]>(initialImages.map((i) => i.id))
   const [keepVideo, setKeepVideo] = useState(true)
@@ -393,6 +393,7 @@ export function PostEditForm({
             [
               { value: 'public', label: 'Everyone' },
               { value: 'followers', label: 'Followers' },
+              { value: 'mutuals', label: 'Mutuals' },
             ] as const
           ).map(({ value, label }) => (
             <button

@@ -8,7 +8,7 @@ import { logout } from '@/actions/auth'
 import { getNavBadgeCounts } from '@/actions/nav'
 import { searchUsers, updateTheme } from '@/actions/users'
 import { LIVE_EVENT, type LiveEventDetail } from '@/lib/events'
-import type { UserCardData } from '@/lib/serialize'
+import type { PostVisibility, UserCardData } from '@/lib/serialize'
 
 import { Avatar } from './Avatar'
 import { BadgeMark } from './BadgeMark'
@@ -52,7 +52,7 @@ interface AppNavProps {
   unreadMailCount: number
   pendingTestimonialCount: number
   theme: Theme
-  defaultPostVisibility: 'public' | 'followers'
+  defaultPostVisibility: PostVisibility
 }
 
 function Logo() {

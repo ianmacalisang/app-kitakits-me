@@ -152,7 +152,7 @@ export default async function PrivacyPage() {
 
           <Section title="Your controls">
             <ul className="list-disc space-y-1.5 pl-5">
-              <li>Choose a visibility level (public, followers, private) on every post.</li>
+              <li>Choose a visibility level (public, followers, mutuals) on every post.</li>
               <li>Set your profile to private and control who can mail you.</li>
               <li>Approve or reject testimonials before they appear.</li>
               <li>Block members you don&apos;t want to interact with.</li>

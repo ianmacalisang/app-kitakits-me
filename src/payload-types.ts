@@ -306,7 +306,7 @@ export interface User {
   /**
    * Audience preselected in the post composer.
    */
-  defaultPostVisibility?: ('public' | 'followers') | null;
+  defaultPostVisibility?: ('public' | 'followers' | 'mutuals') | null;
   /**
    * Set when the user finishes the onboarding flow.
    */
@@ -365,7 +365,7 @@ export interface Media {
 export interface Post {
   id: number;
   author: number | User;
-  visibility?: ('public' | 'followers') | null;
+  visibility?: ('public' | 'followers' | 'mutuals') | null;
   category:
     'kwento' | 'tanong' | 'feels' | 'food' | 'gala' | 'music' | 'memes' | 'rant' | 'promotion' | 'nsfw' | 'random';
   content?: string | null;

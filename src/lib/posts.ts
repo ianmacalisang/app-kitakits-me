@@ -50,7 +50,10 @@ export function categoryFilterClauses(category?: PostCategory | 'all'): Where[] 
 // mirrors the anonymous constraint in canReadPosts. Powers public surfaces
 // (Discover, public profiles) for anonymous and signed-in viewers alike.
 export function publicPostClauses(): Where[] {
-  return [{ visibility: { not_equals: 'followers' } }, { 'author.isPrivate': { not_equals: true } }]
+  return [
+    { visibility: { not_in: ['followers', 'mutuals'] } },
+    { 'author.isPrivate': { not_equals: true } },
+  ]
 }
 
 // A short strip of recent public posts for the landing page — same anonymous

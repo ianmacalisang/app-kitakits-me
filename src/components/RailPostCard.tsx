@@ -10,7 +10,7 @@ import type { PostCardData } from '@/lib/serialize'
 import { Avatar } from './Avatar'
 import { BadgeMark } from './BadgeMark'
 import { BlurImage } from './BlurImage'
-import { CommentIcon, HeartIcon, LockIcon, PlayIcon, VideoIcon } from './icons'
+import { CommentIcon, HeartIcon, LockIcon, PlayIcon, UsersIcon, VideoIcon } from './icons'
 import { PostSheet } from './PostSheet'
 
 // Uniform media tile for the Explore rails — the photo or video thumbnail
@@ -135,6 +135,13 @@ export const RailPostCard = memo(function RailPostCard({
             {post.authorName} <BadgeMark badge={post.authorBadge} light={hasMedia} />
             {post.visibility === 'followers' && (
               <LockIcon
+                className={`ml-1 inline h-3 w-3 align-[-0.125em] ${
+                  hasMedia ? 'text-white/70' : 'text-neutral-400'
+                }`}
+              />
+            )}
+            {post.visibility === 'mutuals' && (
+              <UsersIcon
                 className={`ml-1 inline h-3 w-3 align-[-0.125em] ${
                   hasMedia ? 'text-white/70' : 'text-neutral-400'
                 }`}

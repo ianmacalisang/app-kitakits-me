@@ -13,7 +13,7 @@ import {
   isProfileLayout,
   isProfileTheme,
 } from '@/lib/profileDesign'
-import { type Paged, toUserCardData, type UserCardData } from '@/lib/serialize'
+import { type Paged, type PostVisibility, toUserCardData, type UserCardData } from '@/lib/serialize'
 import type { User } from '@/payload-types'
 
 import type { FormState } from './auth'
@@ -261,9 +261,7 @@ export async function updateTheme(theme: 'light' | 'dark' | 'system'): Promise<F
 
 // Composer audience preference — saved per user so the last choice carries
 // across browsers and devices.
-export async function updateDefaultPostVisibility(
-  visibility: 'public' | 'followers',
-): Promise<FormState> {
+export async function updateDefaultPostVisibility(visibility: PostVisibility): Promise<FormState> {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 

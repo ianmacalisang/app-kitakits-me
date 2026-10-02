@@ -13,7 +13,7 @@ import { BadgeMark } from './BadgeMark'
 import { CategoryChip } from './CategoryChip'
 import { BlurImage } from './BlurImage'
 import { CommentsSheet } from './CommentsSheet'
-import { ChevronLeftIcon, ChevronRightIcon, CommentIcon, LockIcon } from './icons'
+import { ChevronLeftIcon, ChevronRightIcon, CommentIcon, LockIcon, UsersIcon } from './icons'
 import { ImageLightbox } from './ImageLightbox'
 import { LikeButton } from './LikeButton'
 import { RelativeTime } from './RelativeTime'
@@ -61,6 +61,9 @@ export const PhotoPost = memo(function PhotoPost({ post }: { post: PostCardData 
               @{post.authorUsername}
               {post.visibility === 'followers' && (
                 <LockIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
+              )}
+              {post.visibility === 'mutuals' && (
+                <UsersIcon className="ml-1 inline h-3 w-3 align-[-0.125em]" />
               )}
             </p>
           </div>

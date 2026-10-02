@@ -69,6 +69,44 @@ const followedIdsByUser = cache(
 const followedIds = (req: PayloadRequest): Promise<number[]> =>
   req.user ? followedIdsByUser(req.payload, req.user.id) : Promise.resolve([])
 
+// IDs of the viewer's mutuals — users the viewer follows who also follow
+// back. The intersection needs both follow directions; cached and capped
+// like followedIdsByUser for the same reasons.
+const mutualIdsByUser = cache(
+  async (payload: PayloadRequest['payload'], userId: number): Promise<number[]> => {
+    const [following, followers] = await Promise.all([
+      payload.find({
+        collection: 'follows',
+        where: { follower: { equals: userId } },
+        limit: 2000,
+        depth: 0,
+        overrideAccess: true,
+      }),
+      payload.find({
+        collection: 'follows',
+        where: { following: { equals: userId } },
+        limit: 2000,
+        depth: 0,
+        overrideAccess: true,
+      }),
+    ])
+    const followerSet = new Set(
+      followers.docs.map((follow) =>
+        typeof follow.follower === 'object' ? follow.follower.id : follow.follower,
+      ),
+    )
+    return following.docs
+      .map((follow) =>
+        typeof follow.following === 'object' ? follow.following.id : follow.following,
+      )
+      .filter((id): id is number => typeof id === 'number' && followerSet.has(id))
+      .slice(0, 2000)
+  },
+)
+
+const mutualIds = (req: PayloadRequest): Promise<number[]> =>
+  req.user ? mutualIdsByUser(req.payload, req.user.id) : Promise.resolve([])
+
 const findPost = async (req: PayloadRequest, postRef: unknown) => {
   const postId =
     typeof postRef === 'object' && postRef !== null ? (postRef as { id: number }).id : postRef
@@ -90,8 +128,29 @@ const isAuthorOrFollower = async (req: PayloadRequest, authorId: number): Promis
   return follow.totalDocs > 0
 }
 
+// Mutual variant — the follows table has a unique (follower, following)
+// index, so two matching rows means both directions exist.
+const isAuthorOrMutual = async (req: PayloadRequest, authorId: number): Promise<boolean> => {
+  const user = req.user
+  if (!user) return false
+  if (user.role === 'admin' || user.id === authorId) return true
+  const rel = await req.payload.count({
+    collection: 'follows',
+    where: {
+      or: [
+        { and: [{ follower: { equals: user.id } }, { following: { equals: authorId } }] },
+        { and: [{ follower: { equals: authorId } }, { following: { equals: user.id } }] },
+      ],
+    },
+    req,
+  })
+  return rel.totalDocs >= 2
+}
+
 // Posts are public unless marked followers-only or the author's account is
 // private — then only the author, their followers, and admins can read them.
+// Mutuals posts are a stricter tier: only the author and users who follow
+// each other.
 export const canReadPosts: Access = async ({ req }) => {
   const user = req.user
   if (user?.role === 'admin') return true
@@ -99,13 +158,26 @@ export const canReadPosts: Access = async ({ req }) => {
   const publicPosts: Where = {
     and: [
       { 'author.isPrivate': { not_equals: true } },
-      { visibility: { not_equals: 'followers' } },
+      { visibility: { not_in: ['followers', 'mutuals'] } },
     ],
   }
   if (!user) return publicPosts
 
-  const allowed = [user.id, ...(await followedIds(req))]
-  return { or: [publicPosts, { author: { in: allowed } }] }
+  const [followed, mutuals] = await Promise.all([followedIds(req), mutualIds(req)])
+  const allowed = [user.id, ...followed]
+  return {
+    or: [
+      publicPosts,
+      {
+        and: [
+          // NULL visibility predates the field — those rows stay readable.
+          { or: [{ visibility: { not_equals: 'mutuals' } }, { visibility: { exists: false } }] },
+          { author: { in: allowed } },
+        ],
+      },
+      { and: [{ visibility: { equals: 'mutuals' } }, { author: { in: [user.id, ...mutuals] } }] },
+    ],
+  }
 }
 
 // Comments inherit visibility from their parent post.
@@ -116,13 +188,35 @@ export const canReadComments: Access = async ({ req }) => {
   const publicComments: Where = {
     and: [
       { 'post.author.isPrivate': { not_equals: true } },
-      { 'post.visibility': { not_equals: 'followers' } },
+      { 'post.visibility': { not_in: ['followers', 'mutuals'] } },
     ],
   }
   if (!user) return publicComments
 
-  const allowed = [user.id, ...(await followedIds(req))]
-  return { or: [publicComments, { 'post.author': { in: allowed } }] }
+  const [followed, mutuals] = await Promise.all([followedIds(req), mutualIds(req)])
+  const allowed = [user.id, ...followed]
+  return {
+    or: [
+      publicComments,
+      {
+        and: [
+          {
+            or: [
+              { 'post.visibility': { not_equals: 'mutuals' } },
+              { 'post.visibility': { exists: false } },
+            ],
+          },
+          { 'post.author': { in: allowed } },
+        ],
+      },
+      {
+        and: [
+          { 'post.visibility': { equals: 'mutuals' } },
+          { 'post.author': { in: [user.id, ...mutuals] } },
+        ],
+      },
+    ],
+  }
 }
 
 // Post owners control who can comment via commentPermission; followers-only
@@ -139,6 +233,9 @@ export const canComment: Access = async ({ req, data }) => {
 
   const permission = author.commentPermission ?? 'everyone'
   if (permission === 'off') return false
+
+  // Mutuals posts can only be read (and so commented on) by mutuals.
+  if (post.visibility === 'mutuals') return isAuthorOrMutual(req, author.id)
 
   const restricted =
     permission === 'followers' || post.visibility === 'followers' || Boolean(author.isPrivate)
@@ -157,6 +254,7 @@ export const canLike: Access = async ({ req, data }) => {
     post && typeof post.author === 'object' && post.author !== null ? post.author : null
   if (!post || !author) return false
   if (author.id === user.id) return true
+  if (post.visibility === 'mutuals') return isAuthorOrMutual(req, author.id)
   if (post.visibility !== 'followers' && !author.isPrivate) return true
   return isAuthorOrFollower(req, author.id)
 }
@@ -266,6 +364,7 @@ export const canSave: Access = async ({ req, data }) => {
   const author =
     post && typeof post.author === 'object' && post.author !== null ? post.author : null
   if (!post || !author || author.id === user.id) return false
+  if (post.visibility === 'mutuals') return isAuthorOrMutual(req, author.id)
   if (post.visibility !== 'followers' && !author.isPrivate) return true
   return isAuthorOrFollower(req, author.id)
 }
