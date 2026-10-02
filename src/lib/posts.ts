@@ -75,6 +75,7 @@ export async function getLandingPosts(viewer: User | null, limit = 6): Promise<P
     sort: '-createdAt',
     limit,
     depth: 2,
+    pagination: false,
     ...(viewer ? { user: viewer, overrideAccess: false as const } : {}),
   })
   return hydratePosts(result.docs, viewer)
@@ -110,6 +111,7 @@ export async function getSavedPosts(
     where: { id: { in: postIds } },
     limit: postIds.length,
     depth: 2,
+    pagination: false,
     user: viewer,
     overrideAccess: false,
   })
@@ -166,6 +168,7 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
           limit: postIds.length,
           depth: 0,
           select: { post: true },
+          pagination: false,
           overrideAccess: true,
         })
       : Promise.resolve(null),
@@ -176,6 +179,7 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
           limit: postIds.length,
           depth: 0,
           select: { post: true },
+          pagination: false,
           overrideAccess: true,
         })
       : Promise.resolve(null),
@@ -186,6 +190,7 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
           limit: postIds.length,
           depth: 0,
           select: { sharedPost: true },
+          pagination: false,
           overrideAccess: true,
         })
       : Promise.resolve(null),
@@ -216,6 +221,7 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
           where: { id: { in: embeddedAvatarIds } },
           limit: embeddedAvatarIds.length,
           depth: 0,
+          pagination: false,
         })
       : Promise.resolve({ docs: [] as Media[] }),
   ])
@@ -232,6 +238,7 @@ export async function hydratePosts(docs: Post[], viewer: User | null): Promise<P
           where: { id: { in: [...actorIds] } },
           limit: actorIds.size,
           depth: 1,
+          pagination: false,
           overrideAccess: true,
         })
       : { docs: [] as User[] }

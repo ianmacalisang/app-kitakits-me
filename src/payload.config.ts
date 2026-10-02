@@ -86,13 +86,15 @@ export default buildConfig({
       // Shows up in pg_stat_activity so connections can be attributed per app.
       application_name: process.env.DB_APP_NAME || 'kitakits-app',
       // Serverless (Vercel): each isolate gets its own pool, and frozen
-      // isolates can't run timers — never hold idle connections open.
-      min: 0,
+      // isolates can't run timers — never hold idle connections open. Set
+      // DB_POOL_MIN on the persistent Coolify deploy to keep warm sockets.
+      min: parseInt(process.env.DB_POOL_MIN ?? '0', 10),
       max: parseInt(process.env.DB_POOL_MAX ?? '5', 10),
       allowExitOnIdle: true,
       idleTimeoutMillis: 10_000,
-      // Fail fast if the pool is exhausted rather than queuing indefinitely.
-      connectionTimeoutMillis: 5_000,
+      // Fail if a query waits too long for a connection — this covers both
+      // queue waits on an exhausted pool and slow TCP connects.
+      connectionTimeoutMillis: parseInt(process.env.DB_CONNECT_TIMEOUT_MS ?? '10000', 10),
       // Detect sockets killed by the server/NAT instead of trusting them on
       // checkout — the default is no TCP keepalive at all.
       keepAlive: true,
@@ -113,10 +115,34 @@ export default buildConfig({
     // dead client itself — we just need to swallow and log.
     const pool = (
       payload.db as unknown as {
-        pool?: { on: (event: 'error', cb: (err: Error) => void) => void }
+        pool?: {
+          on: (event: 'error', cb: (err: Error) => void) => void
+          totalCount: number
+          idleCount: number
+          waitingCount: number
+        }
       }
     ).pool
     pool?.on('error', (err) => payload.logger.error({ err, msg: 'Idle Postgres client error' }))
+
+    // Opt-in saturation telemetry (DB_POOL_DEBUG=1): when queries are queued
+    // for a connection, log the pool's counters. 'timeout exceeded when
+    // trying to connect' with waitingCount>0 and totalCount=max means the
+    // pool is exhausted; totalCount<max means Postgres isn't accepting
+    // connections fast enough (restarter, max_connections, network).
+    if (pool && process.env.DB_POOL_DEBUG === '1') {
+      const timer = setInterval(() => {
+        if (pool.waitingCount > 0) {
+          payload.logger.warn({
+            msg: 'Postgres pool saturated',
+            totalCount: pool.totalCount,
+            idleCount: pool.idleCount,
+            waitingCount: pool.waitingCount,
+          })
+        }
+      }, 5_000)
+      timer.unref()
+    }
   },
   email: resendAdapter({
     defaultFromAddress: process.env.EMAIL_FROM_ADDRESS || 'noreply@kitakits.ph',

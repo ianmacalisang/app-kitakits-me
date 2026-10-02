@@ -208,6 +208,7 @@ export const evaluateBadges = async (
         },
         limit: 200,
         depth: 0,
+        pagination: false,
         req,
       }),
       payload.find({
@@ -215,6 +216,7 @@ export const evaluateBadges = async (
         where: { user: { equals: userId } },
         limit: 500,
         depth: 0,
+        pagination: false,
         req,
       }),
     ])
@@ -275,6 +277,7 @@ export const getTopBadgesForUsers = async (
     where: { user: { in: ids } },
     limit: Math.max(ids.length * 10, 100),
     depth: 1,
+    pagination: false,
     overrideAccess: true,
   })
 
@@ -318,6 +321,7 @@ export const getUserGamification = async (
       where: { user: { equals: userId } },
       limit: 100,
       depth: 1,
+      pagination: false,
     }),
   ])
 
@@ -362,12 +366,14 @@ export const getBadgeProgressForUser = async (
       sort: 'sort',
       limit: 200,
       depth: 0,
+      pagination: false,
     }),
     payload.find({
       collection: 'user-badges',
       where: { user: { equals: userId } },
       limit: 500,
       depth: 0,
+      pagination: false,
     }),
   ])
 

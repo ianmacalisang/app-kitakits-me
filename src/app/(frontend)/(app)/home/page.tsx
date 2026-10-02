@@ -47,6 +47,7 @@ const getFolloweeIds = cache(async (user: User) => {
     where: { follower: { equals: user.id } },
     limit: 2000,
     depth: 0,
+    pagination: false,
     user,
     overrideAccess: false,
   })
@@ -227,32 +228,40 @@ async function FeedPanel({
   const payload = await getPayloadClient()
   const authorIds = await getFolloweeIds(user)
 
+  // One row past the page size answers "is there more" — pagination: false
+  // skips the COUNT query a paginated find would run alongside the select.
   const posts =
     authorIds.length === 0
-      ? { docs: [] as Post[], hasNextPage: false }
-      : await payload.find({
-          collection: 'posts',
-          where: {
-            and: [
-              { author: { in: authorIds } },
-              ...mediaFilterClauses(mediaFilter),
-              ...categoryFilterClauses(categoryFilter),
-            ],
-          },
-          sort: '-createdAt',
-          page: 1,
-          limit: FEED_PAGE_SIZE,
-          depth: 2,
-          user,
-          overrideAccess: false,
-        })
+      ? { docs: [] as Post[], more: false }
+      : await payload
+          .find({
+            collection: 'posts',
+            where: {
+              and: [
+                { author: { in: authorIds } },
+                ...mediaFilterClauses(mediaFilter),
+                ...categoryFilterClauses(categoryFilter),
+              ],
+            },
+            sort: '-createdAt',
+            page: 1,
+            limit: FEED_PAGE_SIZE + 1,
+            depth: 2,
+            pagination: false,
+            user,
+            overrideAccess: false,
+          })
+          .then((result) => ({
+            docs: result.docs.slice(0, FEED_PAGE_SIZE),
+            more: result.docs.length > FEED_PAGE_SIZE,
+          }))
 
   const cards = await hydratePosts(posts.docs, user)
 
   return (
     <Feed
       initialPosts={cards}
-      initialHasMore={posts.hasNextPage}
+      initialHasMore={posts.more}
       feed="following"
       live
       filterable

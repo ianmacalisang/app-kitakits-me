@@ -78,6 +78,7 @@ export async function followerIds(payload: Payload, userId: number): Promise<num
       select: { follower: true },
       depth: 0,
       limit: 10_000,
+      pagination: false,
       overrideAccess: true,
     })
     return follows.docs.map((doc) => relId(doc.follower)).filter((id): id is number => id !== null)

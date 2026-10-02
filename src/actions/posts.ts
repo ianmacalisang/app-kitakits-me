@@ -238,6 +238,7 @@ export async function sharePost(
     },
     limit: 1,
     depth: 0,
+    pagination: false,
     user,
     overrideAccess: false,
   })
@@ -387,6 +388,7 @@ export async function getPost(postId: number): Promise<PostCardData | null> {
             where: { and: [{ id: { equals: postId } }, ...publicPostClauses()] },
             limit: 1,
             depth: 2,
+            pagination: false,
           })
         ).docs[0]
     if (!post) return null
@@ -420,6 +422,7 @@ export async function getTrendingPosts(page = 1): Promise<Paged<PostCardData>> {
     sort: '-createdAt',
     limit: TRENDING_POOL,
     depth: 2,
+    pagination: false,
     user,
     overrideAccess: false,
   })
@@ -464,6 +467,7 @@ export async function getHotDiscussions(): Promise<PostCardData[]> {
     where: { and: [{ id: { in: ids } }, ...mediaFilterClauses('media')] },
     limit: ids.length,
     depth: 2,
+    pagination: false,
     user,
     overrideAccess: false,
   })
@@ -490,6 +494,7 @@ export async function getUnansweredTanong(): Promise<PostCardData[]> {
     sort: '-createdAt',
     limit: UNANSWERED_LIMIT,
     depth: 2,
+    pagination: false,
     user,
     overrideAccess: false,
   })
@@ -519,6 +524,7 @@ export async function getCategorySpotlights(): Promise<CategorySpotlight[]> {
     sort: '-createdAt',
     limit: SPOTLIGHT_POOL,
     depth: 2,
+    pagination: false,
     user,
     overrideAccess: false,
   })
@@ -562,6 +568,7 @@ export async function getTrendingTags(limit = 8): Promise<string[]> {
     limit: TAG_POOL,
     depth: 0,
     select: { content: true },
+    pagination: false,
     user,
     overrideAccess: false,
   })
@@ -687,6 +694,7 @@ async function feedWhere(
     where: { follower: { equals: user.id } },
     limit: 2000,
     depth: 0,
+    pagination: false,
     user,
     overrideAccess: false,
   })
@@ -755,6 +763,7 @@ export async function getNewerPosts(options: {
     sort: '-createdAt',
     limit: NEW_POSTS_LIMIT,
     depth: 2,
+    pagination: false,
     ...access,
   })
 

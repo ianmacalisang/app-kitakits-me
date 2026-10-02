@@ -37,6 +37,7 @@ export async function getMutuals(
       sort: '-createdAt',
       limit: 2000,
       depth: 0,
+      pagination: false,
       user,
       overrideAccess: false,
     }),
@@ -45,6 +46,7 @@ export async function getMutuals(
       where: { following: { equals: user.id } },
       limit: 2000,
       depth: 0,
+      pagination: false,
       user,
       overrideAccess: false,
     }),
@@ -70,6 +72,7 @@ export async function getMutuals(
     where: { id: { in: slice } },
     limit: slice.length,
     depth: 1,
+    pagination: false,
     user,
     overrideAccess: false,
   })

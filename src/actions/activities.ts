@@ -19,6 +19,7 @@ export async function loadMoreActivities(page: number): Promise<Paged<ActivityDa
     where: { follower: { equals: user.id } },
     limit: 2000,
     depth: 0,
+    pagination: false,
     user,
     overrideAccess: false,
   })

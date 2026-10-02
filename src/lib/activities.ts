@@ -214,17 +214,110 @@ export async function getFollowingActivities(
   const limit = page * ACTIVITY_PAGE_SIZE
   const allowed = [viewer.id, ...authorIds]
 
+  // pagination: false skips each find's COUNT round-trip; one extra row per
+  // source stands in for hasNextPage, and docs get trimmed back to the window.
+  const takePage = async <T>(query: Promise<{ docs: T[] }>) => {
+    const { docs } = await query
+    return { docs: docs.slice(0, limit), more: docs.length > limit }
+  }
+
+  // First wave — the follower list (needed to scope mutuals-only post
+  // visibility) runs alongside every source that doesn't depend on it, so
+  // only the likes/comments pair waits for a second round.
+  const [followers, follows, testimonials, badgeAwards, profileViews, hangoutJoins] =
+    await Promise.all([
+      payload.find({
+        collection: 'follows',
+        where: { following: { equals: viewer.id } },
+        limit: 2000,
+        depth: 0,
+        pagination: false,
+        user: viewer,
+        overrideAccess: false,
+      }),
+      takePage(
+        payload.find({
+          collection: 'follows',
+          where: {
+            and: [{ follower: { in: authorIds } }, { 'following.isPrivate': { not_equals: true } }],
+          },
+          sort: '-createdAt',
+          limit: limit + 1,
+          depth: 2,
+          pagination: false,
+          user: viewer,
+          overrideAccess: false,
+        }),
+      ),
+      takePage(
+        payload.find({
+          collection: 'testimonials',
+          where: { and: [{ author: { in: authorIds } }, { status: { equals: 'approved' } }] },
+          sort: '-createdAt',
+          limit: limit + 1,
+          depth: 2,
+          pagination: false,
+          user: viewer,
+          overrideAccess: false,
+        }),
+      ),
+      // Badge awards are public celebration moments — no visibility filter.
+      // Depth 2 populates the badge definition for toBadgeData.
+      takePage(
+        payload.find({
+          collection: 'user-badges',
+          where: { user: { in: authorIds } },
+          sort: '-createdAt',
+          limit: limit + 1,
+          depth: 2,
+          pagination: false,
+          user: viewer,
+          overrideAccess: false,
+        }),
+      ),
+      // Who viewed the feed owner's profile — reciprocal: rows only exist for
+      // opted-in viewers, and a viewer who later opts out drops off the list.
+      optedIn
+        ? takePage(
+            payload.find({
+              collection: 'profile-views',
+              where: {
+                and: [
+                  { viewed: { equals: viewer.id } },
+                  { 'viewer.profileViewTracking': { equals: true } },
+                ],
+              },
+              sort: '-updatedAt',
+              limit: limit + 1,
+              depth: 2,
+              pagination: false,
+              user: viewer,
+              overrideAccess: false,
+            }),
+          )
+        : Promise.resolve({ docs: [] as ProfileView[], more: false }),
+      // Hangout joins by followed users — sorted by updatedAt because a
+      // re-join bumps the existing row instead of creating a new one. Depth 0:
+      // the room/user heads hydrate separately below with system access —
+      // a follower isn't a room party, so access-checked population would
+      // leave join.room as a bare id and the row would drop from the feed.
+      takePage(
+        payload.find({
+          collection: 'hangout-joins',
+          where: { user: { in: authorIds } },
+          sort: '-updatedAt',
+          limit: limit + 1,
+          depth: 0,
+          pagination: false,
+          user: viewer,
+          overrideAccess: false,
+        }),
+      ),
+    ])
+
   // Mutuals-only posts are a stricter tier — the author must be someone the
   // viewer follows who also follows back. authorIds is the viewer's
   // followees, so intersect it with the viewer's followers.
-  const followers = await payload.find({
-    collection: 'follows',
-    where: { following: { equals: viewer.id } },
-    limit: 2000,
-    depth: 0,
-    user: viewer,
-    overrideAccess: false,
-  })
   const followerSet = new Set(followers.docs.map((f) => relId(f.follower)))
   const mutualAuthorIds = [viewer.id, ...authorIds.filter((id) => followerSet.has(id))]
 
@@ -256,93 +349,35 @@ export async function getFollowingActivities(
     ],
   }
 
-  const [likes, comments, follows, testimonials, badgeAwards, profileViews, hangoutJoins] =
-    await Promise.all([
-      // Depth 3 so the embedded post is fully usable by hydratePosts: post
-      // images (2), the post author's avatar (3), and a shared original's
-      // author (3) all come back populated.
+  // Depth 3 so the embedded post is fully usable by hydratePosts: post
+  // images (2), the post author's avatar (3), and a shared original's
+  // author (3) all come back populated.
+  const [likes, comments] = await Promise.all([
+    takePage(
       payload.find({
         collection: 'likes',
         where: { and: [{ user: { in: authorIds } }, visiblePost] },
         sort: '-createdAt',
-        limit,
+        limit: limit + 1,
         depth: 3,
+        pagination: false,
         user: viewer,
         overrideAccess: false,
       }),
+    ),
+    takePage(
       payload.find({
         collection: 'comments',
         where: { and: [{ author: { in: authorIds } }, visiblePost] },
         sort: '-createdAt',
-        limit,
+        limit: limit + 1,
         depth: 3,
+        pagination: false,
         user: viewer,
         overrideAccess: false,
       }),
-      payload.find({
-        collection: 'follows',
-        where: {
-          and: [{ follower: { in: authorIds } }, { 'following.isPrivate': { not_equals: true } }],
-        },
-        sort: '-createdAt',
-        limit,
-        depth: 2,
-        user: viewer,
-        overrideAccess: false,
-      }),
-      payload.find({
-        collection: 'testimonials',
-        where: { and: [{ author: { in: authorIds } }, { status: { equals: 'approved' } }] },
-        sort: '-createdAt',
-        limit,
-        depth: 2,
-        user: viewer,
-        overrideAccess: false,
-      }),
-      // Badge awards are public celebration moments — no visibility filter.
-      // Depth 2 populates the badge definition for toBadgeData.
-      payload.find({
-        collection: 'user-badges',
-        where: { user: { in: authorIds } },
-        sort: '-createdAt',
-        limit,
-        depth: 2,
-        user: viewer,
-        overrideAccess: false,
-      }),
-      // Who viewed the feed owner's profile — reciprocal: rows only exist for
-      // opted-in viewers, and a viewer who later opts out drops off the list.
-      optedIn
-        ? payload.find({
-            collection: 'profile-views',
-            where: {
-              and: [
-                { viewed: { equals: viewer.id } },
-                { 'viewer.profileViewTracking': { equals: true } },
-              ],
-            },
-            sort: '-updatedAt',
-            limit,
-            depth: 2,
-            user: viewer,
-            overrideAccess: false,
-          })
-        : Promise.resolve({ docs: [] as ProfileView[], hasNextPage: false }),
-      // Hangout joins by followed users — sorted by updatedAt because a
-      // re-join bumps the existing row instead of creating a new one. Depth 0:
-      // the room/user heads hydrate separately below with system access —
-      // a follower isn't a room party, so access-checked population would
-      // leave join.room as a bare id and the row would drop from the feed.
-      payload.find({
-        collection: 'hangout-joins',
-        where: { user: { in: authorIds } },
-        sort: '-updatedAt',
-        limit,
-        depth: 0,
-        user: viewer,
-        overrideAccess: false,
-      }),
-    ])
+    ),
+  ])
 
   const joinUserIds = new Set<number>()
   const joinRoomIds = new Set<number>()
@@ -368,6 +403,7 @@ export async function getFollowingActivities(
           limit: joinUserIds.size,
           // Depth 1 so avatar media populates — avatarUrl needs the Media doc.
           depth: 1,
+          pagination: false,
           overrideAccess: true,
         })
       : { docs: [] as User[] },
@@ -377,6 +413,7 @@ export async function getFollowingActivities(
           where: { id: { in: [...joinRoomIds] } },
           limit: joinRoomIds.size,
           depth: 0,
+          pagination: false,
           overrideAccess: true,
         })
       : { docs: [] as VideokeRoom[] },
@@ -386,6 +423,7 @@ export async function getFollowingActivities(
           where: { id: { in: [...joinCardRoomIds] } },
           limit: joinCardRoomIds.size,
           depth: 0,
+          pagination: false,
           overrideAccess: true,
         })
       : { docs: [] as CardRoom[] },
@@ -395,6 +433,7 @@ export async function getFollowingActivities(
           where: { id: { in: [...joinNhieRoomIds] } },
           limit: joinNhieRoomIds.size,
           depth: 0,
+          pagination: false,
           overrideAccess: true,
         })
       : { docs: [] as NhieRoom[] },
@@ -465,13 +504,13 @@ export async function getFollowingActivities(
   const pageEntries = entries.slice(start, start + ACTIVITY_PAGE_SIZE)
   const hasMore =
     entries.length > start + ACTIVITY_PAGE_SIZE ||
-    likes.hasNextPage ||
-    comments.hasNextPage ||
-    follows.hasNextPage ||
-    testimonials.hasNextPage ||
-    badgeAwards.hasNextPage ||
-    profileViews.hasNextPage ||
-    hangoutJoins.hasNextPage
+    likes.more ||
+    comments.more ||
+    follows.more ||
+    testimonials.more ||
+    badgeAwards.more ||
+    profileViews.more ||
+    hangoutJoins.more
 
   // Hydrate the distinct posts shown on this page in one batched pass so each
   // like/comment row can render the full post card, not just a snippet.

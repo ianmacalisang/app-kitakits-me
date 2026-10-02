@@ -51,6 +51,8 @@ export const isSelfOrAdmin: Access = ({ req }) => {
 // objects differ between Local API calls in the same request.
 // Capped at 2000 (the feed's followee ceiling) so the generated IN() clause
 // stays bounded instead of scaling with the user's social graph.
+// pagination: false skips the COUNT query — access checks run once per
+// access-controlled find, so a count on follows would double their cost.
 const followedIdsByUser = cache(
   async (payload: PayloadRequest['payload'], userId: number): Promise<number[]> => {
     const follows = await payload.find({
@@ -58,6 +60,7 @@ const followedIdsByUser = cache(
       where: { follower: { equals: userId } },
       limit: 2000,
       depth: 0,
+      pagination: false,
       overrideAccess: true,
     })
     return follows.docs.map((follow) =>
@@ -70,23 +73,19 @@ const followedIds = (req: PayloadRequest): Promise<number[]> =>
   req.user ? followedIdsByUser(req.payload, req.user.id) : Promise.resolve([])
 
 // IDs of the viewer's mutuals — users the viewer follows who also follow
-// back. The intersection needs both follow directions; cached and capped
-// like followedIdsByUser for the same reasons.
+// back. Reuses the cached followee list so the pair of access queries costs
+// two finds per request instead of three; cached and capped like
+// followedIdsByUser for the same reasons.
 const mutualIdsByUser = cache(
   async (payload: PayloadRequest['payload'], userId: number): Promise<number[]> => {
-    const [following, followers] = await Promise.all([
-      payload.find({
-        collection: 'follows',
-        where: { follower: { equals: userId } },
-        limit: 2000,
-        depth: 0,
-        overrideAccess: true,
-      }),
+    const [followed, followers] = await Promise.all([
+      followedIdsByUser(payload, userId),
       payload.find({
         collection: 'follows',
         where: { following: { equals: userId } },
         limit: 2000,
         depth: 0,
+        pagination: false,
         overrideAccess: true,
       }),
     ])
@@ -95,10 +94,7 @@ const mutualIdsByUser = cache(
         typeof follow.follower === 'object' ? follow.follower.id : follow.follower,
       ),
     )
-    return following.docs
-      .map((follow) =>
-        typeof follow.following === 'object' ? follow.following.id : follow.following,
-      )
+    return followed
       .filter((id): id is number => typeof id === 'number' && followerSet.has(id))
       .slice(0, 2000)
   },
