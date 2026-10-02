@@ -1,19 +1,20 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import type { Payload } from 'payload'
 
-import { getFollowingActivities } from '@/lib/activities'
+import {
+  computeActivitiesFingerprint,
+  getFollowingActivities,
+  type ActivitiesPage,
+} from '@/lib/activities'
 import { getCurrentUser } from '@/lib/auth'
 import { getPayloadClient } from '@/lib/payload'
-import { type ActivityData, type Paged, relId } from '@/lib/serialize'
+import { relId } from '@/lib/serialize'
+import type { User } from '@/payload-types'
 
-export async function loadMoreActivities(page: number): Promise<Paged<ActivityData>> {
-  const user = await getCurrentUser()
-  if (!user) redirect('/login')
-
-  const payload = await getPayloadClient()
-
-  // Same 2000-followee cap the home feed uses.
+// Same 2000-followee cap the home feed uses.
+async function followeeIds(payload: Payload, user: User): Promise<number[]> {
   const following = await payload.find({
     collection: 'follows',
     where: { follower: { equals: user.id } },
@@ -23,9 +24,25 @@ export async function loadMoreActivities(page: number): Promise<Paged<ActivityDa
     user,
     overrideAccess: false,
   })
-  const authorIds = following.docs
-    .map((f) => relId(f.following))
-    .filter((id): id is number => id !== null)
+  return following.docs.map((f) => relId(f.following)).filter((id): id is number => id !== null)
+}
 
+export async function loadMoreActivities(page: number): Promise<ActivitiesPage> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+  const authorIds = await followeeIds(payload, user)
   return getFollowingActivities(user, authorIds, page)
+}
+
+// Cheap freshness probe — the client calls this on tab activation / poll and
+// only pays for loadMoreActivities(1) when the fingerprint moved.
+export async function getActivitiesFingerprint(): Promise<{ fingerprint: string }> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const payload = await getPayloadClient()
+  const authorIds = await followeeIds(payload, user)
+  return { fingerprint: await computeActivitiesFingerprint(user, authorIds) }
 }

@@ -12,7 +12,7 @@ import {
   useTransition,
 } from 'react'
 
-import { loadMoreActivities } from '@/actions/activities'
+import { getActivitiesFingerprint, loadMoreActivities } from '@/actions/activities'
 import type { ActivityData, Paged } from '@/lib/serialize'
 
 import { ActivityListSkeleton } from './ActivityListSkeleton'
@@ -166,9 +166,11 @@ type ActivityEntry =
   | ViewStackEntry
   | HangoutStackEntry
 
-// Refetch the first page when the tab opens and the data is older than this —
-// activities have no push/poll path, so tab activation is the refresh point.
-const STALE_MS = 30_000
+// Fingerprint probe throttle (rapid toggles) and poll cadence while the tab
+// is open — the probe is ~2 indexed queries versus ~15 for a blind page-1
+// refetch, so polling cheaply replaces the old stale-time refetch.
+const CHECK_MS = 10_000
+const POLL_MS = 60_000
 
 // Latest likes, comments, and follows from people the viewer follows —
 // the home "Activities" tab. Rows are grouped into day sections so the
@@ -176,9 +178,13 @@ const STALE_MS = 30_000
 export function ActivitiesView({
   activities,
   initialHasMore,
+  initialFingerprint,
+  onSync,
 }: {
   activities: ActivityData[]
   initialHasMore: boolean
+  initialFingerprint?: string
+  onSync?: (page: { items: ActivityData[]; hasMore: boolean; fingerprint: string }) => void
 }) {
   const router = useRouter()
   // Rendered inside a HomeTabs panel slot — context carries the active tab
@@ -193,11 +199,15 @@ export function ActivitiesView({
   const [viewPostId, setViewPostId] = useState<number | null>(null)
   const [badgeActivity, setBadgeActivity] = useState<ActivityData | null>(null)
 
-  // Last time first-page data landed — server props count as a fresh fetch.
-  const lastFetchRef = useRef(0)
+  // Server-side fingerprint of the feed's inputs — captured at every fetch
+  // (SSR prop, page-1 refresh, pagination) so activation probes can compare.
+  const fingerprintRef = useRef(initialFingerprint)
+  const lastCheckRef = useRef(0)
+
+  // Fresh server props (router refresh) reset the fingerprint baseline.
   useEffect(() => {
-    lastFetchRef.current = Date.now()
-  }, [activities])
+    fingerprintRef.current = initialFingerprint
+  }, [activities, initialFingerprint])
 
   // Reconcile when the server re-renders the list (e.g. router.refresh()): keep
   // pages loaded via infinite scroll if the refreshed first page still matches.
@@ -216,20 +226,31 @@ export function ActivitiesView({
     }
   }
 
-  // Tab-open refresh — dedupe-merge the fresh page over the head so pages
-  // loaded via infinite scroll stay attached below it.
+  // Tab-open + open-tab refresh: probe the fingerprint first and only pay for
+  // a page-1 refetch when it moved. The fresh page dedupe-merges over the
+  // head so pages loaded via infinite scroll stay attached below it.
   useEffect(() => {
-    if (!active || pending || Date.now() - lastFetchRef.current < STALE_MS) return
-    lastFetchRef.current = Date.now()
-    startTransition(async () => {
-      const result = await loadMoreActivities(1)
-      setItems((prev) => {
-        const fresh = new Set(result.items.map((a) => a.id))
-        return [...result.items, ...prev.filter((a) => !fresh.has(a.id))]
+    if (!active) return
+    const check = () => {
+      if (pending || document.hidden || Date.now() - lastCheckRef.current < CHECK_MS) return
+      lastCheckRef.current = Date.now()
+      startTransition(async () => {
+        const { fingerprint } = await getActivitiesFingerprint()
+        if (fingerprint === fingerprintRef.current) return
+        const result = await loadMoreActivities(1)
+        fingerprintRef.current = result.fingerprint
+        setItems((prev) => {
+          const fresh = new Set(result.items.map((a) => a.id))
+          return [...result.items, ...prev.filter((a) => !fresh.has(a.id))]
+        })
+        setHasMore(result.hasMore)
+        onSync?.({ items: result.items, hasMore: result.hasMore, fingerprint: result.fingerprint })
       })
-      setHasMore(result.hasMore)
-    })
-  }, [active, pending])
+    }
+    check()
+    const timer = setInterval(check, POLL_MS)
+    return () => clearInterval(timer)
+  }, [active, pending, onSync])
 
   // Activities on the same post stack into one entry per day (Facebook-style):
   // the post card renders once with every actor line above it. Follows stack
@@ -302,6 +323,7 @@ export function ActivitiesView({
     startTransition(async () => {
       const next = page + 1
       const result = await loadMoreActivities(next)
+      fingerprintRef.current = result.fingerprint
       setItems((prev) => {
         const seen = new Set(prev.map((a) => a.id))
         return [...prev, ...result.items.filter((a) => !seen.has(a.id))]
@@ -485,30 +507,89 @@ export function ActivitiesView({
   )
 }
 
+type CachedActivities = Paged<ActivityData> & { fingerprint: string }
+
+// Page-1 activities cached per viewer — module memory covers in-app
+// navigations, sessionStorage covers PWA cold starts. Both get validated
+// against the server fingerprint on tab activation, so a stale cache never
+// survives a check.
+const memoryCache = new Map<number, CachedActivities>()
+const cacheKey = (viewerId: number) => `kitakits:activities:${viewerId}`
+
+const readActivitiesCache = (viewerId: number): CachedActivities | null => {
+  const mem = memoryCache.get(viewerId)
+  if (mem) return mem
+  try {
+    const raw = window.sessionStorage.getItem(cacheKey(viewerId))
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as CachedActivities
+    if (!Array.isArray(parsed.items) || typeof parsed.fingerprint !== 'string') return null
+    memoryCache.set(viewerId, parsed)
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+const writeActivitiesCache = (viewerId: number, data: CachedActivities) => {
+  memoryCache.set(viewerId, data)
+  try {
+    window.sessionStorage.setItem(cacheKey(viewerId), JSON.stringify(data))
+  } catch {}
+}
+
 // Lazy variant of the Activities panel — fetches the first page via the
 // loadMoreActivities action only when the tab is opened, so /home loads for
-// the feed/saved tabs never run the activities query. Once mounted it stays
-// mounted (panels hide rather than unmount), and ActivitiesView's own
-// stale-on-activation refresh takes over from there. Direct ?tab=activities
-// loads get the SSR panel from the page instead of this.
-export function LazyActivities() {
+// the feed/saved tabs never run the activities query. A cached page renders
+// instantly instead of the skeleton, and ActivitiesView revalidates it via
+// the fingerprint probe on activation. Once mounted it stays mounted (panels
+// hide rather than unmount). Direct ?tab=activities loads get the SSR panel
+// from the page instead of this.
+export function LazyActivities({ viewerId }: { viewerId: number }) {
   const active = useContext(HomeTabContext) === 'activities'
-  const [data, setData] = useState<Paged<ActivityData> | null>(null)
+  // Memory-only in the initializer — identical on server and client so SSR
+  // hydration stays consistent; sessionStorage seeds in the effect below.
+  const [data, setData] = useState<CachedActivities | null>(() =>
+    typeof window === 'undefined' ? null : (memoryCache.get(viewerId) ?? null),
+  )
   const fetchingRef = useRef(false)
+
+  const sync = useCallback(
+    (page: CachedActivities) => {
+      writeActivitiesCache(viewerId, page)
+      setData(page)
+    },
+    [viewerId],
+  )
+
+  useEffect(() => {
+    if (data) return
+    const cached = readActivitiesCache(viewerId)
+    if (cached) queueMicrotask(() => setData(cached))
+  }, [viewerId, data])
 
   useEffect(() => {
     if (!active || data || fetchingRef.current) return
     fetchingRef.current = true
     loadMoreActivities(1)
-      .then(setData)
+      .then((result) =>
+        sync({ items: result.items, hasMore: result.hasMore, fingerprint: result.fingerprint }),
+      )
       // Keep the skeleton up — toggling away and back retries.
       .catch(() => {
         fetchingRef.current = false
       })
-  }, [active, data])
+  }, [active, data, sync])
 
   if (!data) return active ? <ActivityListSkeleton /> : null
-  return <ActivitiesView activities={data.items} initialHasMore={data.hasMore} />
+  return (
+    <ActivitiesView
+      activities={data.items}
+      initialHasMore={data.hasMore}
+      initialFingerprint={data.fingerprint}
+      onSync={sync}
+    />
+  )
 }
 
 // Timeline rail outside the card — per-row segments join into one continuous

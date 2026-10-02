@@ -1,3 +1,4 @@
+import { sql } from '@payloadcms/db-postgres'
 import type { Where } from 'payload'
 
 import type {
@@ -15,6 +16,7 @@ import type {
   VideokeRoom,
 } from '@/payload-types'
 
+import { drizzleOf } from './db'
 import { getTopBadgesForUsers, toBadgeData } from './gamification'
 import { getPayloadClient } from './payload'
 import { hydratePosts } from './posts'
@@ -28,6 +30,52 @@ import {
 } from './serialize'
 
 const ACTIVITY_PAGE_SIZE = 20
+
+export type ActivitiesPage = Paged<ActivityData> & { fingerprint: string }
+
+// Single-query freshness probe for the activities feed — one indexed
+// MAX(ts)+COUNT(*) per source UNION'd together (ts = the later of
+// created/updated, so edits invalidate too). The fingerprint changes on any
+// insert, update, or delete affecting the feed's inputs, so the client can
+// skip the ~15-query page-1 refetch entirely when nothing moved. It's a
+// heuristic rather than a visibility mirror: changes invisible to the viewer
+// (pending testimonials, private targets) can bump it and cause a no-op
+// refetch — wasteful but never wrong.
+export async function computeActivitiesFingerprint(
+  viewer: User,
+  authorIds: number[],
+): Promise<string> {
+  const payload = await getPayloadClient()
+  const db = drizzleOf(payload)
+  if (!db) return ''
+
+  const sources: ReturnType<typeof sql>[] = []
+  if (authorIds.length > 0) {
+    const idIn = sql.join(
+      authorIds.map((id) => sql`${id}`),
+      sql`, `,
+    )
+    sources.push(
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM likes WHERE user_id IN (${idIn})`,
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM comments WHERE author_id IN (${idIn})`,
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM follows WHERE follower_id IN (${idIn})`,
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM testimonials WHERE author_id IN (${idIn}) AND status = 'approved'`,
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM user_badges WHERE user_id IN (${idIn})`,
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM hangout_joins WHERE user_id IN (${idIn})`,
+    )
+  }
+  if (viewer.profileViewTracking) {
+    sources.push(
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM profile_views WHERE viewed_id = ${viewer.id}`,
+    )
+  }
+  if (sources.length === 0) return '0|0'
+
+  const { rows } = (await db.execute(
+    sql`SELECT MAX(t)::text AS latest, SUM(n) AS total FROM (${sql.join(sources, sql` UNION ALL `)}) s`,
+  )) as { rows: { latest: string | null; total: number | string }[] }
+  return `${rows[0]?.latest ?? ''}|${rows[0]?.total ?? 0}`
+}
 
 const isObj = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -206,9 +254,11 @@ export async function getFollowingActivities(
   viewer: User,
   authorIds: number[],
   page: number,
-): Promise<Paged<ActivityData>> {
+): Promise<ActivitiesPage> {
   const optedIn = Boolean(viewer.profileViewTracking)
-  if (authorIds.length === 0 && !optedIn) return { items: [], hasMore: false }
+  if (authorIds.length === 0 && !optedIn) {
+    return { items: [], hasMore: false, fingerprint: '0|0' }
+  }
 
   const payload = await getPayloadClient()
   const limit = page * ACTIVITY_PAGE_SIZE
@@ -224,7 +274,7 @@ export async function getFollowingActivities(
   // First wave — the follower list (needed to scope mutuals-only post
   // visibility) runs alongside every source that doesn't depend on it, so
   // only the likes/comments pair waits for a second round.
-  const [followers, follows, testimonials, badgeAwards, profileViews, hangoutJoins] =
+  const [followers, follows, testimonials, badgeAwards, profileViews, hangoutJoins, fingerprint] =
     await Promise.all([
       payload.find({
         collection: 'follows',
@@ -313,6 +363,9 @@ export async function getFollowingActivities(
           overrideAccess: false,
         }),
       ),
+      // Freshness probe rides along in the same wave — the client compares it
+      // before deciding whether the next activation needs a refetch at all.
+      computeActivitiesFingerprint(viewer, authorIds),
     ])
 
   // Mutuals-only posts are a stricter tier — the author must be someone the
@@ -526,5 +579,5 @@ export async function getFollowingActivities(
     entry.post ? { ...entry.data, post: cards.get(entry.post.id) } : entry.data,
   )
 
-  return { items, hasMore }
+  return { items, hasMore, fingerprint }
 }

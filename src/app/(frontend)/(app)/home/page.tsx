@@ -162,7 +162,7 @@ async function HomeFeed({
             <ActivitiesPanel />
           </Suspense>
         ) : (
-          <LazyActivities />
+          <LazyActivities viewerId={user.id} />
         )
       }
       savedPanel={
@@ -284,7 +284,13 @@ async function ActivitiesPanel() {
   if (!user) return null
   const authorIds = await getFolloweeIds(user)
   const activities = await getFollowingActivities(user, authorIds, 1)
-  return <ActivitiesView activities={activities.items} initialHasMore={activities.hasMore} />
+  return (
+    <ActivitiesView
+      activities={activities.items}
+      initialHasMore={activities.hasMore}
+      initialFingerprint={activities.fingerprint}
+    />
+  )
 }
 
 async function SavedPanel() {
