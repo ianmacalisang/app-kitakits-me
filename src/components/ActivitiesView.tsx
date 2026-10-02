@@ -356,15 +356,22 @@ export function ActivitiesView({
       } else if (activity.type === 'badge') {
         setBadgeActivity(activity)
       } else if (activity.type === 'hangout_join') {
-        router.push(
-          activity.cardRoomId
-            ? `/hangouts/cards/${activity.cardRoomId}`
-            : activity.nhieRoomId
-              ? `/hangouts/nhie/${activity.nhieRoomId}`
-              : activity.videokeRoomId
-                ? `/hangouts/videoke/${activity.videokeRoomId}`
-                : '/hangouts',
-        )
+        // Rooms are private — parties land inside, mutuals of the host land
+        // on the knock gate, and anyone else gets the actor's profile so a
+        // room link never leaks to someone who can't enter.
+        if (activity.hangoutAccess === 'enter' || activity.hangoutAccess === 'knock') {
+          router.push(
+            activity.cardRoomId
+              ? `/hangouts/cards/${activity.cardRoomId}`
+              : activity.nhieRoomId
+                ? `/hangouts/nhie/${activity.nhieRoomId}`
+                : activity.videokeRoomId
+                  ? `/hangouts/videoke/${activity.videokeRoomId}`
+                  : '/hangouts',
+          )
+        } else {
+          router.push(`/profile/${activity.actorUsername}`)
+        }
       } else if (activity.postId) {
         if (activity.type === 'like') setViewPostId(activity.postId)
         else setOpenPostId(activity.postId)

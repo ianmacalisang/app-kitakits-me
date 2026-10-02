@@ -206,6 +206,8 @@ const toHangoutJoinActivity = (
   cardRooms: Map<number, CardRoom>,
   nhieRooms: Map<number, NhieRoom>,
   badges: BadgeMap | null,
+  viewerId: number,
+  mutualIds: Set<number>,
 ): ActivityData | null => {
   const actor = heads.get(relId(join.user) ?? -1) ?? null
   // A join targets exactly one hangout app — whichever FK is set.
@@ -216,6 +218,18 @@ const toHangoutJoinActivity = (
   if (!actor || !room) return null
   // The member who invited them shows as the activity's target — "hosted by".
   const inviter = heads.get(relId(join.invitedBy) ?? -1) ?? null
+  // Mirrors the room pages' gate: parties land inside, mutuals of the host
+  // land on the knock gate, everyone else shouldn't reach the room at all.
+  // Rooms hydrate at depth 0, so members/invites are bare ids here.
+  const isParty =
+    (room.members ?? []).some((m) => relId(m) === viewerId) ||
+    (room.invites ?? []).some((i) => relId(i.user) === viewerId)
+  const hostId = relId(room.host)
+  const hangoutAccess = isParty
+    ? ('enter' as const)
+    : room.status === 'open' && hostId !== null && hostId !== viewerId && mutualIds.has(hostId)
+      ? ('knock' as const)
+      : ('none' as const)
   const name = typeof room.name === 'string' && room.name.trim() ? room.name.trim() : undefined
   return {
     id: `hangoutjoin-${join.id}`,
@@ -235,6 +249,7 @@ const toHangoutJoinActivity = (
     nhieRoomName: nhie ? name : undefined,
     hangoutJoinKind: join.kind === 'hosted' ? 'hosted' : 'joined',
     hangoutKind: nhie ? 'nhie' : cards ? 'cards' : 'videoke',
+    hangoutAccess,
   }
 }
 
@@ -373,6 +388,10 @@ export async function getFollowingActivities(
   // followees, so intersect it with the viewer's followers.
   const followerSet = new Set(followers.docs.map((f) => relId(f.follower)))
   const mutualAuthorIds = [viewer.id, ...authorIds.filter((id) => followerSet.has(id))]
+  // The viewer's mutuals — used to decide whether a hangout_join row may
+  // link to the room's knock gate. (viewer.id in the set is inert: the knock
+  // check also requires hostId !== viewerId.)
+  const mutualSet = new Set(mutualAuthorIds)
 
   const visiblePost: Where = {
     or: [
@@ -546,6 +565,8 @@ export async function getFollowingActivities(
         joinCardRoomMap,
         joinNhieRoomMap,
         topBadges,
+        viewer.id,
+        mutualSet,
       ),
       post: null,
     })),

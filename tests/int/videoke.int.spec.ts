@@ -71,6 +71,10 @@ describe('Videoke rooms', () => {
       collection: 'notifications',
       where: { or: [{ recipient: { in: ids } }, { actor: { in: ids } }] },
     })
+    await payload.delete({
+      collection: 'follows',
+      where: { or: [{ follower: { in: ids } }, { following: { in: ids } }] },
+    })
     if (roomIds.length) {
       await payload.delete({ collection: 'hangout-joins', where: { room: { in: roomIds } } })
     }
@@ -303,6 +307,30 @@ describe('Videoke rooms', () => {
     expect(join?.videokeRoomId).toBe(room.id)
     expect(join?.videokeRoomName).toBe('Test room')
     expect(join?.hangoutJoinKind).toBe('joined')
+    // Carol isn't a party and the host isn't her mutual — the row renders,
+    // but taps must route to the actor's profile, not the room.
+    expect(join?.hangoutAccess).toBe('none')
+  })
+
+  it("gates the hangout activity link by the viewer's room access", async () => {
+    // Alice is a member — her feed link opens the room itself.
+    const memberFeed = await getFollowingActivities(alice, [bob.id], 1)
+    const memberJoin = memberFeed.items.find((a) => a.type === 'hangout_join')
+    expect(memberJoin?.hangoutAccess).toBe('enter')
+
+    // Once Carol is a mutual of the host she can knock — the link lands on
+    // the ask-to-join gate instead of a dead-end room URL.
+    await payload.create({
+      collection: 'follows',
+      data: { follower: carol.id, following: alice.id },
+    })
+    await payload.create({
+      collection: 'follows',
+      data: { follower: alice.id, following: carol.id },
+    })
+    const knockFeed = await getFollowingActivities(carol, [bob.id, alice.id], 1)
+    const knockJoin = knockFeed.items.find((a) => a.type === 'hangout_join')
+    expect(knockJoin?.hangoutAccess).toBe('knock')
   })
 
   it('mints a room-scoped LiveKit voice token', async () => {

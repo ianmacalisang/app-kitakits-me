@@ -688,6 +688,10 @@ export interface ActivityData {
   nhieRoomName?: string
   hangoutJoinKind?: 'joined' | 'hosted'
   hangoutKind?: 'videoke' | 'cards' | 'nhie'
+  // What tapping the row may do for this viewer: 'enter' lands inside the
+  // room (member/invitee), 'knock' lands on the ask-to-join gate (mutual of
+  // the host), 'none' routes to the actor's profile — the room stays private.
+  hangoutAccess?: 'enter' | 'knock' | 'none'
 }
 
 export interface ThreadData {
