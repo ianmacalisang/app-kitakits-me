@@ -16,9 +16,14 @@ import { toast } from '@/lib/events'
 
 import { MicIcon } from './icons'
 
+// TrackSubscribed/Unsubscribed matter as much as publish events: `pub.track`
+// is null until the subscription lands, so refreshing on TrackPublished alone
+// misses everyone whose mic was already on when we joined.
 const SPEAKER_EVENTS = [
   RoomEvent.TrackPublished,
   RoomEvent.TrackUnpublished,
+  RoomEvent.TrackSubscribed,
+  RoomEvent.TrackUnsubscribed,
   RoomEvent.TrackMuted,
   RoomEvent.TrackUnmuted,
   RoomEvent.LocalTrackPublished,
