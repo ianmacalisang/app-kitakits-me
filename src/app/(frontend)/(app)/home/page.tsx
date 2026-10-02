@@ -289,6 +289,7 @@ async function ActivitiesPanel() {
       activities={activities.items}
       initialHasMore={activities.hasMore}
       initialFingerprint={activities.fingerprint}
+      cacheViewerId={user.id}
     />
   )
 }

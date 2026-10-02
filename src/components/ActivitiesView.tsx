@@ -179,12 +179,12 @@ export function ActivitiesView({
   activities,
   initialHasMore,
   initialFingerprint,
-  onSync,
+  cacheViewerId,
 }: {
   activities: ActivityData[]
   initialHasMore: boolean
   initialFingerprint?: string
-  onSync?: (page: { items: ActivityData[]; hasMore: boolean; fingerprint: string }) => void
+  cacheViewerId?: number
 }) {
   const router = useRouter()
   // Rendered inside a HomeTabs panel slot — context carries the active tab
@@ -204,10 +204,18 @@ export function ActivitiesView({
   const fingerprintRef = useRef(initialFingerprint)
   const lastCheckRef = useRef(0)
 
-  // Fresh server props (router refresh) reset the fingerprint baseline.
+  // Fresh server props (router refresh) reset the fingerprint baseline and
+  // refresh the persistent cache — SSR'd data is page 1 by definition.
   useEffect(() => {
     fingerprintRef.current = initialFingerprint
-  }, [activities, initialFingerprint])
+    if (cacheViewerId && initialFingerprint) {
+      writeActivitiesCache(cacheViewerId, {
+        items: activities,
+        hasMore: initialHasMore,
+        fingerprint: initialFingerprint,
+      })
+    }
+  }, [activities, initialHasMore, initialFingerprint, cacheViewerId])
 
   // Reconcile when the server re-renders the list (e.g. router.refresh()): keep
   // pages loaded via infinite scroll if the refreshed first page still matches.
@@ -244,13 +252,19 @@ export function ActivitiesView({
           return [...result.items, ...prev.filter((a) => !fresh.has(a.id))]
         })
         setHasMore(result.hasMore)
-        onSync?.({ items: result.items, hasMore: result.hasMore, fingerprint: result.fingerprint })
+        if (cacheViewerId) {
+          writeActivitiesCache(cacheViewerId, {
+            items: result.items,
+            hasMore: result.hasMore,
+            fingerprint: result.fingerprint,
+          })
+        }
       })
     }
     check()
     const timer = setInterval(check, POLL_MS)
     return () => clearInterval(timer)
-  }, [active, pending, onSync])
+  }, [active, pending, cacheViewerId])
 
   // Activities on the same post stack into one entry per day (Facebook-style):
   // the post card renders once with every actor line above it. Follows stack
@@ -510,7 +524,7 @@ export function ActivitiesView({
 type CachedActivities = Paged<ActivityData> & { fingerprint: string }
 
 // Page-1 activities cached per viewer — module memory covers in-app
-// navigations, sessionStorage covers PWA cold starts. Both get validated
+// navigations, localStorage covers PWA cold starts. Both get validated
 // against the server fingerprint on tab activation, so a stale cache never
 // survives a check.
 const memoryCache = new Map<number, CachedActivities>()
@@ -520,7 +534,7 @@ const readActivitiesCache = (viewerId: number): CachedActivities | null => {
   const mem = memoryCache.get(viewerId)
   if (mem) return mem
   try {
-    const raw = window.sessionStorage.getItem(cacheKey(viewerId))
+    const raw = window.localStorage.getItem(cacheKey(viewerId))
     if (!raw) return null
     const parsed = JSON.parse(raw) as CachedActivities
     if (!Array.isArray(parsed.items) || typeof parsed.fingerprint !== 'string') return null
@@ -534,7 +548,7 @@ const readActivitiesCache = (viewerId: number): CachedActivities | null => {
 const writeActivitiesCache = (viewerId: number, data: CachedActivities) => {
   memoryCache.set(viewerId, data)
   try {
-    window.sessionStorage.setItem(cacheKey(viewerId), JSON.stringify(data))
+    window.localStorage.setItem(cacheKey(viewerId), JSON.stringify(data))
   } catch {}
 }
 
@@ -548,7 +562,7 @@ const writeActivitiesCache = (viewerId: number, data: CachedActivities) => {
 export function LazyActivities({ viewerId }: { viewerId: number }) {
   const active = useContext(HomeTabContext) === 'activities'
   // Memory-only in the initializer — identical on server and client so SSR
-  // hydration stays consistent; sessionStorage seeds in the effect below.
+  // hydration stays consistent; localStorage seeds in the effect below.
   const [data, setData] = useState<CachedActivities | null>(() =>
     typeof window === 'undefined' ? null : (memoryCache.get(viewerId) ?? null),
   )
@@ -572,14 +586,37 @@ export function LazyActivities({ viewerId }: { viewerId: number }) {
     if (!active || data || fetchingRef.current) return
     fetchingRef.current = true
     loadMoreActivities(1)
-      .then((result) =>
-        sync({ items: result.items, hasMore: result.hasMore, fingerprint: result.fingerprint }),
-      )
+      .then((result) => {
+        sync({ items: result.items, hasMore: result.hasMore, fingerprint: result.fingerprint })
+        fetchingRef.current = false
+      })
       // Keep the skeleton up — toggling away and back retries.
       .catch(() => {
         fetchingRef.current = false
       })
   }, [active, data, sync])
+
+  // Idle warm-up: once the page settles, revalidate the cache with the cheap
+  // fingerprint probe so the tab paints instantly when opened. Only runs when
+  // a cache exists — viewers who never open Activities still pay nothing.
+  useEffect(() => {
+    if (!data || active) return
+    const timer = setTimeout(async () => {
+      if (fetchingRef.current) return
+      try {
+        const { fingerprint } = await getActivitiesFingerprint()
+        const cached = readActivitiesCache(viewerId)
+        if (cached && fingerprint === cached.fingerprint) return
+        fetchingRef.current = true
+        const result = await loadMoreActivities(1)
+        sync({ items: result.items, hasMore: result.hasMore, fingerprint: result.fingerprint })
+      } catch {
+      } finally {
+        fetchingRef.current = false
+      }
+    }, 1500)
+    return () => clearTimeout(timer)
+  }, [data, active, viewerId, sync])
 
   if (!data) return active ? <ActivityListSkeleton /> : null
   return (
@@ -587,7 +624,7 @@ export function LazyActivities({ viewerId }: { viewerId: number }) {
       activities={data.items}
       initialHasMore={data.hasMore}
       initialFingerprint={data.fingerprint}
-      onSync={sync}
+      cacheViewerId={viewerId}
     />
   )
 }
