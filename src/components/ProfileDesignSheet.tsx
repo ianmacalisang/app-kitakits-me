@@ -17,9 +17,9 @@ import { useSheetDragClose } from './useSheetDrag'
 
 const CLOSE_MS = 300
 
-// "Design your public profile" entry point on the owner's profile page —
-// opens a sheet for layout/background/accent controls that only affect the
-// public /@username page.
+// "Change your profile design" entry point on the owner's profile page —
+// opens a sheet for layout/background/accent controls used by both the
+// public /@username page and the in-app profile page.
 export function ProfileDesignSheet({
   username,
   publicProfile,
@@ -77,7 +77,7 @@ export function ProfileDesignSheet({
           <PaletteIcon className="h-5 w-5" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold">Design your public profile</span>
+          <span className="block text-sm font-semibold">Change your profile design</span>
           <span className="block truncate text-xs text-neutral-500">
             Layout, theme, fonts &amp; colors for /@{username}
           </span>
