@@ -24,7 +24,11 @@ export const Testimonials: CollectionConfig = {
     defaultColumns: ['author', 'recipient', 'status', 'createdAt'],
   },
   // One testimonial per author per profile — the author edits to revise.
-  indexes: [{ unique: true, fields: ['author', 'recipient'] }],
+  indexes: [
+    { unique: true, fields: ['author', 'recipient'] },
+    // Serves the activities feed's author_id IN (...) ORDER BY created_at.
+    { fields: ['author', 'createdAt'] },
+  ],
   access: {
     create: canWriteTestimonial,
     read: canReadTestimonials,

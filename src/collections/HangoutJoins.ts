@@ -16,6 +16,8 @@ export const HangoutJoins: CollectionConfig = {
     { unique: true, fields: ['user', 'room'] },
     { unique: true, fields: ['user', 'cardRoom'] },
     { unique: true, fields: ['user', 'nhieRoom'] },
+    // Serves the activities feed's user_id IN (...) ORDER BY updated_at.
+    { fields: ['user', 'updatedAt'] },
   ],
   access: {
     // Reads feed the activities stream — the query scopes rows to followed

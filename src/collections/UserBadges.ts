@@ -10,7 +10,11 @@ export const UserBadges: CollectionConfig = {
   },
   // One award per badge per user — the evaluator relies on this constraint
   // to make concurrent grants idempotent.
-  indexes: [{ unique: true, fields: ['user', 'badge'] }],
+  indexes: [
+    { unique: true, fields: ['user', 'badge'] },
+    // Serves the activities feed's user_id IN (...) ORDER BY created_at.
+    { fields: ['user', 'createdAt'] },
+  ],
   access: {
     // Awards are public-facing — shown on public /@username profiles.
     read: () => true,

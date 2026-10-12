@@ -12,6 +12,8 @@ export const Comments: CollectionConfig = {
   admin: {
     defaultColumns: ['author', 'post', 'content', 'createdAt'],
   },
+  // Serves the activities feed's author_id IN (...) ORDER BY created_at.
+  indexes: [{ fields: ['author', 'createdAt'] }],
   access: {
     create: canComment,
     read: canReadComments,

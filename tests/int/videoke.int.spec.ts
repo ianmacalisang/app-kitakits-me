@@ -10,6 +10,7 @@ import { decodeJwt } from 'jose'
 import { getPayload, Payload } from 'payload'
 import config from '@/payload.config'
 import { getFollowingActivities } from '@/lib/activities'
+import { getFollowGraph } from '@/lib/followGraph'
 import { relId, toNotificationData } from '@/lib/serialize'
 import { serializeVideokeRoom } from '@/lib/videoke'
 import type { User, VideokeRoom } from '@/payload-types'
@@ -299,7 +300,11 @@ describe('Videoke rooms', () => {
     // Carol follows Bob but is not a party to the room — access-checked
     // population can't load join.room for her, so the feed hydrates the
     // room/head docs itself. Her feed must still show the join.
-    const feed = await getFollowingActivities(carol, [bob.id], 1)
+    const feed = await getFollowingActivities(
+      carol,
+      { ...(await getFollowGraph(payload, carol)), authorIds: [bob.id] },
+      1,
+    )
     const join = feed.items.find((a) => a.type === 'hangout_join')
     expect(join).toBeDefined()
     expect(join?.actorUsername).toBe(bob.username)
@@ -314,7 +319,11 @@ describe('Videoke rooms', () => {
 
   it("gates the hangout activity link by the viewer's room access", async () => {
     // Alice is a member — her feed link opens the room itself.
-    const memberFeed = await getFollowingActivities(alice, [bob.id], 1)
+    const memberFeed = await getFollowingActivities(
+      alice,
+      { ...(await getFollowGraph(payload, alice)), authorIds: [bob.id] },
+      1,
+    )
     const memberJoin = memberFeed.items.find((a) => a.type === 'hangout_join')
     expect(memberJoin?.hangoutAccess).toBe('enter')
 
@@ -328,7 +337,11 @@ describe('Videoke rooms', () => {
       collection: 'follows',
       data: { follower: alice.id, following: carol.id },
     })
-    const knockFeed = await getFollowingActivities(carol, [bob.id, alice.id], 1)
+    const knockFeed = await getFollowingActivities(
+      carol,
+      { ...(await getFollowGraph(payload, carol)), authorIds: [bob.id, alice.id] },
+      1,
+    )
     const knockJoin = knockFeed.items.find((a) => a.type === 'hangout_join')
     expect(knockJoin?.hangoutAccess).toBe('knock')
   })

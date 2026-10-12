@@ -16,7 +16,11 @@ export const Likes: CollectionConfig = {
   admin: {
     defaultColumns: ['user', 'post', 'createdAt'],
   },
-  indexes: [{ unique: true, fields: ['user', 'post'] }],
+  indexes: [
+    { unique: true, fields: ['user', 'post'] },
+    // Serves the activities feed's user_id IN (...) ORDER BY created_at.
+    { fields: ['user', 'createdAt'] },
+  ],
   access: {
     create: canLike,
     read: isAuthenticated,

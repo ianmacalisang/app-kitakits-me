@@ -74,6 +74,7 @@ export default async function ProfilePage({
     followers,
     following,
     existingFollow,
+    reverseFollow,
     posts,
     pinned,
     testimonials,
@@ -98,6 +99,14 @@ export default async function ProfilePage({
       collection: 'follows',
       where: {
         and: [{ follower: { equals: viewer.id } }, { following: { equals: profileUser.id } }],
+      },
+      user: viewer,
+      overrideAccess: false,
+    }),
+    payload.count({
+      collection: 'follows',
+      where: {
+        and: [{ follower: { equals: profileUser.id } }, { following: { equals: viewer.id } }],
       },
       user: viewer,
       overrideAccess: false,
@@ -166,7 +175,10 @@ export default async function ProfilePage({
   ])
 
   const isFollowing = existingFollow.totalDocs > 0
-  const canViewPosts = !profileUser.isPrivate || isSelf || isFollowing || viewer.role === 'admin'
+  // Private accounts open up only to mutuals — both directions follow, which
+  // is also what QR connects create.
+  const isMutual = isFollowing && reverseFollow.totalDocs > 0
+  const canViewPosts = !profileUser.isPrivate || isSelf || isMutual || viewer.role === 'admin'
 
   // Mirrors canWriteTestimonial so the form doesn't even render for people the
   // recipient's settings would reject anyway.
@@ -174,9 +186,9 @@ export default async function ProfilePage({
   const canWriteTestimonial =
     !isSelf &&
     testimonialPermission !== 'off' &&
-    (!(testimonialPermission === 'followers' || profileUser.isPrivate) ||
-      isFollowing ||
-      viewer.role === 'admin')
+    (profileUser.isPrivate
+      ? isMutual || viewer.role === 'admin'
+      : testimonialPermission !== 'followers' || isFollowing || viewer.role === 'admin')
 
   // Owner's public-profile design, mirrored on the in-app page. The theme is
   // scoped to a `dark`/`light` wrapper (the `.light` escape built into the
@@ -344,7 +356,7 @@ export default async function ProfilePage({
               <LockIcon className="h-6 w-6 text-neutral-400" />
               <p className="text-sm font-semibold">This account is private</p>
               <p className="text-xs text-neutral-500">
-                Follow @{profileUser.username} to see their posts.
+                Only mutuals can see @{profileUser.username}&apos;s posts.
               </p>
             </div>
           )}

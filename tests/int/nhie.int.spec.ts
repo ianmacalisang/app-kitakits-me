@@ -10,6 +10,7 @@
 import { getPayload, Payload } from 'payload'
 import config from '@/payload.config'
 import { getFollowingActivities } from '@/lib/activities'
+import { getFollowGraph } from '@/lib/followGraph'
 import { awardPoints } from '@/lib/gamification'
 import { openHangoutOf } from '@/lib/hangouts'
 import {
@@ -474,7 +475,11 @@ describe('NHIE rooms', () => {
       data: { user: bob.id, nhieRoom: room.id, invitedBy: alice.id, kind: 'joined' },
       overrideAccess: true,
     })
-    const feed = await getFollowingActivities(carol, [bob.id], 1)
+    const feed = await getFollowingActivities(
+      carol,
+      { ...(await getFollowGraph(payload, carol)), authorIds: [bob.id] },
+      1,
+    )
     const join = feed.items.find((a) => a.type === 'hangout_join')
     expect(join).toBeDefined()
     expect(join?.actorUsername).toBe(bob.username)

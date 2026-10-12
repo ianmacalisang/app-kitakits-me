@@ -631,7 +631,8 @@ export type MediaType = 'images' | 'videos'
 // access control can't apply the nested author.isPrivate path for them
 // (users read is authenticated-only), and the path can't appear in `where`
 // while access is on. Signed-in callers rely on canReadPosts, which scopes
-// to posts they may read (own + followed authors' followers-only included).
+// to posts they may read (followed authors' followers-only and mutuals'
+// private-account posts included).
 export async function getUserMedia(
   authorId: number,
   page = 1,

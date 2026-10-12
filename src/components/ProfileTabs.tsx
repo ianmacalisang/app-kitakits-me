@@ -56,6 +56,7 @@ export function ProfileTabs({
   followingCount,
   testimonials,
   isPublicPage = false,
+  mediaPublicOnly,
   initialTab,
   initialMediaType,
 }: {
@@ -71,6 +72,9 @@ export function ProfileTabs({
   followingCount: number
   testimonials: ProfileTestimonials
   isPublicPage?: boolean
+  // Media-grid scoping override — defaults to isPublicPage, but an authorized
+  // viewer of a private profile (mutual/self) sees the full wall.
+  mediaPublicOnly?: boolean
   initialTab?: Tab
   initialMediaType?: MediaGridTab
 }) {
@@ -283,7 +287,7 @@ export function ProfileTabs({
         >
           <MediaGrid
             authorId={authorId}
-            publicOnly={isPublicPage}
+            publicOnly={mediaPublicOnly ?? isPublicPage}
             isSelf={isSelf}
             username={username}
             initialType={initialMediaType}

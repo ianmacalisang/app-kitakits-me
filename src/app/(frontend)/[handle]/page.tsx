@@ -123,7 +123,39 @@ export default async function PublicProfilePage({
   }
 
   const isSelf = viewer?.id === profileUser.id
-  const canViewPosts = !profileUser.isPrivate
+
+  // Private accounts open up only to mutuals — one query counts both follow
+  // directions; the unique (follower, following) index means 2 = mutual.
+  const viewerIsMutual =
+    viewer && !isSelf && profileUser.isPrivate
+      ? (
+          await payload.count({
+            collection: 'follows',
+            where: {
+              or: [
+                {
+                  and: [
+                    { follower: { equals: viewer.id } },
+                    { following: { equals: profileUser.id } },
+                  ],
+                },
+                {
+                  and: [
+                    { follower: { equals: profileUser.id } },
+                    { following: { equals: viewer.id } },
+                  ],
+                },
+              ],
+            },
+            user: viewer,
+            overrideAccess: false,
+          })
+        ).totalDocs >= 2
+      : false
+  const canViewPosts = !profileUser.isPrivate || Boolean(isSelf) || viewerIsMutual
+  // A private profile viewed by an authorized viewer — the posts queries drop
+  // the anonymous visibility filter and let canReadPosts scope what's shared.
+  const restrictedView = Boolean(profileUser.isPrivate && canViewPosts)
 
   const [
     followers,
@@ -150,32 +182,41 @@ export default async function PublicProfilePage({
           collection: 'posts',
           // Mirror the anonymous canReadPosts constraint — relationships only
           // populate when access is overridden, so filtering here keeps this
-          // equivalent to what signed-out readers may see.
-          where: {
-            and: [
-              { author: { equals: profileUser.id } },
-              { visibility: { not_in: ['followers', 'mutuals'] } },
-            ],
-          },
+          // equivalent to what signed-out readers may see. An authorized
+          // viewer of a private profile instead defers to access control.
+          where: restrictedView
+            ? { author: { equals: profileUser.id } }
+            : {
+                and: [
+                  { author: { equals: profileUser.id } },
+                  { visibility: { not_in: ['followers', 'mutuals'] } },
+                ],
+              },
           sort: '-createdAt',
           page: 1,
           limit: FEED_PAGE_SIZE,
           depth: 2,
+          ...(restrictedView && viewer ? { user: viewer, overrideAccess: false as const } : {}),
         })
       : Promise.resolve({ docs: [], hasNextPage: false }),
     canViewPosts
       ? payload.find({
           collection: 'posts',
-          where: {
-            and: [
-              { author: { equals: profileUser.id } },
-              { pinned: { equals: true } },
-              { visibility: { not_in: ['followers', 'mutuals'] } },
-            ],
-          },
+          where: restrictedView
+            ? {
+                and: [{ author: { equals: profileUser.id } }, { pinned: { equals: true } }],
+              }
+            : {
+                and: [
+                  { author: { equals: profileUser.id } },
+                  { pinned: { equals: true } },
+                  { visibility: { not_in: ['followers', 'mutuals'] } },
+                ],
+              },
           sort: '-createdAt',
           limit: 10,
           depth: 2,
+          ...(restrictedView && viewer ? { user: viewer, overrideAccess: false as const } : {}),
         })
       : Promise.resolve({ docs: [], hasNextPage: false }),
     canViewPosts
@@ -231,9 +272,11 @@ export default async function PublicProfilePage({
     Boolean(viewer) &&
     !isSelf &&
     testimonialPermission !== 'off' &&
-    (!(testimonialPermission === 'followers' || profileUser.isPrivate) ||
-      viewerFollows.totalDocs > 0 ||
-      viewer?.role === 'admin')
+    (profileUser.isPrivate
+      ? viewerIsMutual || viewer?.role === 'admin'
+      : testimonialPermission !== 'followers' ||
+        viewerFollows.totalDocs > 0 ||
+        viewer?.role === 'admin')
 
   const [cards, pinnedCards] = await Promise.all([
     hydratePosts(posts.docs, viewer),
@@ -350,6 +393,7 @@ export default async function PublicProfilePage({
                   pendingCount: pendingTestimonials.totalDocs,
                 }}
                 isPublicPage
+                mediaPublicOnly={!restrictedView}
                 initialTab={initialTab}
                 initialMediaType={initialMediaType}
               />
@@ -359,7 +403,7 @@ export default async function PublicProfilePage({
               <LockIcon className="h-6 w-6 text-neutral-400" />
               <p className="text-sm font-semibold">This account is private</p>
               <p className="text-xs text-neutral-500">
-                Follow @{profileUser.username} on {settings.appName} to see their posts.
+                Only mutuals can see @{profileUser.username}&apos;s posts.
               </p>
             </div>
           )}

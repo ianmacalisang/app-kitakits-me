@@ -143,10 +143,10 @@ const isAuthorOrMutual = async (req: PayloadRequest, authorId: number): Promise<
   return rel.totalDocs >= 2
 }
 
-// Posts are public unless marked followers-only or the author's account is
-// private — then only the author, their followers, and admins can read them.
-// Mutuals posts are a stricter tier: only the author and users who follow
-// each other.
+// Posts are public unless marked followers/mutuals-only or the author's
+// account is private. Followers-only posts need a follow; mutuals posts and
+// everything by a private account need a mutual — both directions follow,
+// which is also what QR connects create.
 export const canReadPosts: Access = async ({ req }) => {
   const user = req.user
   if (user?.role === 'admin') return true
@@ -160,18 +160,27 @@ export const canReadPosts: Access = async ({ req }) => {
   if (!user) return publicPosts
 
   const [followed, mutuals] = await Promise.all([followedIds(req), mutualIds(req)])
-  const allowed = [user.id, ...followed]
   return {
     or: [
       publicPosts,
       {
         and: [
+          { 'author.isPrivate': { not_equals: true } },
           // NULL visibility predates the field — those rows stay readable.
-          { or: [{ visibility: { not_equals: 'mutuals' } }, { visibility: { exists: false } }] },
-          { author: { in: allowed } },
+          {
+            or: [{ visibility: { not_equals: 'mutuals' } }, { visibility: { exists: false } }],
+          },
+          { author: { in: [user.id, ...followed] } },
         ],
       },
-      { and: [{ visibility: { equals: 'mutuals' } }, { author: { in: [user.id, ...mutuals] } }] },
+      {
+        and: [
+          {
+            or: [{ visibility: { equals: 'mutuals' } }, { 'author.isPrivate': { equals: true } }],
+          },
+          { author: { in: [user.id, ...mutuals] } },
+        ],
+      },
     ],
   }
 }
@@ -190,24 +199,29 @@ export const canReadComments: Access = async ({ req }) => {
   if (!user) return publicComments
 
   const [followed, mutuals] = await Promise.all([followedIds(req), mutualIds(req)])
-  const allowed = [user.id, ...followed]
   return {
     or: [
       publicComments,
       {
         and: [
+          { 'post.author.isPrivate': { not_equals: true } },
           {
             or: [
               { 'post.visibility': { not_equals: 'mutuals' } },
               { 'post.visibility': { exists: false } },
             ],
           },
-          { 'post.author': { in: allowed } },
+          { 'post.author': { in: [user.id, ...followed] } },
         ],
       },
       {
         and: [
-          { 'post.visibility': { equals: 'mutuals' } },
+          {
+            or: [
+              { 'post.visibility': { equals: 'mutuals' } },
+              { 'post.author.isPrivate': { equals: true } },
+            ],
+          },
           { 'post.author': { in: [user.id, ...mutuals] } },
         ],
       },
@@ -216,7 +230,8 @@ export const canReadComments: Access = async ({ req }) => {
 }
 
 // Post owners control who can comment via commentPermission; followers-only
-// and private-account posts also require a follow regardless of that setting.
+// posts also require a follow and private-account posts a mutual, regardless
+// of that setting.
 export const canComment: Access = async ({ req, data }) => {
   const user = req.user
   if (!user) return false
@@ -230,11 +245,13 @@ export const canComment: Access = async ({ req, data }) => {
   const permission = author.commentPermission ?? 'everyone'
   if (permission === 'off') return false
 
-  // Mutuals posts can only be read (and so commented on) by mutuals.
-  if (post.visibility === 'mutuals') return isAuthorOrMutual(req, author.id)
+  // Mutuals posts and posts on private accounts can only be read (and so
+  // commented on) by mutuals.
+  if (post.visibility === 'mutuals' || author.isPrivate) {
+    return isAuthorOrMutual(req, author.id)
+  }
 
-  const restricted =
-    permission === 'followers' || post.visibility === 'followers' || Boolean(author.isPrivate)
+  const restricted = permission === 'followers' || post.visibility === 'followers'
   if (!restricted) return true
   return isAuthorOrFollower(req, author.id)
 }
@@ -250,8 +267,8 @@ export const canLike: Access = async ({ req, data }) => {
     post && typeof post.author === 'object' && post.author !== null ? post.author : null
   if (!post || !author) return false
   if (author.id === user.id) return true
-  if (post.visibility === 'mutuals') return isAuthorOrMutual(req, author.id)
-  if (post.visibility !== 'followers' && !author.isPrivate) return true
+  if (post.visibility === 'mutuals' || author.isPrivate) return isAuthorOrMutual(req, author.id)
+  if (post.visibility !== 'followers') return true
   return isAuthorOrFollower(req, author.id)
 }
 
@@ -286,11 +303,13 @@ export const canWriteTestimonial: Access = async ({ req, data }) => {
   const permission = recipient.testimonialPermission ?? 'everyone'
   if (permission === 'off') return false
   if (permission !== 'followers' && !recipient.isPrivate) return true
-  return isAuthorOrFollower(req, recipient.id)
+  return recipient.isPrivate
+    ? isAuthorOrMutual(req, recipient.id)
+    : isAuthorOrFollower(req, recipient.id)
 }
 
 // Approved testimonials follow the recipient's profile visibility (private
-// profiles only show to followers); pending/rejected ones stay between the
+// profiles only show to mutuals); pending/rejected ones stay between the
 // author and recipient. Anonymous readers only ever see approved testimonials
 // on public, non-private profiles.
 export const canReadTestimonials: Access = async ({ req }) => {
@@ -306,7 +325,7 @@ export const canReadTestimonials: Access = async ({ req }) => {
   }
   if (!user) return anonymousConstraint
 
-  const allowed = [user.id, ...(await followedIds(req))]
+  const allowed = [user.id, ...(await mutualIds(req))]
   const approvedVisible: Where = {
     and: [
       { status: { equals: 'approved' } },
@@ -360,7 +379,7 @@ export const canSave: Access = async ({ req, data }) => {
   const author =
     post && typeof post.author === 'object' && post.author !== null ? post.author : null
   if (!post || !author || author.id === user.id) return false
-  if (post.visibility === 'mutuals') return isAuthorOrMutual(req, author.id)
-  if (post.visibility !== 'followers' && !author.isPrivate) return true
+  if (post.visibility === 'mutuals' || author.isPrivate) return isAuthorOrMutual(req, author.id)
+  if (post.visibility !== 'followers') return true
   return isAuthorOrFollower(req, author.id)
 }

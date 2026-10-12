@@ -16,7 +16,11 @@ export const Follows: CollectionConfig = {
   admin: {
     defaultColumns: ['follower', 'following', 'createdAt'],
   },
-  indexes: [{ unique: true, fields: ['follower', 'following'] }],
+  indexes: [
+    { unique: true, fields: ['follower', 'following'] },
+    // Serves the activities feed's follower_id IN (...) ORDER BY created_at.
+    { fields: ['follower', 'createdAt'] },
+  ],
   access: {
     create: isAuthenticated,
     read: isAuthenticated,

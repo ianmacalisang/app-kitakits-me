@@ -157,14 +157,14 @@ describe('Profile views', () => {
   })
 
   it('surfaces the view in the owner activities feed', async () => {
-    const feed = await getFollowingActivities(asUser(bob), [], 1)
+    const feed = await getFollowingActivities(asUser(bob), { authorIds: [], followerIds: [] }, 1)
     const item = feed.items.find((entry) => entry.type === 'profile_view')
     expect(item?.actorUsername).toBe(alice.username)
   })
 
   it('hides a viewer who opts out after recording', async () => {
     await setTracking(alice, false)
-    const feed = await getFollowingActivities(asUser(bob), [], 1)
+    const feed = await getFollowingActivities(asUser(bob), { authorIds: [], followerIds: [] }, 1)
     expect(feed.items.some((entry) => entry.type === 'profile_view')).toBe(false)
     await setTracking(alice, true)
   })
@@ -178,7 +178,11 @@ describe('Profile views', () => {
       id: bob.id,
       depth: 0,
     })) as User
-    const feed = await getFollowingActivities(asUser(freshBob), [], 1)
+    const feed = await getFollowingActivities(
+      asUser(freshBob),
+      { authorIds: [], followerIds: [] },
+      1,
+    )
     expect(feed.items.some((entry) => entry.type === 'profile_view')).toBe(false)
     await setTracking(bob, true)
   })

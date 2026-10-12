@@ -11,6 +11,7 @@ import { decodeJwt } from 'jose'
 import { getPayload, Payload } from 'payload'
 import config from '@/payload.config'
 import { getFollowingActivities } from '@/lib/activities'
+import { getFollowGraph } from '@/lib/followGraph'
 import { awardPoints, evaluateBadges } from '@/lib/gamification'
 import { serializeCardRoom } from '@/lib/cards'
 import { relId, toNotificationData } from '@/lib/serialize'
@@ -384,7 +385,11 @@ describe('Card rooms', () => {
       data: { user: bob.id, cardRoom: room.id, invitedBy: alice.id, kind: 'joined' },
       overrideAccess: true,
     })
-    const feed = await getFollowingActivities(carol, [bob.id], 1)
+    const feed = await getFollowingActivities(
+      carol,
+      { ...(await getFollowGraph(payload, carol)), authorIds: [bob.id] },
+      1,
+    )
     const join = feed.items.find((a) => a.type === 'hangout_join')
     expect(join).toBeDefined()
     expect(join?.actorUsername).toBe(bob.username)

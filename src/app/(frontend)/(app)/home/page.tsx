@@ -19,6 +19,7 @@ import { PostListSkeleton } from '@/components/PostListSkeleton'
 import { getFollowingActivities } from '@/lib/activities'
 import { getCurrentUser } from '@/lib/auth'
 import { isPostCategory, type PostCategory } from '@/lib/categories'
+import { getFollowGraph } from '@/lib/followGraph'
 import { getMutuals } from '@/lib/mutuals'
 import { getPayloadClient } from '@/lib/payload'
 import {
@@ -28,7 +29,7 @@ import {
   hydratePosts,
   mediaFilterClauses,
 } from '@/lib/posts'
-import { type MediaFilter, relId } from '@/lib/serialize'
+import { type MediaFilter } from '@/lib/serialize'
 import { HOME_TABS, type HomeTab } from '@/lib/tabs'
 import type { Post, User } from '@/payload-types'
 
@@ -36,22 +37,12 @@ export const metadata = { title: 'Home' }
 
 const MEDIA_FILTERS = new Set<MediaFilter>(['all', 'media', 'images', 'videos'])
 
-// Followee ids power both the feed and activities panels — cache() dedupes the
-// query so the two Suspense boundaries don't each fetch the follow list.
-// Cap at 2000 followees — more than enough for any realistic social graph.
-// Users following beyond this will still see the most recent 2000 authors.
-const getFolloweeIds = cache(async (user: User) => {
+// The viewer's follow graph powers the feed (followees) and activities
+// (followees + mutuals) panels — cache() dedupes the query so the two
+// Suspense boundaries don't each run it.
+const getGraph = cache(async (user: User) => {
   const payload = await getPayloadClient()
-  const following = await payload.find({
-    collection: 'follows',
-    where: { follower: { equals: user.id } },
-    limit: 2000,
-    depth: 0,
-    pagination: false,
-    user,
-    overrideAccess: false,
-  })
-  return following.docs.map((f) => relId(f.following)).filter((id): id is number => id !== null)
+  return getFollowGraph(payload, user)
 })
 
 // Static shell — renders instantly; the invite card and outer chrome are
@@ -226,7 +217,7 @@ async function FeedPanel({
   const user = await getCurrentUser()
   if (!user) return null
   const payload = await getPayloadClient()
-  const authorIds = await getFolloweeIds(user)
+  const { authorIds } = await getGraph(user)
 
   // One row past the page size answers "is there more" — pagination: false
   // skips the COUNT query a paginated find would run alongside the select.
@@ -282,8 +273,8 @@ async function FeedPanel({
 async function ActivitiesPanel() {
   const user = await getCurrentUser()
   if (!user) return null
-  const authorIds = await getFolloweeIds(user)
-  const activities = await getFollowingActivities(user, authorIds, 1)
+  const graph = await getGraph(user)
+  const activities = await getFollowingActivities(user, graph, 1)
   return (
     <ActivitiesView
       activities={activities.items}

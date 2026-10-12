@@ -33,7 +33,11 @@ export const ProfileViews: CollectionConfig = {
   },
   // One row per (viewer, viewed) pair — createdAt is the first view,
   // updatedAt the most recent; re-views bump the row instead of appending.
-  indexes: [{ unique: true, fields: ['viewer', 'viewed'] }],
+  indexes: [
+    { unique: true, fields: ['viewer', 'viewed'] },
+    // Serves the activities feed's viewed_id = me ORDER BY updated_at.
+    { fields: ['viewed', 'updatedAt'] },
+  ],
   access: {
     create: isOptedInViewer,
     read: isPartyOrAdmin,

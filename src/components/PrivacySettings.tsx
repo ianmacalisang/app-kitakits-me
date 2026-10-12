@@ -98,7 +98,7 @@ export function PrivacySettings({
           <div className="min-w-0">
             <p className="text-sm font-medium">Private account</p>
             <p className="mt-0.5 text-xs leading-relaxed text-neutral-500">
-              Only people who follow you can see your posts.
+              Only mutuals — people who follow each other or connected by QR — can see your posts.
             </p>
           </div>
           <Toggle

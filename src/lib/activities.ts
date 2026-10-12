@@ -17,6 +17,7 @@ import type {
 } from '@/payload-types'
 
 import { drizzleOf } from './db'
+import type { FollowGraph } from './followGraph'
 import { getTopBadgesForUsers, toBadgeData } from './gamification'
 import { getPayloadClient } from './payload'
 import { hydratePosts } from './posts'
@@ -36,11 +37,12 @@ export type ActivitiesPage = Paged<ActivityData> & { fingerprint: string }
 // Single-query freshness probe for the activities feed — one indexed
 // MAX(ts)+COUNT(*) per source UNION'd together (ts = the later of
 // created/updated, so edits invalidate too). The fingerprint changes on any
-// insert, update, or delete affecting the feed's inputs, so the client can
-// skip the ~15-query page-1 refetch entirely when nothing moved. It's a
-// heuristic rather than a visibility mirror: changes invisible to the viewer
-// (pending testimonials, private targets) can bump it and cause a no-op
-// refetch — wasteful but never wrong.
+// insert, update, or delete affecting the feed's inputs (within a 90-day
+// window — older mutations can't reorder the feed's top anyway), so the
+// client can skip the ~15-query page-1 refetch entirely when nothing moved.
+// It's a heuristic rather than a visibility mirror: changes invisible to the
+// viewer (pending testimonials, private targets) can bump it and cause a
+// no-op refetch — wasteful but never wrong.
 export async function computeActivitiesFingerprint(
   viewer: User,
   authorIds: number[],
@@ -49,6 +51,12 @@ export async function computeActivitiesFingerprint(
   const db = drizzleOf(payload)
   if (!db) return ''
 
+  // Bounds each leg on the recency column its source sorts by — a mutation
+  // older than the window couldn't reorder the top of the feed anyway, and
+  // the bound lets the composite (actor, recency) indexes skip old history
+  // instead of COUNT-ing every row the graph ever touched.
+  const window = sql`NOW() - INTERVAL '90 days'`
+
   const sources: ReturnType<typeof sql>[] = []
   if (authorIds.length > 0) {
     const idIn = sql.join(
@@ -56,17 +64,17 @@ export async function computeActivitiesFingerprint(
       sql`, `,
     )
     sources.push(
-      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM likes WHERE user_id IN (${idIn})`,
-      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM comments WHERE author_id IN (${idIn})`,
-      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM follows WHERE follower_id IN (${idIn})`,
-      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM testimonials WHERE author_id IN (${idIn}) AND status = 'approved'`,
-      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM user_badges WHERE user_id IN (${idIn})`,
-      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM hangout_joins WHERE user_id IN (${idIn})`,
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM likes WHERE user_id IN (${idIn}) AND created_at > ${window}`,
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM comments WHERE author_id IN (${idIn}) AND created_at > ${window}`,
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM follows WHERE follower_id IN (${idIn}) AND created_at > ${window}`,
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM testimonials WHERE author_id IN (${idIn}) AND status = 'approved' AND created_at > ${window}`,
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM user_badges WHERE user_id IN (${idIn}) AND created_at > ${window}`,
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM hangout_joins WHERE user_id IN (${idIn}) AND updated_at > ${window}`,
     )
   }
   if (viewer.profileViewTracking) {
     sources.push(
-      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM profile_views WHERE viewed_id = ${viewer.id}`,
+      sql`SELECT MAX(GREATEST(created_at, updated_at)) AS t, COUNT(*) AS n FROM profile_views WHERE viewed_id = ${viewer.id} AND updated_at > ${window}`,
     )
   }
   if (sources.length === 0) return '0|0'
@@ -267,17 +275,30 @@ const toHangoutJoinActivity = (
 // who still have it on too.
 export async function getFollowingActivities(
   viewer: User,
-  authorIds: number[],
+  graph: FollowGraph,
   page: number,
 ): Promise<ActivitiesPage> {
+  const authorIds = graph.authorIds
   const optedIn = Boolean(viewer.profileViewTracking)
   if (authorIds.length === 0 && !optedIn) {
     return { items: [], hasMore: false, fingerprint: '0|0' }
   }
 
+  const startedAt = performance.now()
   const payload = await getPayloadClient()
   const limit = page * ACTIVITY_PAGE_SIZE
   const allowed = [viewer.id, ...authorIds]
+
+  // Env-gated per-phase timings — set ACTIVITIES_TIMING=1 to log how long
+  // each wave contributes to a fetch.
+  const mark = (label: string) => {
+    if (process.env.ACTIVITIES_TIMING === '1') {
+      payload.logger.info(
+        { label, ms: Math.round(performance.now() - startedAt) },
+        'activities timing',
+      )
+    }
+  }
 
   // pagination: false skips each find's COUNT round-trip; one extra row per
   // source stands in for hasNextPage, and docs get trimmed back to the window.
@@ -286,20 +307,90 @@ export async function getFollowingActivities(
     return { docs: docs.slice(0, limit), more: docs.length > limit }
   }
 
-  // First wave — the follower list (needed to scope mutuals-only post
-  // visibility) runs alongside every source that doesn't depend on it, so
-  // only the likes/comments pair waits for a second round.
-  const [followers, follows, testimonials, badgeAwards, profileViews, hangoutJoins, fingerprint] =
-    await Promise.all([
+  // Mutuals-only posts are a stricter tier — the author must be someone the
+  // viewer follows who also follows back. authorIds is the viewer's
+  // followees, so intersect it with the viewer's followers.
+  const followerSet = new Set(graph.followerIds)
+  const mutualAuthorIds = [viewer.id, ...authorIds.filter((id) => followerSet.has(id))]
+  // The viewer's mutuals — used to decide whether a hangout_join row may
+  // link to the room's knock gate. (viewer.id in the set is inert: the knock
+  // check also requires hostId !== viewerId.)
+  const mutualSet = new Set(mutualAuthorIds)
+
+  const visiblePost: Where = {
+    or: [
+      {
+        and: [
+          { 'post.visibility': { not_in: ['followers', 'mutuals'] } },
+          { 'post.author.isPrivate': { not_equals: true } },
+        ],
+      },
+      {
+        and: [
+          { 'post.author.isPrivate': { not_equals: true } },
+          {
+            or: [
+              { 'post.visibility': { not_equals: 'mutuals' } },
+              { 'post.visibility': { exists: false } },
+            ],
+          },
+          { 'post.author': { in: allowed } },
+        ],
+      },
+      {
+        // Mutuals posts and everything by a private account — mutuals only.
+        and: [
+          {
+            or: [
+              { 'post.visibility': { equals: 'mutuals' } },
+              { 'post.author.isPrivate': { equals: true } },
+            ],
+          },
+          { 'post.author': { in: mutualAuthorIds } },
+        ],
+      },
+    ],
+  }
+
+  // Depth 3 so the embedded post is fully usable by hydratePosts: post
+  // images (2), the post author's avatar (3), and a shared original's
+  // author (3) all come back populated. The pair only needs the follow
+  // graph — fire it before the other sources so the two depth-3 finds
+  // overlap them instead of queueing behind a second round-trip.
+  const postActivities = Promise.all([
+    takePage(
       payload.find({
-        collection: 'follows',
-        where: { following: { equals: viewer.id } },
-        limit: 2000,
-        depth: 0,
+        collection: 'likes',
+        where: { and: [{ user: { in: authorIds } }, visiblePost] },
+        sort: '-createdAt',
+        limit: limit + 1,
+        depth: 3,
         pagination: false,
         user: viewer,
         overrideAccess: false,
       }),
+    ),
+    takePage(
+      payload.find({
+        collection: 'comments',
+        where: { and: [{ author: { in: authorIds } }, visiblePost] },
+        sort: '-createdAt',
+        limit: limit + 1,
+        depth: 3,
+        pagination: false,
+        user: viewer,
+        overrideAccess: false,
+      }),
+    ),
+  ])
+  // Guards an unhandled rejection if a wave-1 source throws first — the
+  // real await below still surfaces the error.
+  void postActivities.catch(() => {})
+
+  // Single wave — every non-post source runs in parallel now that the
+  // follow graph arrives with the call instead of needing its own find.
+  const [follows, testimonials, badgeAwards, profileViews, hangoutJoins, fingerprint] =
+    await Promise.all([
       takePage(
         payload.find({
           collection: 'follows',
@@ -382,74 +473,11 @@ export async function getFollowingActivities(
       // before deciding whether the next activation needs a refetch at all.
       computeActivitiesFingerprint(viewer, authorIds),
     ])
+  mark('sources')
 
-  // Mutuals-only posts are a stricter tier — the author must be someone the
-  // viewer follows who also follows back. authorIds is the viewer's
-  // followees, so intersect it with the viewer's followers.
-  const followerSet = new Set(followers.docs.map((f) => relId(f.follower)))
-  const mutualAuthorIds = [viewer.id, ...authorIds.filter((id) => followerSet.has(id))]
-  // The viewer's mutuals — used to decide whether a hangout_join row may
-  // link to the room's knock gate. (viewer.id in the set is inert: the knock
-  // check also requires hostId !== viewerId.)
-  const mutualSet = new Set(mutualAuthorIds)
-
-  const visiblePost: Where = {
-    or: [
-      {
-        and: [
-          { 'post.visibility': { not_in: ['followers', 'mutuals'] } },
-          { 'post.author.isPrivate': { not_equals: true } },
-        ],
-      },
-      {
-        and: [
-          {
-            or: [
-              { 'post.visibility': { not_equals: 'mutuals' } },
-              { 'post.visibility': { exists: false } },
-            ],
-          },
-          { 'post.author': { in: allowed } },
-        ],
-      },
-      {
-        and: [
-          { 'post.visibility': { equals: 'mutuals' } },
-          { 'post.author': { in: mutualAuthorIds } },
-        ],
-      },
-    ],
-  }
-
-  // Depth 3 so the embedded post is fully usable by hydratePosts: post
-  // images (2), the post author's avatar (3), and a shared original's
-  // author (3) all come back populated.
-  const [likes, comments] = await Promise.all([
-    takePage(
-      payload.find({
-        collection: 'likes',
-        where: { and: [{ user: { in: authorIds } }, visiblePost] },
-        sort: '-createdAt',
-        limit: limit + 1,
-        depth: 3,
-        pagination: false,
-        user: viewer,
-        overrideAccess: false,
-      }),
-    ),
-    takePage(
-      payload.find({
-        collection: 'comments',
-        where: { and: [{ author: { in: authorIds } }, visiblePost] },
-        sort: '-createdAt',
-        limit: limit + 1,
-        depth: 3,
-        pagination: false,
-        user: viewer,
-        overrideAccess: false,
-      }),
-    ),
-  ])
+  // The post-activity pair fired before the wave — usually already resolved.
+  const [likes, comments] = await postActivities
+  mark('post-activity')
 
   const joinUserIds = new Set<number>()
   const joinRoomIds = new Set<number>()
@@ -510,6 +538,7 @@ export async function getFollowingActivities(
         })
       : { docs: [] as NhieRoom[] },
   ])
+  mark('join-related')
   const joinUserMap = new Map(joinHeads.docs.map((u) => [u.id, u]))
   const joinRoomMap = new Map(joinRooms.docs.map((r) => [r.id, r]))
   const joinCardRoomMap = new Map(joinCardRooms.docs.map((r) => [r.id, r]))
@@ -534,6 +563,7 @@ export async function getFollowingActivities(
       joinUserMap.get(relId(join.invitedBy) ?? -1) ?? null,
     )
   const topBadges = await getTopBadgesForUsers(payload, [...badgeUserIds])
+  mark('badges')
 
   const entries = [
     ...likes.docs.map((like) => ({
@@ -595,10 +625,12 @@ export async function getFollowingActivities(
   const cards = new Map(
     (await hydratePosts([...postDocs.values()], viewer)).map((card) => [card.id, card]),
   )
+  mark('hydrate')
 
   const items = pageEntries.map((entry) =>
     entry.post ? { ...entry.data, post: cards.get(entry.post.id) } : entry.data,
   )
 
+  mark('total')
   return { items, hasMore, fingerprint }
 }
