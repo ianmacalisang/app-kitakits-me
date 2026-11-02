@@ -4,6 +4,10 @@
 
 const SKIP_TYPES = new Set(['image/gif', 'image/svg+xml'])
 
+// iPhone photos arrive as HEIC — browsers other than Safari can't render
+// them, so always re-encode even when the file is already small enough.
+const FORCE_TYPES = new Set(['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'])
+
 const TARGET_BYTES = 300 * 1024
 const MAX_ATTEMPTS = 8
 const MIN_DIMENSION = 240
@@ -24,7 +28,11 @@ export async function compressImage(
     const bitmap = await createImageBitmap(file)
 
     // Small enough in both dimensions and bytes — keep the original.
-    if (Math.max(bitmap.width, bitmap.height) <= maxSize && file.size <= targetBytes) {
+    if (
+      !FORCE_TYPES.has(file.type) &&
+      Math.max(bitmap.width, bitmap.height) <= maxSize &&
+      file.size <= targetBytes
+    ) {
       bitmap.close()
       return file
     }

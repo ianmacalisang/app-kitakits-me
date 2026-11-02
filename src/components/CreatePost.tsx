@@ -29,6 +29,7 @@ import {
 } from './icons'
 import { Spinner } from './Spinner'
 import { useSheetDragClose } from './useSheetDrag'
+import { useVisualViewportSheet } from './useVisualViewportSheet'
 
 const CLOSE_MS = 300
 const MAX_IMAGES = 4
@@ -245,27 +246,10 @@ export const CreatePost = memo(function CreatePost({
     }
   }, [open, close, audienceOpen])
 
-  // Keep the overlay inside the visual viewport. The software keyboard only
-  // shrinks the visual viewport — the layout viewport (and dvh) stay put, so
-  // without this the browser pans the page to reveal the focused textarea and
-  // pushes the sheet's header off the top of the screen.
-  useEffect(() => {
-    if (!open) return
-    const vv = window.visualViewport
-    const overlay = overlayRef.current
-    if (!vv || !overlay) return
-    const sync = () => {
-      overlay.style.top = `${vv.offsetTop}px`
-      overlay.style.height = `${vv.height}px`
-    }
-    sync()
-    vv.addEventListener('resize', sync)
-    vv.addEventListener('scroll', sync)
-    return () => {
-      vv.removeEventListener('resize', sync)
-      vv.removeEventListener('scroll', sync)
-    }
-  }, [open])
+  // Keep the overlay inside the visual viewport — the software keyboard only
+  // shrinks the visual viewport, so without this the browser pans the page to
+  // reveal the focused textarea and pushes the sheet's header off the top.
+  useVisualViewportSheet(overlayRef, open)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()

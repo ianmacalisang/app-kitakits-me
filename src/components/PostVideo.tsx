@@ -194,12 +194,28 @@ export const PostVideo = memo(function PostVideo({
     return () => clearTimeout(t)
   }, [playing, showControls])
 
-  // Track fullscreen so the fixed-height container can expand.
+  // Track fullscreen so the fixed-height container can expand. iPhone
+  // Safari has no element-level Fullscreen API — it fires webkit-prefixed
+  // events on the <video> for native fullscreen instead.
   useEffect(() => {
+    const el = videoRef.current
     const onFs = () => setFullscreen(Boolean(document.fullscreenElement))
+    const onWebkitFs = () =>
+      setFullscreen(
+        Boolean(
+          (el as (HTMLVideoElement & { webkitDisplayingFullscreen?: boolean }) | null)
+            ?.webkitDisplayingFullscreen,
+        ),
+      )
     document.addEventListener('fullscreenchange', onFs)
-    return () => document.removeEventListener('fullscreenchange', onFs)
-  }, [])
+    el?.addEventListener('webkitbeginfullscreen', onWebkitFs)
+    el?.addEventListener('webkitendfullscreen', onWebkitFs)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFs)
+      el?.removeEventListener('webkitbeginfullscreen', onWebkitFs)
+      el?.removeEventListener('webkitendfullscreen', onWebkitFs)
+    }
+  }, [data.status])
 
   const handlePlay = () => {
     const el = videoRef.current
@@ -240,8 +256,19 @@ export const PostVideo = memo(function PostVideo({
   }
 
   const toggleFullscreen = () => {
-    if (document.fullscreenElement) void document.exitFullscreen()
-    else void containerRef.current?.requestFullscreen()
+    if (document.fullscreenElement) {
+      void document.exitFullscreen()
+      return
+    }
+    if (containerRef.current?.requestFullscreen) {
+      void containerRef.current.requestFullscreen()
+      return
+    }
+    // iPhone Safari — only the video element itself can go fullscreen.
+    const el = videoRef.current as
+      | (HTMLVideoElement & { webkitEnterFullscreen?: () => void })
+      | null
+    el?.webkitEnterFullscreen?.()
   }
 
   const seek = (e: React.PointerEvent<HTMLDivElement>) => {

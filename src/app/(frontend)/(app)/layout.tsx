@@ -38,13 +38,15 @@ export default async function AppLayout(props: { children: React.ReactNode }) {
           defaultPostVisibility={fullUser.defaultPostVisibility ?? 'public'}
         />
         <main>
-          <div className="mx-auto w-full max-w-3xl px-4 pb-28 pt-24">{props.children}</div>
+          <div className="mx-auto w-full max-w-3xl px-4 pb-[max(7rem,calc(env(safe-area-inset-bottom)+6rem))] pt-[max(6rem,calc(env(safe-area-inset-top)+5rem))]">
+            {props.children}
+          </div>
         </main>
         <ToastHost />
         <InstallPrompt />
         {/* Chat banners share one anchored stack above the dock — same
             position for invites and accepted alerts, stacked when both show. */}
-        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-50 flex flex-col items-center gap-2 px-4">
+        <div className="pointer-events-none fixed inset-x-0 bottom-[max(6rem,calc(env(safe-area-inset-bottom)+5rem))] z-50 flex flex-col items-center gap-2 px-4">
           <InviteBanner />
           <AcceptedBanner />
         </div>

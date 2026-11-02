@@ -231,6 +231,7 @@ export const VoiceMic = memo(function VoiceMic({
             lkRef.current = room
             setVoice(true)
             refreshSpeakers()
+            if (!room.canPlaybackAudio) armUnlock()
           } catch {
             // Voice service unreachable — the mic stays in local-meter mode.
           }
@@ -252,10 +253,30 @@ export const VoiceMic = memo(function VoiceMic({
       retriesRef.current += 1
       reconnectTimer.current = setTimeout(() => void join(), 1500)
     }
+    // iOS Safari blocks the autoplaying remote <audio> elements that
+    // attach() appends — audio only unblocks inside a user gesture. Arm a
+    // one-shot pointerdown that calls startAudio (resumes every subscribed
+    // element at once); re-armed by AudioPlaybackStatusChanged whenever
+    // playback gets (re)blocked before a tap lands.
+    let unlockArmed = false
+    const unlock = () => {
+      unlockArmed = false
+      void room.startAudio().catch(() => {})
+    }
+    const armUnlock = () => {
+      if (unlockArmed) return
+      unlockArmed = true
+      document.addEventListener('pointerdown', unlock, { once: true })
+    }
     room.on(RoomEvent.TrackSubscribed, onSub)
     room.on(RoomEvent.TrackUnsubscribed, onUnsub)
     room.on(RoomEvent.LocalTrackUnpublished, onLocalUnpub)
     room.on(RoomEvent.Disconnected, onDisc)
+    room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+      if (room.canPlaybackAudio) return
+      armUnlock()
+      toast('Tap anywhere to enable sound.')
+    })
     // Diagnostic for delayed/choppy voice reports — visible in devtools and
     // prod console without affecting UI.
     room.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
@@ -265,6 +286,7 @@ export const VoiceMic = memo(function VoiceMic({
     void join()
     return () => {
       cancelled = true
+      document.removeEventListener('pointerdown', unlock)
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current)
       lkRef.current = null
       room.disconnect()
@@ -295,6 +317,11 @@ export const VoiceMic = memo(function VoiceMic({
     }
     setBusy(true)
     try {
+      // This tap is a user gesture — make sure remote audio playback is
+      // unblocked on iOS before publishing our own track.
+      if (lkRef.current && !lkRef.current.canPlaybackAudio) {
+        await lkRef.current.startAudio().catch(() => {})
+      }
       let stream: MediaStream | null = null
       const capture = CAPTURE_OPTIONS[audioProfile]
       if (lkRef.current) {

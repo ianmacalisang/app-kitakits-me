@@ -110,6 +110,8 @@
 
 html {
   -webkit-font-smoothing: antialiased;
+  /* iOS text inflation in landscape — keep authored sizes */
+  -webkit-text-size-adjust: 100%;
   background-color: #f4f4f4;
 }
 
@@ -120,6 +122,9 @@ html {
 body {
   @apply font-sans text-neutral-900;
   min-height: 100vh;
+  /* Dynamic viewport height — tracks the mobile browser's collapsing
+     toolbar so full-bleed layouts don't overflow the visible area */
+  min-height: 100dvh;
 }
 
 /* Tailwind's bg-clip-text emits only the unprefixed property, but mobile

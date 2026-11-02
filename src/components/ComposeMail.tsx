@@ -25,6 +25,7 @@ import { MailEditor } from './MailEditor'
 import { PaperclipIcon, SendIcon, TrashIcon, UsersIcon, XIcon } from './icons'
 import { Spinner } from './Spinner'
 import { useSheetDragClose } from './useSheetDrag'
+import { useVisualViewportSheet } from './useVisualViewportSheet'
 
 const bodyIsEmpty = (html: string) => html.replace(/<[^>]+>/g, '').trim() === ''
 
@@ -110,6 +111,11 @@ export function ComposeMail({
   }, [closing, onCloseAction, hasContent, saveNow])
 
   const sheetDrag = useSheetDragClose(close)
+
+  // Track the visual viewport so the body editor and attachments row stay
+  // above the software keyboard (same pattern as CreatePost/ChatMenu).
+  const overlayRef = useRef<HTMLDivElement>(null)
+  useVisualViewportSheet(overlayRef, open)
 
   const discard = () => {
     discarded.current = true
@@ -220,7 +226,10 @@ export function ComposeMail({
   if (!open) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4">
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4"
+    >
       <div
         className={`absolute inset-0 bg-accent-950/40 backdrop-blur-sm ${
           closing ? 'motion-safe:animate-fade-out' : 'motion-safe:animate-fade-in'
@@ -229,7 +238,7 @@ export function ComposeMail({
       />
       <div
         {...sheetDrag}
-        className={`glass relative flex h-dvh w-full max-w-lg flex-col overflow-y-auto overscroll-none rounded-t-[28px] px-5 pb-5 pt-2 sm:h-auto sm:max-h-[85vh] sm:rounded-[28px] sm:pt-4 ${
+        className={`glass relative flex h-full w-full max-w-lg flex-col overflow-y-auto overscroll-none rounded-t-[28px] px-5 pb-5 pt-2 sm:h-auto sm:max-h-[85vh] sm:rounded-[28px] sm:pt-4 ${
           closing
             ? 'motion-safe:animate-sheet-down sm:motion-safe:animate-dialog-out'
             : 'motion-safe:animate-sheet-up sm:motion-safe:animate-dialog-in'

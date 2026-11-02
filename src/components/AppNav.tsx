@@ -475,7 +475,7 @@ export function AppNav({
           inside this stacking context — can cover the dock. Portaled
           sheets/modals are appended to body later, so z-40 still stacks
           under them. */}
-      <div className="group/header fixed inset-x-4 top-4 z-40 mx-auto flex max-w-3xl items-center gap-2">
+      <div className="group/header fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-40 mx-auto flex max-w-3xl items-center gap-2">
         <header className="glass min-w-0 flex-1 rounded-full">
           <div className="flex h-14 w-full items-center justify-between px-4">
             <Logo />
@@ -592,7 +592,7 @@ export function AppNav({
       {/* Floating bottom dock — matches the content column width */}
       <nav
         ref={dockRef}
-        className="glass fixed inset-x-4 bottom-5 z-30 mx-auto flex max-w-3xl items-center rounded-full px-3 py-1.5"
+        className="glass fixed inset-x-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-3xl items-center rounded-full px-3 py-1.5"
       >
         {/* Sliding pill — fills the active item's slot, glides on navigation */}
         <span

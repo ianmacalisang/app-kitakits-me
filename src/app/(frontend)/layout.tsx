@@ -16,11 +16,16 @@ const poppins = Poppins({
 })
 
 // Lock the viewport scale — app-like fixed layout, no pinch/double-tap zoom.
+// viewportFit cover lets env(safe-area-inset-*) resolve on notched iPhones so
+// the floating nav can clear the status bar / home indicator; resizes-content
+// shrinks the layout viewport with the software keyboard on Android.
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
     { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },

@@ -2,7 +2,15 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { memo, useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react'
 import { createPortal } from 'react-dom'
 
 import { deletePost, togglePin } from '@/actions/posts'
@@ -24,6 +32,7 @@ import { PostEditForm } from './PostEditForm'
 import { PostImages } from './PostImages'
 import { PostVideo } from './PostVideo'
 import { useSheetDragClose } from './useSheetDrag'
+import { useVisualViewportSheet } from './useVisualViewportSheet'
 
 const CLOSE_MS = 300
 
@@ -59,6 +68,11 @@ export const PostCard = memo(function PostCard({
   }, [editClosing])
 
   const sheetDrag = useSheetDragClose(closeEdit)
+
+  // Track the visual viewport so the edit form's bottom controls stay above
+  // the software keyboard (same pattern as CreatePost/ChatMenu).
+  const editOverlayRef = useRef<HTMLDivElement>(null)
+  useVisualViewportSheet(editOverlayRef, editOpen)
 
   const closeDelete = useCallback(() => {
     if (deleteClosing || deleting) return
@@ -326,7 +340,10 @@ export const PostCard = memo(function PostCard({
       {/* Edit sheet */}
       {editOpen &&
         createPortal(
-          <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4">
+          <div
+            ref={editOverlayRef}
+            className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4"
+          >
             <div
               className={`absolute inset-0 bg-accent-950/40 backdrop-blur-sm ${
                 editClosing ? 'motion-safe:animate-fade-out' : 'motion-safe:animate-fade-in'
@@ -335,7 +352,7 @@ export const PostCard = memo(function PostCard({
             />
             <div
               {...sheetDrag}
-              className={`glass relative flex h-dvh w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] sm:h-auto sm:max-h-[85vh] sm:rounded-[28px] ${
+              className={`glass relative flex h-full w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] sm:h-auto sm:max-h-[85vh] sm:rounded-[28px] ${
                 editClosing
                   ? 'motion-safe:animate-sheet-down sm:motion-safe:animate-dialog-out'
                   : 'motion-safe:animate-sheet-up sm:motion-safe:animate-dialog-in'

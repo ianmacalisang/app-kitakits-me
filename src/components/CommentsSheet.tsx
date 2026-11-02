@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { memo, useCallback, useEffect, useState, useTransition } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 
 import { getComments } from '@/actions/comments'
@@ -22,6 +22,7 @@ import { PostVideo } from './PostVideo'
 import { RelativeTime } from './RelativeTime'
 import { Spinner } from './Spinner'
 import { useSheetDragClose } from './useSheetDrag'
+import { useVisualViewportSheet } from './useVisualViewportSheet'
 
 const CLOSE_MS = 300
 
@@ -77,6 +78,11 @@ export const CommentsSheet = memo(function CommentsSheet({
   }, [closing, onCloseAction])
 
   const sheetDrag = useSheetDragClose(close)
+
+  // Track the visual viewport so the bottom-pinned comment input stays
+  // above the software keyboard (same pattern as CreatePost/ChatMenu).
+  const overlayRef = useRef<HTMLDivElement>(null)
+  useVisualViewportSheet(overlayRef, open)
 
   const load = useCallback(async () => {
     const result = await getComments(postId, 1)
@@ -158,7 +164,10 @@ export const CommentsSheet = memo(function CommentsSheet({
   if (!open) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4">
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4"
+    >
       <div
         className={`absolute inset-0 bg-accent-950/40 backdrop-blur-sm ${
           closing ? 'motion-safe:animate-fade-out' : 'motion-safe:animate-fade-in'
@@ -167,7 +176,7 @@ export const CommentsSheet = memo(function CommentsSheet({
       />
       <div
         {...sheetDrag}
-        className={`glass relative flex h-dvh w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] sm:h-[75dvh] sm:rounded-[28px] ${
+        className={`glass relative flex h-full w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] sm:h-[75dvh] sm:rounded-[28px] ${
           closing
             ? 'motion-safe:animate-sheet-down sm:motion-safe:animate-dialog-out'
             : 'motion-safe:animate-sheet-up sm:motion-safe:animate-dialog-in'
