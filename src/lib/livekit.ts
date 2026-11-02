@@ -72,11 +72,24 @@ export async function mintVoiceToken(
   return { token, url, expiresAt }
 }
 
+// Server-API credential — LiveKit's Twirp endpoints reject Basic auth; they
+// want a Bearer access token with a roomAdmin grant scoped to the target room
+// (same HS256 signing as participant tokens, different claims). Short-lived
+// like the SDKs' authHeader tokens since it's minted per sync.
+const mintRoomAdminToken = (room: string, apiKey: string, apiSecret: string) =>
+  new SignJWT({ video: { roomAdmin: true, room } })
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setIssuer(apiKey)
+    .setIssuedAt()
+    .setNotBefore('0s')
+    .setExpirationTime('10m')
+    .sign(Buffer.from(apiSecret, 'utf8'))
+
 // Flip publish rights on already-connected participants — the token grant is
 // fixed at join time, so when the song (and therefore the singer) changes the
-// SFU must be told directly. Twirp endpoint, Basic auth with key:secret;
-// revoking canPublish unpublishes their mic track. Best-effort: a member who
-// isn't connected just returns an error we ignore.
+// SFU must be told directly. Twirp endpoint, Bearer roomAdmin JWT; revoking
+// canPublish unpublishes their mic track. Best-effort: a member who isn't
+// connected just returns an error we warn on and ignore.
 export async function updateVoicePublishers(
   roomId: number,
   memberIds: number[],
@@ -88,14 +101,15 @@ export async function updateVoicePublishers(
   if (!apiKey || !apiSecret || !wsUrl) return
 
   const base = wsUrl.replace(/^ws/, 'http')
-  const auth = `Basic ${Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')}`
+  const room = livekitRoomName(roomId)
+  const auth = `Bearer ${await mintRoomAdminToken(room, apiKey, apiSecret)}`
   await Promise.allSettled(
     memberIds.map((id) =>
       fetch(`${base}/twirp/livekit.RoomService/UpdateParticipant`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: auth },
         body: JSON.stringify({
-          room: livekitRoomName(roomId),
+          room,
           identity: String(id),
           permission: {
             canSubscribe: true,
@@ -103,6 +117,10 @@ export async function updateVoicePublishers(
             canPublishData: false,
           },
         }),
+      }).then((res) => {
+        // Silent misses here are how this whole path broke once already —
+        // keep a one-line trace so a future regression isn't invisible.
+        if (!res.ok) console.warn(`[livekit] UpdateParticipant ${id} → ${res.status}`)
       }),
     ),
   )

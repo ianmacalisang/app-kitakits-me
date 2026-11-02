@@ -14,7 +14,7 @@ import { getFollowGraph } from '@/lib/followGraph'
 import { relId, toNotificationData } from '@/lib/serialize'
 import { serializeVideokeRoom } from '@/lib/videoke'
 import type { User, VideokeRoom } from '@/payload-types'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 let payload: Payload
 let alice: User
@@ -421,6 +421,40 @@ describe('Videoke rooms', () => {
       data: { playback: { item: null, state: 'idle', startedAt: null, positionSec: 0 } },
       overrideAccess: true,
     })
+  })
+
+  it('authenticates mic-permission syncs with a roomAdmin Bearer token', async () => {
+    process.env.LIVEKIT_API_KEY = 'testkey'
+    process.env.LIVEKIT_API_SECRET = 'testsecret-testsecret-testsecret'
+    process.env.NEXT_PUBLIC_LIVEKIT_URL = 'wss://voice.test.dev'
+    const fetchMock = vi.fn(async () => new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      const { updateVoicePublishers } = await import('@/lib/livekit')
+      await updateVoicePublishers(room.id, [alice.id, bob.id, carol.id], new Set([bob.id]))
+    } finally {
+      vi.unstubAllGlobals()
+    }
+
+    // One UpdateParticipant per member — Bearer JWT with a roomAdmin grant
+    // scoped to the voice room (LiveKit's Twirp API rejects Basic auth).
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][]
+    for (const [url, init] of calls) {
+      expect(url).toBe('https://voice.test.dev/twirp/livekit.RoomService/UpdateParticipant')
+      const auth = (init.headers as Record<string, string>).authorization
+      expect(auth.startsWith('Bearer ')).toBe(true)
+      const claims = decodeJwt(auth.slice('Bearer '.length)) as {
+        iss?: string
+        video?: { roomAdmin?: boolean; room?: string }
+      }
+      expect(claims.iss).toBe('testkey')
+      expect(claims.video).toMatchObject({ roomAdmin: true, room: `videoke-${room.id}` })
+      const body = JSON.parse(String(init.body))
+      expect(body.room).toBe(`videoke-${room.id}`)
+      expect(body.permission.canPublish).toBe(body.identity === String(bob.id))
+      expect(body.permission.canSubscribe).toBe(true)
+    }
   })
 
   it('ended rooms stay readable by members but drop out of the open list', async () => {

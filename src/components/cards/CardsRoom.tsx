@@ -21,6 +21,7 @@ import type { MutualHead } from '@/lib/mutuals'
 import { UNGGOY_CARD, type CardCode } from '@/lib/unggoy'
 
 import { Avatar } from '../Avatar'
+import { ProfileLink } from '../ProfileLink'
 import { Spinner } from '../Spinner'
 import { useChat } from '../chat/ChatProvider'
 import {
@@ -265,7 +266,9 @@ export function CardsRoom({
             <ChevronLeftIcon className="h-4 w-4" />
           </Link>
           {room.host ? (
-            <Avatar src={room.host.avatarUrl} name={room.host.name} size="md" />
+            <ProfileLink username={room.host.username} className="shrink-0">
+              <Avatar src={room.host.avatarUrl} name={room.host.name} size="md" />
+            </ProfileLink>
           ) : (
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/40 backdrop-blur-sm">
               <CardIcon className="h-5 w-5" />
@@ -329,7 +332,9 @@ export function CardsRoom({
             <ul className="flex flex-col gap-2">
               {(room.requests ?? []).map((r) => (
                 <li key={r.id} className="flex items-center gap-2.5">
-                  <Avatar src={r.avatarUrl} name={r.name} size="sm" />
+                  <ProfileLink username={r.username} className="shrink-0">
+                    <Avatar src={r.avatarUrl} name={r.name} size="sm" />
+                  </ProfileLink>
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{r.name}</span>
                   <button
                     type="button"
@@ -347,7 +352,7 @@ export function CardsRoom({
         <div className="flex flex-wrap items-center gap-4">
           {room.members.map((m) => (
             <div key={m.id} className="flex flex-col items-center gap-1">
-              <span className="relative">
+              <ProfileLink username={m.username} className="relative">
                 <Avatar src={m.avatarUrl} name={m.name} size="md" />
                 {m.id === room.hostId ? (
                   <span
@@ -371,7 +376,7 @@ export function CardsRoom({
                     <MicIcon className="h-2.5 w-2.5" />
                   </span>
                 )}
-              </span>
+              </ProfileLink>
               <span className="max-w-16 truncate text-[11px] text-neutral-600 dark:text-neutral-300">
                 {m.name.split(' ')[0]}
                 {m.id === room.hostId ? ' · host' : ''}
@@ -380,9 +385,12 @@ export function CardsRoom({
           ))}
           {room.invites.map((i) => (
             <div key={i.user.id} className="flex flex-col items-center gap-1 opacity-60">
-              <span className="rounded-full border-2 border-dashed border-neutral-300 p-0.5 dark:border-neutral-600">
+              <ProfileLink
+                username={i.user.username}
+                className="rounded-full border-2 border-dashed border-neutral-300 p-0.5 dark:border-neutral-600"
+              >
                 <Avatar src={i.user.avatarUrl} name={i.user.name} size="md" />
-              </span>
+              </ProfileLink>
               <span className="max-w-16 truncate text-[11px] text-neutral-500">
                 {i.user.name.split(' ')[0]} · invited
               </span>
@@ -453,7 +461,7 @@ export function CardsRoom({
                     const tappable = myTurn && p.isDrawSource
                     return (
                       <li key={p.user.id} className="flex w-auto flex-col items-center">
-                        <span className="relative">
+                        <ProfileLink username={p.user.username} className="relative">
                           <Avatar src={p.user.avatarUrl} name={p.user.name} size="md" />
                           {p.isTurn && (
                             <span className="absolute -inset-0.5 animate-pulse rounded-full ring-2 ring-accent-400" />
@@ -475,7 +483,7 @@ export function CardsRoom({
                               </span>
                             )
                           )}
-                        </span>
+                        </ProfileLink>
                         <span
                           className={`mt-1.5 max-w-36 truncate text-[11px] ${
                             p.isTurn ? 'font-semibold text-accent-300' : 'text-white/65'
