@@ -77,15 +77,18 @@ describe('Activities feed — post visibility', () => {
     const [pubPost, mutualPost, privatePost] = [
       await payload.create({
         collection: 'posts',
-        data: { author: author.id, content: 'public post', visibility: 'public' },
+        draft: false,
+        data: { author: author.id, content: 'public post', visibility: 'public', category: 'kwento' },
       }),
       await payload.create({
         collection: 'posts',
-        data: { author: author.id, content: 'mutuals post', visibility: 'mutuals' },
+        draft: false,
+        data: { author: author.id, content: 'mutuals post', visibility: 'mutuals', category: 'kwento' },
       }),
       await payload.create({
         collection: 'posts',
-        data: { author: priv.id, content: 'private account post', visibility: 'public' },
+        draft: false,
+        data: { author: priv.id, content: 'private account post', visibility: 'public', category: 'kwento' },
       }),
     ]
     pubPostId = pubPost.id
@@ -194,7 +197,8 @@ describe('Activities feed — post visibility', () => {
   it('drops activity older than the feed window', async () => {
     const oldPost = await payload.create({
       collection: 'posts',
-      data: { author: author.id, content: 'old public post', visibility: 'public' },
+        draft: false,
+      data: { author: author.id, content: 'old public post', visibility: 'public', category: 'kwento' },
     })
     const oldLike = await payload.create({
       collection: 'likes',

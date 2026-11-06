@@ -236,29 +236,34 @@ export function ActivitiesView({
 
   // Tab-open + open-tab refresh: probe the fingerprint first and only pay for
   // a page-1 refetch when it moved. The fresh page dedupe-merges over the
-  // head so pages loaded via infinite scroll stay attached below it.
+  // head so pages loaded via infinite scroll stay attached below it. Probe
+  // and refetch tolerate transient failures — the next interval retries, so
+  // a dropped query just skips this cycle instead of rejecting the
+  // transition or surfacing an unhandled error.
   useEffect(() => {
     if (!active) return
     const check = () => {
       if (pending || document.hidden || Date.now() - lastCheckRef.current < CHECK_MS) return
       lastCheckRef.current = Date.now()
       startTransition(async () => {
-        const { fingerprint } = await getActivitiesFingerprint()
-        if (fingerprint === fingerprintRef.current) return
-        const result = await loadMoreActivities(1)
-        fingerprintRef.current = result.fingerprint
-        setItems((prev) => {
-          const fresh = new Set(result.items.map((a) => a.id))
-          return [...result.items, ...prev.filter((a) => !fresh.has(a.id))]
-        })
-        setHasMore(result.hasMore)
-        if (cacheViewerId) {
-          writeActivitiesCache(cacheViewerId, {
-            items: result.items,
-            hasMore: result.hasMore,
-            fingerprint: result.fingerprint,
+        try {
+          const { fingerprint } = await getActivitiesFingerprint()
+          if (fingerprint === fingerprintRef.current) return
+          const result = await loadMoreActivities(1)
+          fingerprintRef.current = result.fingerprint
+          setItems((prev) => {
+            const fresh = new Set(result.items.map((a) => a.id))
+            return [...result.items, ...prev.filter((a) => !fresh.has(a.id))]
           })
-        }
+          setHasMore(result.hasMore)
+          if (cacheViewerId) {
+            writeActivitiesCache(cacheViewerId, {
+              items: result.items,
+              hasMore: result.hasMore,
+              fingerprint: result.fingerprint,
+            })
+          }
+        } catch {}
       })
     }
     check()
@@ -573,7 +578,11 @@ export function LazyActivities({ viewerId }: { viewerId: number }) {
   const [data, setData] = useState<CachedActivities | null>(() =>
     typeof window === 'undefined' ? null : (memoryCache.get(viewerId) ?? null),
   )
+  // Set only after the auto-retries below are exhausted — a persistent
+  // failure swaps the skeleton for an error card with a manual retry.
+  const [failed, setFailed] = useState(false)
   const fetchingRef = useRef(false)
+  const retriesRef = useRef(0)
 
   const sync = useCallback(
     (page: CachedActivities) => {
@@ -583,6 +592,33 @@ export function LazyActivities({ viewerId }: { viewerId: number }) {
     [viewerId],
   )
 
+  const load = useCallback(
+    // Named so the retry timer can reschedule it without a forward reference.
+    function fetchPage() {
+      if (fetchingRef.current) return
+      fetchingRef.current = true
+      loadMoreActivities(1)
+        .then((result) => {
+          retriesRef.current = 0
+          sync({ items: result.items, hasMore: result.hasMore, fingerprint: result.fingerprint })
+          fetchingRef.current = false
+        })
+        .catch(() => {
+          fetchingRef.current = false
+          // Two automatic retries cover the common case — a reconnecting
+          // pool blip clears in a couple of seconds. Past that, stop hiding
+          // the failure behind a skeleton: show the retry card.
+          if (retriesRef.current < 2) {
+            retriesRef.current += 1
+            setTimeout(fetchPage, 2_000)
+          } else {
+            setFailed(true)
+          }
+        })
+    },
+    [sync],
+  )
+
   useEffect(() => {
     if (data) return
     const cached = readActivitiesCache(viewerId)
@@ -590,25 +626,43 @@ export function LazyActivities({ viewerId }: { viewerId: number }) {
   }, [viewerId, data])
 
   useEffect(() => {
-    if (!active || data || fetchingRef.current) return
-    fetchingRef.current = true
-    loadMoreActivities(1)
-      .then((result) => {
-        sync({ items: result.items, hasMore: result.hasMore, fingerprint: result.fingerprint })
-        fetchingRef.current = false
-      })
-      // Keep the skeleton up — toggling away and back retries.
-      .catch(() => {
-        fetchingRef.current = false
-      })
-  }, [active, data, sync])
+    if (!active || data) return
+    // Re-activating the tab is a natural retry — reset the budget so a
+    // previously-failed load gets a fresh cycle.
+    retriesRef.current = 0
+    load()
+  }, [active, data, load])
 
   // No idle warm-up on purpose: revalidating the cache here meant every home
   // pageview by anyone who'd ever opened the tab fired the full activities
   // query wave in the background. The activation probe inside ActivitiesView
   // already revalidates the moment the tab is opened.
 
-  if (!data) return active ? <ActivityListSkeleton /> : null
+  if (!data) {
+    if (!active) return null
+    if (failed) {
+      return (
+        <EmptyState
+          icon={<ActivityIcon />}
+          title="Couldn't load activities"
+          message="Something went wrong on our end. Try again in a moment."
+        >
+          <button
+            type="button"
+            onClick={() => {
+              retriesRef.current = 0
+              setFailed(false)
+              load()
+            }}
+            className="btn-primary mt-1 rounded-full px-5 py-2 text-sm"
+          >
+            Try again
+          </button>
+        </EmptyState>
+      )
+    }
+    return <ActivityListSkeleton />
+  }
   return (
     <ActivitiesView
       activities={data.items}
