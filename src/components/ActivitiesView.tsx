@@ -603,27 +603,10 @@ export function LazyActivities({ viewerId }: { viewerId: number }) {
       })
   }, [active, data, sync])
 
-  // Idle warm-up: once the page settles, revalidate the cache with the cheap
-  // fingerprint probe so the tab paints instantly when opened. Only runs when
-  // a cache exists — viewers who never open Activities still pay nothing.
-  useEffect(() => {
-    if (!data || active) return
-    const timer = setTimeout(async () => {
-      if (fetchingRef.current) return
-      try {
-        const { fingerprint } = await getActivitiesFingerprint()
-        const cached = readActivitiesCache(viewerId)
-        if (cached && fingerprint === cached.fingerprint) return
-        fetchingRef.current = true
-        const result = await loadMoreActivities(1)
-        sync({ items: result.items, hasMore: result.hasMore, fingerprint: result.fingerprint })
-      } catch {
-      } finally {
-        fetchingRef.current = false
-      }
-    }, 1500)
-    return () => clearTimeout(timer)
-  }, [data, active, viewerId, sync])
+  // No idle warm-up on purpose: revalidating the cache here meant every home
+  // pageview by anyone who'd ever opened the tab fired the full activities
+  // query wave in the background. The activation probe inside ActivitiesView
+  // already revalidates the moment the tab is opened.
 
   if (!data) return active ? <ActivityListSkeleton /> : null
   return (

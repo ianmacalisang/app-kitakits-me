@@ -32,14 +32,19 @@ import {
 
 const ACTIVITY_PAGE_SIZE = 20
 
+// Every feed source is bounded to the same recency window — the stream is a
+// journal of recent activity, and the bound keeps each per-user index scan
+// from reading a table's full history before the merge.
+export const ACTIVITY_WINDOW_DAYS = 30
+
 export type ActivitiesPage = Paged<ActivityData> & { fingerprint: string }
 
 // Single-query freshness probe for the activities feed — one indexed
 // MAX(ts)+COUNT(*) per source UNION'd together (ts = the later of
 // created/updated, so edits invalidate too). The fingerprint changes on any
-// insert, update, or delete affecting the feed's inputs (within a 90-day
-// window — older mutations can't reorder the feed's top anyway), so the
-// client can skip the ~15-query page-1 refetch entirely when nothing moved.
+// insert, update, or delete affecting the feed's inputs (within the same
+// 30-day window the feed reads — older mutations can't reorder it anyway),
+// so the client can skip the ~15-query page-1 refetch when nothing moved.
 // It's a heuristic rather than a visibility mirror: changes invisible to the
 // viewer (pending testimonials, private targets) can bump it and cause a
 // no-op refetch — wasteful but never wrong.
@@ -55,7 +60,7 @@ export async function computeActivitiesFingerprint(
   // older than the window couldn't reorder the top of the feed anyway, and
   // the bound lets the composite (actor, recency) indexes skip old history
   // instead of COUNT-ing every row the graph ever touched.
-  const window = sql`NOW() - INTERVAL '90 days'`
+  const window = sql`NOW() - INTERVAL '30 days'`
 
   const sources: ReturnType<typeof sql>[] = []
   if (authorIds.length > 0) {
@@ -352,36 +357,94 @@ export async function getFollowingActivities(
     ],
   }
 
-  // Depth 3 so the embedded post is fully usable by hydratePosts: post
-  // images (2), the post author's avatar (3), and a shared original's
-  // author (3) all come back populated. The pair only needs the follow
-  // graph — fire it before the other sources so the two depth-3 finds
-  // overlap them instead of queueing behind a second round-trip.
+  const db = drizzleOf(payload)
+  const since = new Date(
+    Date.now() - ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString()
+
+  // Likes/comments pick their page ids in raw SQL first: a bounded
+  // user_id IN (...) + created_at window over a single posts+users join,
+  // with visiblePost flattened to one predicate. Routing the same rules
+  // through Payload's where builder emits a join per OR branch — and for
+  // comments read access ANDs the whole tree a second time — so the DB
+  // ends up scanning and sorting every row the graph ever produced. The
+  // ≤limit winning ids then hydrate through payload.find at depth 3, so
+  // everything downstream sees the same populated docs as before.
+  const postActivityPage = async <T extends { id: number }>(
+    collection: 'likes' | 'comments',
+    actorColumn: 'user_id' | 'author_id',
+  ): Promise<{ docs: T[]; more: boolean }> => {
+    if (authorIds.length === 0) return { docs: [], more: false }
+    if (!db) {
+      // Non-Postgres fallback — the Payload query this replaces.
+      const { docs } = await payload.find({
+        collection,
+        where: {
+          and: [
+            { [actorColumn === 'user_id' ? 'user' : 'author']: { in: authorIds } },
+            { createdAt: { greater_than: since } },
+            visiblePost,
+          ],
+        },
+        sort: '-createdAt',
+        limit: limit + 1,
+        depth: 3,
+        pagination: false,
+        user: viewer,
+        overrideAccess: false,
+      })
+      return { docs: docs.slice(0, limit) as unknown as T[], more: docs.length > limit }
+    }
+
+    const inList = (ids: number[]) =>
+      sql.join(
+        ids.map((id) => sql`${id}`),
+        sql`, `,
+      )
+    const { rows } = (await db.execute(sql`
+      SELECT src.id AS id
+      FROM ${sql.raw(collection)} src
+      JOIN posts p ON p.id = src.post_id
+      JOIN users a ON a.id = p.author_id
+      WHERE ${sql.raw(`src.${actorColumn}`)} IN (${inList(authorIds)})
+        AND src.created_at > ${since}
+        AND (
+          (p.visibility NOT IN ('followers', 'mutuals') AND a.is_private <> true)
+          OR (a.is_private <> true AND p.visibility IS DISTINCT FROM 'mutuals'
+              AND p.author_id IN (${inList(allowed)}))
+          OR ((p.visibility = 'mutuals' OR a.is_private = true)
+              AND p.author_id IN (${inList(mutualAuthorIds)}))
+        )
+      ORDER BY src.created_at DESC
+      LIMIT ${limit + 1}
+    `)) as { rows: { id: number }[] }
+
+    const more = rows.length > limit
+    const pageIds = rows.slice(0, limit).map((row) => row.id)
+    if (pageIds.length === 0) return { docs: [], more }
+    // Depth 3 so the embedded post is fully usable by hydratePosts: post
+    // images (2), the post author's avatar (3), and a shared original's
+    // author (3) all come back populated. The SQL above already enforced
+    // visibility, so hydration skips a second access check.
+    const { docs } = await payload.find({
+      collection,
+      where: { id: { in: pageIds } },
+      depth: 3,
+      limit: pageIds.length,
+      pagination: false,
+      overrideAccess: true,
+    })
+    const byId = new Map(docs.map((doc) => [doc.id, doc]))
+    const ordered = pageIds.map((id) => byId.get(id)).filter((doc) => doc !== undefined)
+    return { docs: ordered as unknown as T[], more }
+  }
+
+  // The pair only needs the follow graph — fire it before the other sources
+  // so its id-scan + hydration overlap the wave instead of queueing behind
+  // a second round-trip.
   const postActivities = Promise.all([
-    takePage(
-      payload.find({
-        collection: 'likes',
-        where: { and: [{ user: { in: authorIds } }, visiblePost] },
-        sort: '-createdAt',
-        limit: limit + 1,
-        depth: 3,
-        pagination: false,
-        user: viewer,
-        overrideAccess: false,
-      }),
-    ),
-    takePage(
-      payload.find({
-        collection: 'comments',
-        where: { and: [{ author: { in: authorIds } }, visiblePost] },
-        sort: '-createdAt',
-        limit: limit + 1,
-        depth: 3,
-        pagination: false,
-        user: viewer,
-        overrideAccess: false,
-      }),
-    ),
+    postActivityPage<Like>('likes', 'user_id'),
+    postActivityPage<Comment>('comments', 'author_id'),
   ])
   // Guards an unhandled rejection if a wave-1 source throws first — the
   // real await below still surfaces the error.
@@ -395,7 +458,11 @@ export async function getFollowingActivities(
         payload.find({
           collection: 'follows',
           where: {
-            and: [{ follower: { in: authorIds } }, { 'following.isPrivate': { not_equals: true } }],
+            and: [
+              { follower: { in: authorIds } },
+              { 'following.isPrivate': { not_equals: true } },
+              { createdAt: { greater_than: since } },
+            ],
           },
           sort: '-createdAt',
           limit: limit + 1,
@@ -408,7 +475,13 @@ export async function getFollowingActivities(
       takePage(
         payload.find({
           collection: 'testimonials',
-          where: { and: [{ author: { in: authorIds } }, { status: { equals: 'approved' } }] },
+          where: {
+            and: [
+              { author: { in: authorIds } },
+              { status: { equals: 'approved' } },
+              { createdAt: { greater_than: since } },
+            ],
+          },
           sort: '-createdAt',
           limit: limit + 1,
           depth: 2,
@@ -422,7 +495,7 @@ export async function getFollowingActivities(
       takePage(
         payload.find({
           collection: 'user-badges',
-          where: { user: { in: authorIds } },
+          where: { and: [{ user: { in: authorIds } }, { createdAt: { greater_than: since } }] },
           sort: '-createdAt',
           limit: limit + 1,
           depth: 2,
@@ -441,6 +514,7 @@ export async function getFollowingActivities(
                 and: [
                   { viewed: { equals: viewer.id } },
                   { 'viewer.profileViewTracking': { equals: true } },
+                  { updatedAt: { greater_than: since } },
                 ],
               },
               sort: '-updatedAt',
@@ -460,7 +534,7 @@ export async function getFollowingActivities(
       takePage(
         payload.find({
           collection: 'hangout-joins',
-          where: { user: { in: authorIds } },
+          where: { and: [{ user: { in: authorIds } }, { updatedAt: { greater_than: since } }] },
           sort: '-updatedAt',
           limit: limit + 1,
           depth: 0,
